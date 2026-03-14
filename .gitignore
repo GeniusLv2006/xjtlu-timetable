@@ -1,0 +1,6 @@
+node_modules/
+frontend/dist/
+backend/pb_data/
+.env
+*.local
+.DS_Store
