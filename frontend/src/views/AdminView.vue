@@ -290,7 +290,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive } from 'vue'
+import { ref, computed, watch, reactive, onMounted } from 'vue'
 import adminPb from '../lib/adminPb'
 
 // ── Admin auth ────────────────────────────────────────────────────────────
@@ -313,6 +313,10 @@ async function adminLogin() {
     loginLoading.value = false
   }
 }
+
+onMounted(() => {
+  if (isAdminAuthed.value) loadAll()
+})
 
 function adminLogout() {
   adminPb.authStore.clear()
