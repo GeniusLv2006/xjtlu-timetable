@@ -84,16 +84,19 @@
 import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import pb from '../lib/pocketbase'
 import TimetableGrid from '../components/TimetableGrid.vue'
+import { useAuthStore } from '../stores/auth'
 
 defineOptions({ name: 'Home' })
 
 // ── Greeting ──────────────────────────────────────────────────────────────
 
-const model = pb.authStore.model
+const authStore = useAuthStore()
 
 const displayName = computed(() => {
-  if (model?.name) return model.name
-  const email = model?.email ?? ''
+  const m = authStore.model
+  if (m?.nickname) return m.nickname
+  if (m?.name)     return m.name
+  const email = m?.email ?? ''
   return email.split('@')[0] || '同学'
 })
 

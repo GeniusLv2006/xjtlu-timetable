@@ -15,6 +15,34 @@
         <span class="info-value">{{ authStore.model?.email }}</span>
       </div>
       <div class="info-row">
+        <span class="info-label">昵称</span>
+        <div class="nickname-field">
+          <template v-if="!editingNickname">
+            <span class="info-value nickname-val">{{ authStore.model?.nickname || authStore.model?.name || '—' }}</span>
+            <button class="btn btn-secondary btn-sm" @click="startNickname">修改</button>
+          </template>
+          <template v-else>
+            <input
+              v-model="nicknameInput"
+              class="field-input nickname-input"
+              maxlength="30"
+              placeholder="输入昵称"
+              @keydown.enter="saveNickname"
+              @keydown.escape="cancelNickname"
+            />
+            <button class="btn btn-primary btn-sm" :disabled="nicknameSaving" @click="saveNickname">
+              {{ nicknameSaving ? '…' : '保存' }}
+            </button>
+            <button class="btn btn-secondary btn-sm" :disabled="nicknameSaving" @click="cancelNickname">取消</button>
+          </template>
+        </div>
+      </div>
+      <p v-if="nicknameError" class="msg-error">{{ nicknameError }}</p>
+      <div class="info-row">
+        <span class="info-label">用户名</span>
+        <span class="info-value">{{ authStore.model?.name }}</span>
+      </div>
+      <div class="info-row">
         <span class="info-label">好友码</span>
         <div class="code-row">
           <span class="info-value">{{ authStore.model?.id }}</span>
@@ -274,6 +302,41 @@ async function copyInvite(code) {
   }
 }
 
+// ── 昵称 ──────────────────────────────────────────────────────────────────
+const editingNickname = ref(false)
+const nicknameInput   = ref('')
+const nicknameSaving  = ref(false)
+const nicknameError   = ref('')
+
+function startNickname() {
+  nicknameInput.value = authStore.model?.nickname || ''
+  editingNickname.value = true
+  nicknameError.value = ''
+}
+
+function cancelNickname() {
+  editingNickname.value = false
+  nicknameError.value = ''
+}
+
+async function saveNickname() {
+  nicknameSaving.value = true
+  nicknameError.value = ''
+  try {
+    await pb.collection('users').update(
+      authStore.model.id,
+      { nickname: nicknameInput.value.trim() },
+      { requestKey: null }
+    )
+    await pb.collection('users').authRefresh({ requestKey: null })
+    editingNickname.value = false
+  } catch (e) {
+    nicknameError.value = e.message
+  } finally {
+    nicknameSaving.value = false
+  }
+}
+
 // ── 好友码 ────────────────────────────────────────────────────────────────
 const friendCodeCopied = ref(false)
 async function copyFriendCode() {
@@ -528,13 +591,27 @@ async function copyUrl() {
 .info-label {
   font-size: var(--text-sm);
   color: var(--text-3);
-  width: 44px;
+  width: 52px;
   flex-shrink: 0;
 }
 .info-value {
   font-size: var(--text-sm);
   color: var(--text);
   font-family: var(--font-mono);
+}
+.nickname-val {
+  font-family: var(--font-sans);
+}
+.nickname-field {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+.nickname-input {
+  flex: 1;
+  min-width: 0;
 }
 .code-row {
   display: flex;

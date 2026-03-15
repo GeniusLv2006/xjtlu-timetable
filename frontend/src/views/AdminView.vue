@@ -71,7 +71,7 @@
           <table v-else class="admin-table">
             <thead>
               <tr>
-                <th>真实姓名</th>
+                <th>用户名 / 昵称</th>
                 <th>邮箱</th>
                 <th>ID</th>
                 <th>状态</th>
@@ -90,8 +90,9 @@
               >
                 <td>
                   <span v-if="editingName[u.id] === undefined" class="name-cell">
-                    <span>{{ u.name || '—' }}</span>
-                    <button class="icon-btn" title="编辑姓名" @click="startEditName(u)">✏</button>
+                    <span class="name-primary">{{ u.name || '—' }}</span>
+                    <span v-if="u.nickname" class="name-nickname">{{ u.nickname }}</span>
+                    <button class="icon-btn" title="编辑用户名" @click="startEditName(u)">✏</button>
                   </span>
                   <span v-else class="name-edit">
                     <input
@@ -557,7 +558,8 @@ const filteredUsers = computed(() => {
   if (!q) return users.value
   return users.value.filter(u =>
     u.email?.toLowerCase().includes(q) ||
-    u.name?.toLowerCase().includes(q)
+    u.name?.toLowerCase().includes(q) ||
+    u.nickname?.toLowerCase().includes(q)
   )
 })
 
@@ -1225,6 +1227,15 @@ function fmtDate(iso) {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.name-primary {
+  font-size: var(--text-sm);
+}
+.name-nickname {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  font-style: italic;
 }
 .icon-btn {
   background: none;

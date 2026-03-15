@@ -69,7 +69,7 @@
               <div v-for="f in incoming" :key="f.id" class="friend-row">
                 <div class="friend-info">
                   <span class="friend-name">{{ displayName(f, 'from') }}</span>
-                  <span class="friend-id">{{ f.expand?.from_user?.email ?? otherId(f) }}</span>
+                  <span class="friend-id">{{ secondaryName(f, 'from') }}</span>
                 </div>
                 <div class="friend-actions">
                   <button class="btn btn-primary btn-sm" @click="acceptRequest(f)">接受</button>
@@ -84,7 +84,7 @@
               <div v-for="f in outgoing" :key="f.id" class="friend-row">
                 <div class="friend-info">
                   <span class="friend-name">{{ displayName(f, 'to') }}</span>
-                  <span class="friend-id">{{ f.expand?.to_user?.email ?? otherId(f) }}</span>
+                  <span class="friend-id">{{ secondaryName(f, 'to') }}</span>
                 </div>
                 <div class="friend-actions">
                   <button class="btn btn-danger btn-sm" @click="deleteRequest(f)">取消</button>
@@ -107,9 +107,7 @@
             <div v-for="f in friends" :key="f.id" class="friend-row">
               <div class="friend-info">
                 <span class="friend-name">{{ displayName(f, 'other') }}</span>
-                <span class="friend-id">
-                  {{ (f.from_user === myId ? f.expand?.to_user?.email : f.expand?.from_user?.email) ?? otherId(f) }}
-                </span>
+                <span class="friend-id">{{ secondaryName(f, 'other') }}</span>
               </div>
               <div class="friend-actions">
                 <template v-if="confirmRemoveId === f.id">
@@ -207,7 +205,7 @@ function otherId(f) {
 }
 
 /**
- * 显示名称，优先 name（管理员设置的真实姓名），其次 email，最后 ID 前8位
+ * 显示名称，优先昵称，其次用户名，最后 ID 前8位
  * side: 'from' | 'to' | 'other'
  */
 function displayName(f, side) {
@@ -219,10 +217,23 @@ function displayName(f, side) {
       ? f.expand?.to_user
       : f.expand?.from_user
   }
-  if (expandedUser?.name)  return expandedUser.name
-  if (expandedUser?.email) return expandedUser.email
+  if (expandedUser?.nickname) return expandedUser.nickname
+  if (expandedUser?.name)     return expandedUser.name
   const id = otherId(f)
   return id ? id.slice(0, 8) + '…' : '—'
+}
+
+/** 次要行：显示用户名，fallback 到 ID */
+function secondaryName(f, side) {
+  let expandedUser
+  if (side === 'from')  expandedUser = f.expand?.from_user
+  else if (side === 'to') expandedUser = f.expand?.to_user
+  else {
+    expandedUser = f.from_user === myId
+      ? f.expand?.to_user
+      : f.expand?.from_user
+  }
+  return expandedUser?.name || otherId(f)
 }
 
 // ── 添加好友 ──────────────────────────────────────────────────────────────
