@@ -366,11 +366,9 @@ async function confirmRemove(f) {
 .friends-section:last-child { border-bottom: none; }
 
 .section-title {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: var(--sp-2);

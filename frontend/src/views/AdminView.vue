@@ -1334,7 +1334,7 @@ tr:hover .icon-btn { opacity: 1; }
   gap: var(--sp-4);
 }
 .config-section-title {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--text);
   padding-bottom: var(--sp-3);

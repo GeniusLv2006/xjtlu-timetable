@@ -146,7 +146,7 @@ async function handleSubmit() {
   text-align: center;
 }
 .login-logo {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   color: #5A5850;
@@ -241,7 +241,7 @@ async function handleSubmit() {
 /* Disclaimer */
 .login-disclaimer {
   margin: var(--sp-2) 0 0;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-3);
   letter-spacing: 0.01em;
   line-height: 1.5;

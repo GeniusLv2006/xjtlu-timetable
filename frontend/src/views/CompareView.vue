@@ -352,7 +352,7 @@ const freeSlots = computed(() => {
   color: var(--text);
 }
 .panel-badge {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--surface);

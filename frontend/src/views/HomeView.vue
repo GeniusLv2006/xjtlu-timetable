@@ -286,7 +286,7 @@ async function deleteTimetable() {
 
 .g-hint {
   margin-top: 40px;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: #3A3830;
   letter-spacing: 0.1em;
   animation: line-in 0.5s ease 1.2s both;
@@ -434,7 +434,7 @@ async function deleteTimetable() {
   font-size: var(--text-sm);
   color: var(--text-2);
 }
-.ical-tip-icon { flex-shrink: 0; font-size: 14px; }
+.ical-tip-icon { flex-shrink: 0; font-size: var(--text-base); }
 .ical-tip-text { flex: 1; line-height: 1.5; }
 .ical-tip-link {
   color: var(--accent);

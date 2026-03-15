@@ -110,7 +110,7 @@ watch(() => authStore.isLoggedIn, (v) => {
 
 .sidebar-brand {
   padding: 0 18px 26px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: 0.04em;
   user-select: none;
@@ -130,7 +130,7 @@ watch(() => authStore.isLoggedIn, (v) => {
 .nav-item {
   display: block;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: rgba(255,255,255,0.38);
   text-decoration: none;
@@ -163,12 +163,12 @@ watch(() => authStore.isLoggedIn, (v) => {
   flex-wrap: wrap;
 }
 .foot-copy {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-3);
   letter-spacing: 0.02em;
 }
 .foot-link {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-3);
   text-decoration: none;
   transition: color 0.12s;
@@ -209,7 +209,7 @@ watch(() => authStore.isLoggedIn, (v) => {
   flex-shrink: 0;
 }
 .mobile-brand {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: #FFFFFF;
   letter-spacing: 0.04em;
@@ -222,7 +222,7 @@ watch(() => authStore.isLoggedIn, (v) => {
 }
 .mobile-nav a {
   color: rgba(255,255,255,0.45);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 500;
   padding: 5px 8px;
   border-radius: 3px;
@@ -241,7 +241,7 @@ watch(() => authStore.isLoggedIn, (v) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: #1A4080;
   flex-shrink: 0;
 }
