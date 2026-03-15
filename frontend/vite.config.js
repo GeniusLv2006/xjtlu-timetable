@@ -9,6 +9,11 @@ export default defineConfig({
         target: 'http://localhost:8091',
         changeOrigin: true,
       },
+      '/timetable-api': {
+        target: 'https://timetableplus.xjtlu.edu.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/timetable-api/, ''),
+      },
     },
   },
 })
