@@ -5,6 +5,8 @@
       <h1 class="page-title">设置</h1>
     </div>
 
+    <div class="settings-grid">
+
     <!-- 账号信息 -->
     <section class="settings-section">
       <h2 class="section-title">账号</h2>
@@ -111,7 +113,7 @@
       </button>
     </section>
 
-    <!-- 危险操作 -->
+    <!-- 账号操作 -->
     <section class="settings-section">
       <h2 class="section-title">账号操作</h2>
       <div class="action-row">
@@ -143,6 +145,7 @@
       <router-link to="/terms" class="terms-footer-link">用户协议与隐私政策</router-link>
     </section>
 
+    </div><!-- end .settings-grid -->
   </div>
 </template>
 
@@ -339,9 +342,11 @@ async function copyUrl() {
 
 <style scoped>
 .settings-page {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-10);
+  padding: 28px 32px 40px;
+}
+
+@media (max-width: 768px) {
+  .settings-page { padding: 20px 16px 32px; }
 }
 
 .page-toolbar {
@@ -355,15 +360,28 @@ async function copyUrl() {
   letter-spacing: -0.01em;
 }
 
-/* Section */
+/* Two-column grid */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+/* Section cards */
 .settings-section {
-  padding: var(--sp-5) 0;
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
 }
-.settings-section:last-child { border-bottom: none; }
 
 .section-title {
   font-size: var(--text-sm);

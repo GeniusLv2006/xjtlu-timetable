@@ -312,9 +312,7 @@ async function confirmRemove(f) {
 
 <style scoped>
 .friends-page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-10);
+  padding: 28px 32px 40px;
 }
 
 .page-toolbar {
@@ -336,11 +334,9 @@ async function confirmRemove(f) {
   align-items: start;
 }
 
-@media (max-width: 720px) {
-  .friends-layout {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
+@media (max-width: 768px) {
+  .friends-page { padding: 20px 16px 32px; }
+  .friends-layout { grid-template-columns: 1fr; gap: 0; }
 }
 
 .friends-col {

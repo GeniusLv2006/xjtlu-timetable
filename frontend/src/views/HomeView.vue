@@ -290,9 +290,11 @@ async function deleteTimetable() {
 
 /* ── Home page ───────────────────────────────────────────────────────────── */
 .home-page {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-8);
+  padding: 28px 32px 40px;
+}
+
+@media (max-width: 768px) {
+  .home-page { padding: 20px 16px 32px; }
 }
 
 .page-toolbar {

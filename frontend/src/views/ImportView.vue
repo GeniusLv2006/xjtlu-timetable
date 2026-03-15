@@ -61,9 +61,7 @@
           等课表加载完毕后点击书签，出现 "✓ HASH 已复制" 提示即成功。
         </div>
         <div class="notice notice-blue">
-          在 e-Bridge 首页左侧导航中，依次选择 <strong>My Studies → My Timetable</strong>，
-          等待课表完整加载（可看到具体课程安排）后再点击书签。
-          若弹出"未找到课表框架"，说明课表区域尚未渲染完成，请稍等几秒后重试。
+          在 e-Bridge 左侧导航栏点击 <strong>Timetable</strong>，进入 <strong>My Personal Class Timetable</strong> 页面，等待课表完整加载后再点击书签。若提示"未找到课表框架"，请确认课表区域已显示具体课程安排后重试。
         </div>
       </div>
     </div>
@@ -408,9 +406,13 @@ async function handleImport() {
 
 /* ── 正文 ─────────────────────────────────────────────────────────────────── */
 .import-page {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-10);
+  padding: 28px 32px 48px;
+}
+
+@media (max-width: 768px) {
+  .import-page { padding: 20px 16px 40px; }
 }
 
 .page-toolbar {
