@@ -82,7 +82,7 @@
     </section>
 
     <!-- 邀请码 -->
-    <section class="settings-section">
+    <section v-if="authStore.model?.can_invite" class="settings-section">
       <h2 class="section-title">邀请码</h2>
 
       <template v-if="authStore.model?.can_invite">
@@ -123,7 +123,6 @@
         <p v-else-if="!inviteCreating && inviteLoaded" class="section-desc">暂无邀请码，点击上方按钮生成。</p>
       </template>
 
-      <p v-else class="section-desc">你目前没有生成邀请码的权限，如需开通请联系管理员。</p>
     </section>
 
     <!-- 修改密码 -->
