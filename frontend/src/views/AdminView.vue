@@ -1,0 +1,893 @@
+<template>
+  <div class="admin-page">
+
+    <!-- ── Login wall ───────────────────────────────────────────────────── -->
+    <div v-if="!isAdminAuthed" class="admin-login-wrap">
+      <div class="admin-login-card">
+        <div class="admin-login-header">
+          <div class="admin-badge">ADMIN</div>
+          <div class="admin-login-title">管理后台</div>
+        </div>
+        <form class="admin-login-form" @submit.prevent="adminLogin">
+          <div class="field-group">
+            <label class="field-label">管理员邮箱</label>
+            <input v-model="loginEmail" type="email" class="field-input" required :disabled="loginLoading" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">密码</label>
+            <input v-model="loginPassword" type="password" class="field-input" required :disabled="loginLoading" />
+          </div>
+          <p v-if="loginError" class="msg-error">{{ loginError }}</p>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center" :disabled="loginLoading">
+            {{ loginLoading ? '验证中…' : '进入管理后台' }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Admin panel ──────────────────────────────────────────────────── -->
+    <template v-else>
+      <div class="admin-header">
+        <div class="admin-header-inner">
+          <div class="admin-header-left">
+            <span class="admin-badge">ADMIN</span>
+            <span class="admin-header-title">管理后台</span>
+          </div>
+          <div class="admin-header-right">
+            <router-link to="/" class="btn btn-secondary btn-sm">返回主站</router-link>
+            <button class="btn btn-danger btn-sm" @click="adminLogout">退出</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-body">
+
+        <!-- Tabs -->
+        <div class="admin-tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            class="admin-tab"
+            :class="{ active: activeTab === tab.key }"
+            @click="activeTab = tab.key"
+          >{{ tab.label }}</button>
+        </div>
+
+        <!-- ── Users tab ──────────────────────────────────────────────── -->
+        <div v-if="activeTab === 'users'" class="tab-content">
+
+          <div class="tab-toolbar">
+            <input
+              v-model="userSearch"
+              class="field-input search-input"
+              placeholder="搜索邮箱或姓名…"
+            />
+            <button class="btn btn-primary btn-sm" @click="openCreateUser">+ 新建用户</button>
+          </div>
+
+          <div v-if="usersLoading" class="state-msg">加载中…</div>
+          <div v-else-if="usersError" class="state-msg state-error">{{ usersError }}</div>
+
+          <table v-else class="admin-table">
+            <thead>
+              <tr>
+                <th>真实姓名</th>
+                <th>邮箱</th>
+                <th>ID</th>
+                <th>状态</th>
+                <th>注册时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="filteredUsers.length === 0">
+                <td colspan="6" class="empty-cell">没有匹配的用户</td>
+              </tr>
+              <tr
+                v-for="u in filteredUsers"
+                :key="u.id"
+                :class="{ 'row-banned': u.is_banned }"
+              >
+                <td>
+                  <span v-if="editingName[u.id] === undefined" class="name-cell">
+                    <span>{{ u.name || '—' }}</span>
+                    <button class="icon-btn" title="编辑姓名" @click="startEditName(u)">✏</button>
+                  </span>
+                  <span v-else class="name-edit">
+                    <input
+                      v-model="editingName[u.id]"
+                      class="field-input name-input"
+                      @keydown.enter="saveName(u)"
+                      @keydown.escape="cancelEditName(u.id)"
+                    />
+                    <button class="btn btn-primary btn-xs" @click="saveName(u)">保存</button>
+                    <button class="btn btn-secondary btn-xs" @click="cancelEditName(u.id)">取消</button>
+                  </span>
+                </td>
+                <td class="mono-cell">{{ u.email }}</td>
+                <td class="mono-cell dimmed">{{ u.id }}</td>
+                <td>
+                  <span class="status-badge" :class="u.is_banned ? 'banned' : 'active'">
+                    {{ u.is_banned ? '已停用' : '正常' }}
+                  </span>
+                </td>
+                <td class="dimmed">{{ fmtDate(u.created) }}</td>
+                <td class="action-cell">
+                  <router-link :to="`/compare/${u.id}`" class="btn btn-secondary btn-xs" target="_blank">
+                    查看课表
+                  </router-link>
+                  <button class="btn btn-secondary btn-xs" @click="openChangeEmail(u)">改邮箱</button>
+                  <button class="btn btn-secondary btn-xs" @click="openResetPwd(u)">重置密码</button>
+                  <button
+                    class="btn btn-xs"
+                    :class="u.is_banned ? 'btn-primary' : 'btn-danger'"
+                    @click="toggleBan(u)"
+                  >
+                    {{ u.is_banned ? '恢复' : '停用' }}
+                  </button>
+                  <button class="btn btn-danger btn-xs" @click="deleteUser(u)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ── Semesters tab ──────────────────────────────────────────── -->
+        <div v-if="activeTab === 'semesters'" class="tab-content">
+
+          <div class="tab-toolbar">
+            <button class="btn btn-primary btn-sm" @click="openCreateSemester">+ 新建学期</button>
+          </div>
+
+          <div v-if="semestersLoading" class="state-msg">加载中…</div>
+          <div v-else-if="semestersError" class="state-msg state-error">{{ semestersError }}</div>
+
+          <table v-else class="admin-table">
+            <thead>
+              <tr>
+                <th>学期名称</th>
+                <th>开始日期</th>
+                <th>总周数</th>
+                <th>当前学期</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="semesters.length === 0">
+                <td colspan="5" class="empty-cell">还没有学期数据</td>
+              </tr>
+              <tr
+                v-for="s in semesters"
+                :key="s.id"
+                :class="{ 'row-current': s.is_current }"
+              >
+                <td class="sem-name">{{ s.name }}</td>
+                <td class="mono-cell">{{ s.start_date?.slice(0, 10) }}</td>
+                <td class="mono-cell">{{ s.weeks_total }}</td>
+                <td>
+                  <span v-if="s.is_current" class="status-badge active">当前</span>
+                  <button v-else class="btn btn-secondary btn-xs" @click="setCurrentSemester(s)">
+                    设为当前
+                  </button>
+                </td>
+                <td class="action-cell">
+                  <button class="btn btn-danger btn-xs" @click="deleteSemester(s)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /admin-body -->
+
+      <!-- ── Create User Modal ──────────────────────────────────────────── -->
+      <div v-if="createUserModal" class="modal-overlay" @click.self="createUserModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">新建用户</h3>
+          <div class="field-group">
+            <label class="field-label">真实姓名</label>
+            <input v-model="newUser.name" class="field-input" placeholder="张三" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">邮箱</label>
+            <input v-model="newUser.email" type="email" class="field-input" placeholder="s123456@student.xjtlu.edu.cn" required />
+          </div>
+          <div class="field-group">
+            <label class="field-label">初始密码</label>
+            <div class="password-row">
+              <input v-model="newUser.password" class="field-input" :type="showNewPwd ? 'text' : 'password'" />
+              <button type="button" class="btn btn-secondary btn-xs" @click="showNewPwd = !showNewPwd">
+                {{ showNewPwd ? '隐藏' : '显示' }}
+              </button>
+            </div>
+            <p class="field-hint">建议告知用户登录后修改密码</p>
+          </div>
+          <p v-if="createUserError" class="msg-error">{{ createUserError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="createUserModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="createUserLoading" @click="createUser">
+              {{ createUserLoading ? '创建中…' : '创建' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Change Email Modal ────────────────────────────────────────── -->
+      <div v-if="changeEmailModal" class="modal-overlay" @click.self="changeEmailModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">更改邮箱 — {{ changeEmailTarget?.email }}</h3>
+          <div class="field-group">
+            <label class="field-label">新邮箱地址</label>
+            <input v-model="changeEmailValue" type="email" class="field-input" placeholder="new@xjtlu.edu.cn" />
+          </div>
+          <p v-if="changeEmailError" class="msg-error">{{ changeEmailError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="changeEmailModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="changeEmailLoading" @click="doChangeEmail">
+              {{ changeEmailLoading ? '保存中…' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Reset Password Modal ──────────────────────────────────────── -->
+      <div v-if="resetPwdModal" class="modal-overlay" @click.self="resetPwdModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">重置密码 — {{ resetPwdTarget?.email }}</h3>
+          <div class="field-group">
+            <label class="field-label">新密码</label>
+            <div class="password-row">
+              <input v-model="resetPwdValue" class="field-input" :type="showResetPwd ? 'text' : 'password'" placeholder="至少 8 位" />
+              <button type="button" class="btn btn-secondary btn-xs" @click="showResetPwd = !showResetPwd">
+                {{ showResetPwd ? '隐藏' : '显示' }}
+              </button>
+            </div>
+          </div>
+          <p v-if="resetPwdError" class="msg-error">{{ resetPwdError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="resetPwdModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="resetPwdLoading" @click="doResetPwd">
+              {{ resetPwdLoading ? '保存中…' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Create Semester Modal ──────────────────────────────────────── -->
+      <div v-if="createSemesterModal" class="modal-overlay" @click.self="createSemesterModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">新建学期</h3>
+          <div class="field-group">
+            <label class="field-label">学期名称</label>
+            <input v-model="newSemester.name" class="field-input" placeholder="2025 Spring" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">第一周周一日期</label>
+            <input v-model="newSemester.start_date" type="date" class="field-input" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">总周数</label>
+            <input v-model.number="newSemester.weeks_total" type="number" min="1" max="30" class="field-input" />
+          </div>
+          <div class="field-group checkbox-group">
+            <label class="checkbox-label">
+              <input v-model="newSemester.is_current" type="checkbox" />
+              设为当前学期
+            </label>
+          </div>
+          <p v-if="createSemesterError" class="msg-error">{{ createSemesterError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="createSemesterModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="createSemesterLoading" @click="createSemester">
+              {{ createSemesterLoading ? '创建中…' : '创建' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </template>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, reactive } from 'vue'
+import adminPb from '../lib/adminPb'
+
+// ── Admin auth ────────────────────────────────────────────────────────────
+const loginEmail    = ref('')
+const loginPassword = ref('')
+const loginLoading  = ref(false)
+const loginError    = ref('')
+const isAdminAuthed = ref(adminPb.authStore.isValid && adminPb.authStore.isAdmin)
+
+async function adminLogin() {
+  loginError.value = ''
+  loginLoading.value = true
+  try {
+    await adminPb.admins.authWithPassword(loginEmail.value, loginPassword.value)
+    isAdminAuthed.value = true
+    loadAll()
+  } catch (e) {
+    loginError.value = e.message || '认证失败'
+  } finally {
+    loginLoading.value = false
+  }
+}
+
+function adminLogout() {
+  adminPb.authStore.clear()
+  isAdminAuthed.value = false
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+const tabs = [
+  { key: 'users',     label: '用户管理' },
+  { key: 'semesters', label: '学期管理' },
+]
+const activeTab = ref('users')
+
+watch(activeTab, (tab) => {
+  if (tab === 'users')     loadUsers()
+  if (tab === 'semesters') loadSemesters()
+})
+
+function loadAll() {
+  loadUsers()
+  loadSemesters()
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────
+const users        = ref([])
+const usersLoading = ref(false)
+const usersError   = ref('')
+const userSearch   = ref('')
+
+const filteredUsers = computed(() => {
+  const q = userSearch.value.trim().toLowerCase()
+  if (!q) return users.value
+  return users.value.filter(u =>
+    u.email?.toLowerCase().includes(q) ||
+    u.name?.toLowerCase().includes(q)
+  )
+})
+
+async function loadUsers() {
+  usersLoading.value = true
+  usersError.value = ''
+  try {
+    users.value = await adminPb.collection('users').getFullList({
+      sort: '-created',
+      requestKey: null,
+    })
+  } catch (e) {
+    usersError.value = e.message
+  } finally {
+    usersLoading.value = false
+  }
+}
+
+// Inline name editing
+const editingName = reactive({})
+
+function startEditName(u) {
+  editingName[u.id] = u.name || ''
+}
+function cancelEditName(id) {
+  delete editingName[id]
+}
+async function saveName(u) {
+  const newName = editingName[u.id]?.trim() ?? ''
+  try {
+    await adminPb.collection('users').update(u.id, { name: newName }, { requestKey: null })
+    u.name = newName
+    delete editingName[u.id]
+  } catch (e) {
+    usersError.value = e.message
+  }
+}
+
+async function toggleBan(u) {
+  const action = u.is_banned ? '恢复' : '停用'
+  if (!confirm(`确定要${action}用户 ${u.email} 吗？`)) return
+  try {
+    await adminPb.collection('users').update(u.id, { is_banned: !u.is_banned }, { requestKey: null })
+    u.is_banned = !u.is_banned
+  } catch (e) {
+    usersError.value = e.message
+  }
+}
+
+async function deleteUser(u) {
+  if (!confirm(`永久删除用户 ${u.email}？此操作不可撤回，该用户所有课表和好友数据也将一并删除。`)) return
+  try {
+    await adminPb.collection('users').delete(u.id, { requestKey: null })
+    users.value = users.value.filter(x => x.id !== u.id)
+  } catch (e) {
+    usersError.value = e.message
+  }
+}
+
+// Change email modal
+const changeEmailModal   = ref(false)
+const changeEmailLoading = ref(false)
+const changeEmailError   = ref('')
+const changeEmailValue   = ref('')
+const changeEmailTarget  = ref(null)
+
+function openChangeEmail(u) {
+  changeEmailTarget.value = u
+  changeEmailValue.value = u.email
+  changeEmailError.value = ''
+  changeEmailModal.value = true
+}
+
+async function doChangeEmail() {
+  changeEmailError.value = ''
+  const newEmail = changeEmailValue.value.trim()
+  if (!newEmail || !newEmail.includes('@')) {
+    changeEmailError.value = '请输入有效的邮箱地址'
+    return
+  }
+  changeEmailLoading.value = true
+  try {
+    await adminPb.collection('users').update(
+      changeEmailTarget.value.id,
+      { email: newEmail, emailVisibility: true },
+      { requestKey: null }
+    )
+    changeEmailTarget.value.email = newEmail
+    changeEmailModal.value = false
+  } catch (e) {
+    changeEmailError.value = e.message
+  } finally {
+    changeEmailLoading.value = false
+  }
+}
+
+// Reset password modal
+const resetPwdModal   = ref(false)
+const resetPwdLoading = ref(false)
+const resetPwdError   = ref('')
+const resetPwdValue   = ref('')
+const showResetPwd    = ref(false)
+const resetPwdTarget  = ref(null)
+
+function openResetPwd(u) {
+  resetPwdTarget.value = u
+  resetPwdValue.value = ''
+  resetPwdError.value = ''
+  showResetPwd.value = false
+  resetPwdModal.value = true
+}
+
+async function doResetPwd() {
+  resetPwdError.value = ''
+  if (resetPwdValue.value.length < 8) {
+    resetPwdError.value = '密码至少 8 位'
+    return
+  }
+  resetPwdLoading.value = true
+  try {
+    await adminPb.collection('users').update(
+      resetPwdTarget.value.id,
+      { password: resetPwdValue.value, passwordConfirm: resetPwdValue.value },
+      { requestKey: null }
+    )
+    resetPwdModal.value = false
+  } catch (e) {
+    resetPwdError.value = e.message
+  } finally {
+    resetPwdLoading.value = false
+  }
+}
+
+// Create user modal
+const createUserModal   = ref(false)
+const createUserLoading = ref(false)
+const createUserError   = ref('')
+const showNewPwd        = ref(false)
+const newUser = reactive({ name: '', email: '', password: '' })
+
+function openCreateUser() {
+  Object.assign(newUser, { name: '', email: '', password: '' })
+  createUserError.value = ''
+  showNewPwd.value = false
+  createUserModal.value = true
+}
+
+async function createUser() {
+  createUserError.value = ''
+  if (!newUser.email || !newUser.password) {
+    createUserError.value = '邮箱和密码不能为空'
+    return
+  }
+  createUserLoading.value = true
+  try {
+    const record = await adminPb.collection('users').create({
+      email:           newUser.email,
+      name:            newUser.name,
+      password:        newUser.password,
+      passwordConfirm: newUser.password,
+      emailVisibility: true,
+    }, { requestKey: null })
+    users.value.unshift(record)
+    createUserModal.value = false
+  } catch (e) {
+    createUserError.value = e.message
+  } finally {
+    createUserLoading.value = false
+  }
+}
+
+// ── Semesters ─────────────────────────────────────────────────────────────
+const semesters        = ref([])
+const semestersLoading = ref(false)
+const semestersError   = ref('')
+
+async function loadSemesters() {
+  semestersLoading.value = true
+  semestersError.value = ''
+  try {
+    semesters.value = await adminPb.collection('semesters').getFullList({
+      sort: '-start_date',
+      requestKey: null,
+    })
+  } catch (e) {
+    semestersError.value = e.message
+  } finally {
+    semestersLoading.value = false
+  }
+}
+
+async function setCurrentSemester(target) {
+  semestersError.value = ''
+  try {
+    // Unset all others, then set target
+    for (const s of semesters.value) {
+      if (s.is_current && s.id !== target.id) {
+        await adminPb.collection('semesters').update(s.id, { is_current: false }, { requestKey: null })
+        s.is_current = false
+      }
+    }
+    await adminPb.collection('semesters').update(target.id, { is_current: true }, { requestKey: null })
+    target.is_current = true
+  } catch (e) {
+    semestersError.value = e.message
+  }
+}
+
+async function deleteSemester(s) {
+  if (!confirm(`删除学期「${s.name}」？`)) return
+  try {
+    await adminPb.collection('semesters').delete(s.id, { requestKey: null })
+    semesters.value = semesters.value.filter(x => x.id !== s.id)
+  } catch (e) {
+    semestersError.value = e.message
+  }
+}
+
+// Create semester modal
+const createSemesterModal   = ref(false)
+const createSemesterLoading = ref(false)
+const createSemesterError   = ref('')
+const newSemester = reactive({ name: '', start_date: '', weeks_total: 16, is_current: false })
+
+function openCreateSemester() {
+  Object.assign(newSemester, { name: '', start_date: '', weeks_total: 16, is_current: false })
+  createSemesterError.value = ''
+  createSemesterModal.value = true
+}
+
+async function createSemester() {
+  createSemesterError.value = ''
+  if (!newSemester.name || !newSemester.start_date) {
+    createSemesterError.value = '学期名称和开始日期不能为空'
+    return
+  }
+  createSemesterLoading.value = true
+  try {
+    if (newSemester.is_current) {
+      for (const s of semesters.value) {
+        if (s.is_current) {
+          await adminPb.collection('semesters').update(s.id, { is_current: false }, { requestKey: null })
+          s.is_current = false
+        }
+      }
+    }
+    const record = await adminPb.collection('semesters').create({ ...newSemester }, { requestKey: null })
+    semesters.value.unshift(record)
+    createSemesterModal.value = false
+  } catch (e) {
+    createSemesterError.value = e.message
+  } finally {
+    createSemesterLoading.value = false
+  }
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return '—'
+  return iso.slice(0, 10)
+}
+</script>
+
+<style scoped>
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.admin-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* ── Login wall ──────────────────────────────────────────────────────────── */
+.admin-login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+}
+.admin-login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.admin-login-header {
+  background: #18181A;
+  padding: var(--sp-8) var(--sp-6) var(--sp-6);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.admin-login-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+.admin-login-form {
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ── Admin badge ─────────────────────────────────────────────────────────── */
+.admin-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: #B83025;
+  border-radius: 2px;
+  padding: 2px 7px;
+  line-height: 1.5;
+}
+
+/* ── Admin header ────────────────────────────────────────────────────────── */
+.admin-header {
+  background: #18181A;
+  border-bottom: 1px solid #2C2C2E;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.admin-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--sp-4);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.admin-header-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #FFFFFF;
+}
+.admin-header-right {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.admin-body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-10);
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.admin-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--sp-5);
+}
+.admin-tab {
+  background: none;
+  border: none;
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.admin-tab:hover  { color: var(--text); }
+.admin-tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+/* ── Tab content ─────────────────────────────────────────────────────────── */
+.tab-content { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.tab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.search-input {
+  width: 240px;
+  font-size: var(--text-sm);
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.admin-table th {
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 10px var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-table tbody tr:hover td { background: var(--surface-2); }
+
+.row-banned td { opacity: 0.55; }
+.row-current td { background: var(--accent-tint); }
+
+.mono-cell {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.dimmed { color: var(--text-3); }
+.empty-cell { text-align: center; color: var(--text-3); padding: var(--sp-8) 0; }
+
+.sem-name { font-weight: 500; }
+
+.action-cell {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: nowrap;
+}
+
+/* ── Status badge ────────────────────────────────────────────────────────── */
+.status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.status-badge.active { background: var(--green-bg); color: var(--green); }
+.status-badge.banned { background: var(--red-bg);   color: var(--red);   }
+
+/* ── Name inline edit ────────────────────────────────────────────────────── */
+.name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 2px 3px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+tr:hover .icon-btn { opacity: 1; }
+.name-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.name-input {
+  width: 120px;
+  padding: 3px 7px;
+  font-size: var(--text-sm);
+}
+
+/* ── Button sizes ────────────────────────────────────────────────────────── */
+.btn-sm  { padding: 5px 10px; font-size: var(--text-xs); }
+.btn-xs  { padding: 3px 8px;  font-size: var(--text-xs); }
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 200;
+}
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--sp-6);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.modal-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+/* Field helpers */
+.field-group { display: flex; flex-direction: column; gap: 5px; }
+.field-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.field-hint { font-size: var(--text-xs); color: var(--text-3); }
+.password-row { display: flex; gap: var(--sp-2); align-items: center; }
+.password-row .field-input { flex: 1; }
+
+.checkbox-group { flex-direction: row; align-items: center; }
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* State */
+.state-msg { padding: var(--sp-8) 0; text-align: center; font-size: var(--text-sm); color: var(--text-3); }
+.state-error { color: var(--red); }
+</style>

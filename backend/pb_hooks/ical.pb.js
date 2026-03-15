@@ -1,0 +1,216 @@
+/// <reference path="../pb_data/types.d.ts" />
+
+// 注意：PocketBase 0.22 使用 goja runtime pool，每次请求使用不同的 runtime 实例。
+// 因此所有辅助函数必须定义在 routerAdd 回调内部，而不是在外层脚本作用域。
+
+routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
+
+  // ── 辅助函数 ──────────────────────────────────────────────────────────────
+
+  var DAY_OFFSET = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 }
+
+  var parseWeeks = function(str) {
+    if (!str) return []
+    var cleaned = str.replace(/^[^0-9]+/, '').trim()
+    var result = [], seen = {}
+    var parts = cleaned.split(/[\s,]+/)
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i]
+      var m = part.match(/^(\d+)-(\d+)$/)
+      if (m) {
+        for (var w = parseInt(m[1]); w <= parseInt(m[2]); w++) {
+          if (!seen[w]) { seen[w] = true; result.push(w) }
+        }
+      } else if (/^\d+$/.test(part)) {
+        var n = parseInt(part)
+        if (!seen[n]) { seen[n] = true; result.push(n) }
+      }
+    }
+    return result.sort(function(a, b) { return a - b })
+  }
+
+  var courseDate = function(startDate, week, day) {
+    var offset = (week - 1) * 7 + (DAY_OFFSET[day] || 0)
+    var d = new Date(startDate.getTime() + offset * 86400000)
+    var y  = d.getUTCFullYear()
+    var mo = String(d.getUTCMonth() + 1).padStart(2, '0')
+    var dd = String(d.getUTCDate()).padStart(2, '0')
+    return '' + y + mo + dd
+  }
+
+  var timeToIcal = function(hhmm) { return hhmm.replace(':', '') + '00' }
+
+  var escVal = function(str) {
+    if (!str) return ''
+    return String(str)
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n')
+  }
+
+  // RFC 5545 行折叠：每行 ≤ 75 字节，续行以空格开头
+  var fold = function(str) {
+    var blen = function(ch) {
+      var code = ch.charCodeAt(0)
+      return code < 0x80 ? 1 : code < 0x800 ? 2 : 3
+    }
+    var totalBytes = 0
+    for (var i = 0; i < str.length; i++) totalBytes += blen(str[i])
+    if (totalBytes <= 75) return str + '\r\n'
+
+    var out = '', buf = '', bufBytes = 0, first = true
+    for (var j = 0; j < str.length; j++) {
+      var ch = str[j], cb = blen(ch), limit = first ? 75 : 74
+      if (bufBytes + cb > limit) {
+        out += (first ? '' : ' ') + buf + '\r\n'
+        buf = ch; bufBytes = cb; first = false
+      } else { buf += ch; bufBytes += cb }
+    }
+    if (buf) out += (first ? '' : ' ') + buf + '\r\n'
+    return out
+  }
+
+  var buildIcs = function(courses, startDate) {
+    var CRLF = '\r\n', out = ''
+
+    out += 'BEGIN:VCALENDAR' + CRLF
+    out += 'VERSION:2.0' + CRLF
+    out += 'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN' + CRLF
+    out += 'CALSCALE:GREGORIAN' + CRLF
+    out += 'METHOD:PUBLISH' + CRLF
+    out += 'X-WR-CALNAME:XJTLU Timetable' + CRLF
+    out += 'X-WR-TIMEZONE:Asia/Shanghai' + CRLF
+
+    out += 'BEGIN:VTIMEZONE' + CRLF
+    out += 'TZID:Asia/Shanghai' + CRLF
+    out += 'BEGIN:STANDARD' + CRLF
+    out += 'TZOFFSETFROM:+0800' + CRLF
+    out += 'TZOFFSETTO:+0800' + CRLF
+    out += 'TZNAME:CST' + CRLF
+    out += 'DTSTART:19700101T000000' + CRLF
+    out += 'END:STANDARD' + CRLF
+    out += 'END:VTIMEZONE' + CRLF
+
+    var now = new Date()
+    var dtstamp =
+      now.getUTCFullYear() +
+      String(now.getUTCMonth() + 1).padStart(2, '0') +
+      String(now.getUTCDate()).padStart(2, '0') + 'T' +
+      String(now.getUTCHours()).padStart(2, '0') +
+      String(now.getUTCMinutes()).padStart(2, '0') +
+      String(now.getUTCSeconds()).padStart(2, '0') + 'Z'
+
+    for (var ci = 0; ci < courses.length; ci++) {
+      var course    = courses[ci]
+      var identity  = course.getString('identity') || course.id
+      var code      = course.getString('code')
+      var actType   = course.getString('activity_type')
+      var day       = course.getString('day')
+      var startTime = course.getString('start_time')
+      var endTime   = course.getString('end_time')
+      var location  = course.getString('location')
+      var staff     = course.getString('staff')
+      var section   = course.getString('section')
+      var weeksStr  = course.getString('weeks')
+
+      if (!day || !startTime || !endTime) continue
+
+      var weeks = parseWeeks(weeksStr)
+      if (weeks.length === 0) continue
+
+      var summary     = escVal(code + ' ' + actType)
+      var locationVal = escVal(location)
+      var desc        = escVal(
+        'Staff: ' + (staff || '') +
+        '\nSection: ' + (section || '') +
+        '\nWeeks: ' + (weeksStr || '')
+      )
+
+      for (var wi = 0; wi < weeks.length; wi++) {
+        var week    = weeks[wi]
+        var date    = courseDate(startDate, week, day)
+        var dtStart = date + 'T' + timeToIcal(startTime)
+        var dtEnd   = date + 'T' + timeToIcal(endTime)
+        var uid     = identity + '-week' + week + '@timetable.xjtlu.uk'
+
+        out += 'BEGIN:VEVENT' + CRLF
+        out += fold('UID:' + uid)
+        out += fold('DTSTAMP:' + dtstamp)
+        out += fold('DTSTART;TZID=Asia/Shanghai:' + dtStart)
+        out += fold('DTEND;TZID=Asia/Shanghai:'   + dtEnd)
+        out += fold('SUMMARY:'  + summary)
+        if (locationVal) out += fold('LOCATION:' + locationVal)
+        out += fold('DESCRIPTION:' + desc)
+        out += 'END:VEVENT' + CRLF
+      }
+    }
+
+    out += 'END:VCALENDAR' + CRLF
+    return out
+  }
+
+  // ── 请求处理 ──────────────────────────────────────────────────────────────
+
+  var token = c.pathParam('token')
+
+  if (!/^[0-9a-f]{32,64}$/.test(token)) {
+    return c.json(400, { error: 'Invalid token format' })
+  }
+
+  // 1. 查 ical_token 记录
+  var tokenRecord
+  try {
+    tokenRecord = $app.dao().findFirstRecordByFilter(
+      'ical_tokens', 'token = "' + token + '"'
+    )
+  } catch (e) {
+    return c.json(404, { error: 'Token not found' })
+  }
+
+  var userId = tokenRecord.getString('user')
+
+  // 2. 查当前学期
+  var semester
+  try {
+    semester = $app.dao().findFirstRecordByFilter('semesters', 'is_current = true')
+  } catch (e) {
+    return c.json(503, { error: '学期未配置，请联系管理员' })
+  }
+
+  var startDateStr = semester.getString('start_date').replace(' ', 'T')
+  var startDate = new Date(startDateStr)
+  if (isNaN(startDate.getTime())) {
+    return c.json(503, { error: '学期日期格式错误' })
+  }
+
+  // 3. 查该用户所有课表（ical_token 是用户自己的凭证，不受 visibility 限制）
+  var timetables
+  try {
+    timetables = $app.dao().findRecordsByFilter(
+      'timetables',
+      'user = "' + userId + '"',
+      '-created', 0, 0
+    )
+  } catch (e) { timetables = [] }
+
+  // 4. 查所有课程
+  var allCourses = []
+  for (var i = 0; i < timetables.length; i++) {
+    var tt = timetables[i]
+    var courses
+    try {
+      courses = $app.dao().findRecordsByFilter(
+        'courses', 'timetable = "' + tt.id + '"', '', 0, 0
+      )
+    } catch (e) { continue }
+    for (var j = 0; j < courses.length; j++) allCourses.push(courses[j])
+  }
+
+  // 5. 生成并返回 iCal
+  var ics = buildIcs(allCourses, startDate)
+
+  c.response().header().set('Content-Type', 'text/calendar; charset=utf-8')
+  c.response().header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+  return c.string(200, ics)
+})

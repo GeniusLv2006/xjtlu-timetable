@@ -9,6 +9,12 @@ const routes = [
     meta: { public: true },
   },
   {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('../views/AdminView.vue'),
+    meta: { public: true }, // has its own auth wall
+  },
+  {
     path: '/',
     name: 'Home',
     component: () => import('../views/HomeView.vue'),
@@ -22,6 +28,11 @@ const routes = [
     path: '/compare/:userId',
     name: 'Compare',
     component: () => import('../views/CompareView.vue'),
+  },
+  {
+    path: '/friends',
+    name: 'Friends',
+    component: () => import('../views/FriendsView.vue'),
   },
   {
     path: '/settings',

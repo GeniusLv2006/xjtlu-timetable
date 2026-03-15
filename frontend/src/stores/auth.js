@@ -5,7 +5,10 @@ import router from '../router'
 
 export const useAuthStore = defineStore('auth', () => {
   const model = ref(pb.authStore.model)
-  const isLoggedIn = computed(() => pb.authStore.isValid)
+  // isLoggedIn must depend on model (a Vue ref) so that computed() re-evaluates
+  // after login. pb.authStore.isValid is a plain JS property — Vue cannot track it,
+  // so computed(() => pb.authStore.isValid) would return a stale cached value.
+  const isLoggedIn = computed(() => model.value !== null && pb.authStore.isValid)
 
   pb.authStore.onChange(() => {
     model.value = pb.authStore.model

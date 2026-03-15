@@ -1,7 +1,7 @@
 <template>
   <div v-if="activeDays.length === 0" class="empty">暂无课程数据</div>
   <div v-else class="grid-scroll">
-    <div class="grid-wrap" :style="{ minWidth: `${44 + activeDays.length * MIN_COL_W}px` }">
+    <div class="grid-wrap" :style="{ minWidth: `${46 + activeDays.length * MIN_COL_W}px` }">
 
       <!-- 时间轴 -->
       <div class="time-axis" :style="{ paddingTop: HEADER_H + 'px' }">
@@ -21,7 +21,8 @@
       <div v-for="day in activeDays" :key="day" class="day-col">
         <!-- 日期表头 -->
         <div class="day-header" :style="{ height: HEADER_H + 'px' }">
-          {{ day }} <span class="day-zh">{{ DAY_ZH[day] }}</span>
+          <span class="day-en">{{ day }}</span>
+          <span class="day-zh">{{ DAY_ZH[day] }}</span>
         </div>
 
         <!-- 课程格 -->
@@ -126,8 +127,8 @@ const props = defineProps({
 
 // ── 常量 ─────────────────────────────────────────────────────────────────
 const PPH = 60
-const HEADER_H = 30
-const MIN_COL_W = 90
+const HEADER_H = 36
+const MIN_COL_W = 92
 const POPOVER_W = 220
 const POPOVER_GAP = 8   // 距触发元素的间距
 
@@ -385,9 +386,9 @@ function blockStyle(c) {
 <style scoped>
 .empty {
   text-align: center;
-  padding: 48px 0;
-  font-size: 13px;
-  color: #999;
+  padding: 60px 0;
+  font-size: var(--text-sm, 12px);
+  color: var(--text-3, #999);
 }
 
 .grid-scroll {
@@ -399,8 +400,9 @@ function blockStyle(c) {
   display: flex;
 }
 
+/* Time axis */
 .time-axis {
-  width: 44px;
+  width: 46px;
   flex-shrink: 0;
 }
 .time-track {
@@ -408,69 +410,85 @@ function blockStyle(c) {
 }
 .hour-label {
   position: absolute;
-  right: 4px;
-  font-size: 10px;
-  color: #aaa;
+  right: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text-3, #aaa);
   line-height: 1;
   white-space: nowrap;
   user-select: none;
+  letter-spacing: 0.02em;
 }
 
+/* Day columns */
 .day-col {
   flex: 1;
   min-width: 90px;
 }
+
 .day-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #555;
-  border-bottom: 0.5px solid #e0e0e0;
-  border-left: 0.5px solid #e0e0e0;
+  gap: 1px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  border-left: 1px solid var(--border, #e0e0e0);
   user-select: none;
+  background: var(--surface, #fff);
+}
+.day-en {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2, #555);
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.06em;
 }
 .day-zh {
-  color: #999;
+  font-size: 9px;
   font-weight: 400;
+  color: var(--text-3, #999);
 }
 
 .day-track {
   position: relative;
-  border-left: 0.5px solid #e0e0e0;
+  border-left: 1px solid var(--border, #e0e0e0);
+  background: var(--surface, #fff);
 }
 
+/* Grid lines */
 .hr-line {
   position: absolute;
   left: 0;
   right: 0;
-  height: 0.5px;
-  background: #e0e0e0;
+  height: 1px;
+  background: var(--border, #e0e0e0);
   pointer-events: none;
 }
 .hr-line.half {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
+/* Course blocks */
 .course-block {
   box-sizing: border-box;
 }
 .c-code {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--tx, #333);
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 .c-sub {
   font-size: 10px;
   color: var(--tx, #555);
-  opacity: 0.8;
-  line-height: 1.25;
+  opacity: 0.75;
+  line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -480,11 +498,12 @@ function blockStyle(c) {
 <!-- Popover 样式：不加 scoped，因为元素在 body 下 -->
 <style>
 .course-popover {
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
   padding: 12px 14px;
+  font-family: var(--font-sans, system-ui, sans-serif);
   font-size: 13px;
   line-height: 1.5;
   pointer-events: auto;
@@ -492,21 +511,22 @@ function blockStyle(c) {
 }
 
 .course-popover .pop-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #1a1a1a);
   margin-bottom: 2px;
+  letter-spacing: -0.01em;
 }
 .course-popover .pop-fullname {
-  font-size: 11px;
-  color: #777;
-  font-family: monospace;
+  font-size: 10px;
+  color: var(--text-3, #777);
+  font-family: var(--font-mono, monospace);
   margin-bottom: 6px;
   word-break: break-all;
 }
 .course-popover .pop-divider {
-  height: 0.5px;
-  background: #ebebeb;
+  height: 1px;
+  background: var(--border, #ebebeb);
   margin: 8px 0;
 }
 .course-popover .pop-row {
@@ -514,7 +534,7 @@ function blockStyle(c) {
   gap: 8px;
   margin-bottom: 4px;
   font-size: 12px;
-  color: #333;
+  color: var(--text, #333);
 }
 .course-popover .pop-row:last-child {
   margin-bottom: 0;
@@ -522,7 +542,7 @@ function blockStyle(c) {
 .course-popover .pop-label {
   width: 32px;
   flex-shrink: 0;
-  color: #999;
+  color: var(--text-3, #999);
   font-size: 11px;
   padding-top: 1px;
 }
