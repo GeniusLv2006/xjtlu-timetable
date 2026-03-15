@@ -24,25 +24,18 @@ function course(overrides) {
 describe('findCommonCourses', () => {
   // ── 旧签名（两人）────────────────────────────────────────────────────────
   describe('旧签名（两人）', () => {
-    it('code + activity_type + day + start_time + end_time + section 全部相同才算共同', () => {
-      const a = [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })]
-      const b = [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })]
+    it('code + section 相同即为共同课', () => {
+      const a = [course({ code: 'IOM103', section: 'D1/1' })]
+      const b = [course({ code: 'IOM103', section: 'D1/1' })]
       const result = findCommonCourses(a, b)
       expect(result).toHaveLength(1)
       expect(result[0].code).toBe('IOM103')
-      expect(result[0].activityType).toBe('Lecture')
       expect(result[0].courses).toHaveLength(2)
     })
 
     it('section 不同则不算共同课', () => {
-      const a = [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })]
-      const b = [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/2' })]
-      expect(findCommonCourses(a, b)).toHaveLength(0)
-    })
-
-    it('activity_type 不同则不算共同课', () => {
-      const a = [course({ code: 'IOM103', activity_type: 'Lecture' })]
-      const b = [course({ code: 'IOM103', activity_type: 'Tutorial' })]
+      const a = [course({ code: 'IOM103', section: 'D1/1' })]
+      const b = [course({ code: 'IOM103', section: 'D1/2' })]
       expect(findCommonCourses(a, b)).toHaveLength(0)
     })
 
@@ -52,15 +45,22 @@ describe('findCommonCourses', () => {
       expect(findCommonCourses(a, b)).toHaveLength(0)
     })
 
-    it('多门课中只返回共同的', () => {
+    it('同一 section 在一周多次出现时去重，只返回一条', () => {
+      // ECO104 Tutorial D1/1 周四一次、周五一次
       const a = [
-        course({ code: 'IOM103', activity_type: 'Lecture' }),
-        course({ code: 'EAP001', activity_type: 'Tutorial' }),
+        course({ code: 'ECO104', section: 'D1/1', day: 'THU', start_time: '14:00' }),
+        course({ code: 'ECO104', section: 'D1/1', day: 'FRI', start_time: '13:00' }),
       ]
       const b = [
-        course({ code: 'IOM103', activity_type: 'Lecture' }),
-        course({ code: 'MTH101', activity_type: 'Lecture' }),
+        course({ code: 'ECO104', section: 'D1/1', day: 'THU', start_time: '14:00' }),
+        course({ code: 'ECO104', section: 'D1/1', day: 'FRI', start_time: '13:00' }),
       ]
+      expect(findCommonCourses(a, b)).toHaveLength(1)
+    })
+
+    it('多门课中只返回共同的', () => {
+      const a = [course({ code: 'IOM103', section: 'D1/1' }), course({ code: 'EAP001', section: 'T1' })]
+      const b = [course({ code: 'IOM103', section: 'D1/1' }), course({ code: 'MTH101', section: 'L1' })]
       const result = findCommonCourses(a, b)
       expect(result).toHaveLength(1)
       expect(result[0].code).toBe('IOM103')
@@ -73,49 +73,37 @@ describe('findCommonCourses', () => {
 
   // ── 新签名（多人）────────────────────────────────────────────────────────
   describe('新签名（多人）', () => {
-    it('三人都有的课程才返回', () => {
-      const a = [course({ code: 'IOM103', activity_type: 'Lecture' })]
-      const b = [course({ code: 'IOM103', activity_type: 'Lecture' })]
-      const c = [course({ code: 'IOM103', activity_type: 'Lecture' })]
+    it('三人都在同一 section 才返回', () => {
+      const a = [course({ code: 'IOM103', section: 'D1/1' })]
+      const b = [course({ code: 'IOM103', section: 'D1/1' })]
+      const c = [course({ code: 'IOM103', section: 'D1/1' })]
       const result = findCommonCourses([a, b, c])
       expect(result).toHaveLength(1)
       expect(result[0].courses).toHaveLength(3)
     })
 
     it('三人中只有两人有的课不返回', () => {
-      const a = [course({ code: 'IOM103', activity_type: 'Lecture' })]
-      const b = [course({ code: 'IOM103', activity_type: 'Lecture' })]
-      const c = [course({ code: 'MTH101', activity_type: 'Lecture' })] // 没有 IOM103
-      const result = findCommonCourses([a, b, c])
-      expect(result).toHaveLength(0)
+      const a = [course({ code: 'IOM103', section: 'D1/1' })]
+      const b = [course({ code: 'IOM103', section: 'D1/1' })]
+      const c = [course({ code: 'MTH101', section: 'L1' })]
+      expect(findCommonCourses([a, b, c])).toHaveLength(0)
     })
 
     it('三人中两门课都共同选了，都返回', () => {
       const mkUser = () => [
-        course({ code: 'IOM103', activity_type: 'Lecture' }),
-        course({ code: 'EAP001', activity_type: 'Tutorial' }),
+        course({ code: 'IOM103', section: 'D1/1' }),
+        course({ code: 'EAP001', section: 'T1' }),
       ]
       const result = findCommonCourses([mkUser(), mkUser(), mkUser()])
       expect(result).toHaveLength(2)
       expect(result.map((r) => r.code).sort()).toEqual(['EAP001', 'IOM103'])
     })
 
-    it('section 相同时 courses 数组长度与 coursesList 长度一致', () => {
-      const lists = [
-        [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })],
-        [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })],
-        [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })],
-      ]
-      const result = findCommonCourses(lists)
-      expect(result).toHaveLength(1)
-      expect(result[0].courses).toHaveLength(3)
-    })
-
     it('section 不同时三人不算共同', () => {
       const lists = [
-        [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/1' })],
-        [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/2' })],
-        [course({ code: 'IOM103', activity_type: 'Lecture', section: 'D1/3' })],
+        [course({ code: 'IOM103', section: 'D1/1' })],
+        [course({ code: 'IOM103', section: 'D1/2' })],
+        [course({ code: 'IOM103', section: 'D1/3' })],
       ]
       expect(findCommonCourses(lists)).toHaveLength(0)
     })

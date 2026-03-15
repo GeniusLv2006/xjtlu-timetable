@@ -55,7 +55,8 @@ function invertIntervals(intervals, dayStart, dayEnd) {
 // ── 公开 API ──────────────────────────────────────────────────────────────
 
 /**
- * 找出所有人都选了的完全相同的课程段（code + activity_type + day + start_time + end_time + section 六项全部一致）。
+ * 找出所有人都在同一班级（section）里的课程（code + section 相同即视为共同课）。
+ * 同一 section 在一周内可能有多条记录（不同日期/时段），去重后只返回一条。
  *
  * 新签名：findCommonCourses(coursesList)
  * 旧签名（向后兼容）：findCommonCourses(coursesA, coursesB)
@@ -64,7 +65,7 @@ function invertIntervals(intervals, dayStart, dayEnd) {
  * [{
  *   code: string,
  *   activityType: string,
- *   courses: object[]   // 每个用户对应的课程对象，顺序与 coursesList 一致
+ *   courses: object[]   // 每人一条代表性记录，顺序与 coursesList 一致
  * }]
  *
  * 旧签名额外保留 courseA / courseB 字段。
@@ -77,27 +78,26 @@ export function findCommonCourses(first, second) {
   if (coursesList.length === 0) return []
 
   const [base, ...rest] = coursesList
+  const seen = new Set()
   const result = []
 
   for (const candidate of base) {
-    // 课程、类型、时间段、班级全部相同才算共同
+    const key = `${candidate.code}|${candidate.section}`
+    if (seen.has(key)) continue  // 同一 section 已处理过
+
+    // 每个其他用户的课表中都能找到相同 code + section
     const matches = []
     let allMatch = true
     for (const others of rest) {
       const match = others.find(
-        (c) =>
-          c.code        === candidate.code &&
-          c.activity_type === candidate.activity_type &&
-          c.day         === candidate.day &&
-          c.start_time  === candidate.start_time &&
-          c.end_time    === candidate.end_time &&
-          c.section     === candidate.section,
+        (c) => c.code === candidate.code && c.section === candidate.section,
       )
       if (!match) { allMatch = false; break }
       matches.push(match)
     }
     if (!allMatch) continue
 
+    seen.add(key)
     const entry = {
       code: candidate.code,
       activityType: candidate.activity_type,
