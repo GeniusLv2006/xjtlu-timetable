@@ -46,7 +46,8 @@
 
         <p v-if="error" class="login-error">{{ error }}</p>
 
-        <button type="submit" class="btn btn-primary login-submit" :disabled="loading">
+        <button type="submit" class="btn btn-primary login-submit" :disabled="loading" :class="{ 'btn-loading': loading }">
+          <span v-if="loading" class="spinner-xs" />
           {{ loading ? (isRegister ? '创建中…' : '登录中…') : (isRegister ? '创建账号' : '登录') }}
         </button>
       </form>
@@ -177,6 +178,23 @@ async function handleSubmit() {
   padding: 9px;
   font-size: var(--text-base);
   margin-top: var(--sp-1);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.btn-loading { cursor: wait; }
+.spinner-xs {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Footer toggle */

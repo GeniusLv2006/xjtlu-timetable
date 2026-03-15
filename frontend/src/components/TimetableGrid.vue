@@ -1,6 +1,16 @@
 <template>
   <div v-if="activeDays.length === 0" class="empty">暂无课程数据</div>
-  <div v-else class="grid-scroll">
+  <template v-else>
+
+  <!-- 课程类型图例（非对比模式且有多种类型时显示） -->
+  <div v-if="typeLegend.length > 0 && !compareMode" class="type-legend">
+    <span v-for="item in typeLegend" :key="item.label" class="legend-item">
+      <span class="legend-dot" :style="{ background: item.bg, border: `1px solid ${item.bor}` }" />
+      {{ item.label }}
+    </span>
+  </div>
+
+  <div class="grid-scroll">
     <div class="grid-wrap" :style="{ minWidth: `${46 + activeDays.length * MIN_COL_W}px` }">
 
       <!-- 时间轴 -->
@@ -64,6 +74,8 @@
 
     </div>
   </div>
+
+  </template>
 
   <!-- Popover：Teleport 到 body，避免被 overflow:hidden 裁剪 -->
   <Teleport to="body">
@@ -301,6 +313,14 @@ const activeDays = computed(() =>
   DAYS_ORDER.filter((d) => props.courses.some((c) => c.day === d)),
 )
 
+/** 图例：当前课表中实际出现的类型，按 TYPE_COLOR 定义顺序 */
+const typeLegend = computed(() => {
+  const seen = new Set(props.courses.map(c => c.activity_type).filter(Boolean))
+  return Object.entries(TYPE_COLOR)
+    .filter(([key]) => [...seen].some(t => t.toLowerCase().includes(key.toLowerCase())))
+    .map(([key, val]) => ({ label: key, ...val }))
+})
+
 const gridStart = computed(() => {
   const fracs = props.courses.map((c) => timeToFrac(c.start_time)).filter((n) => n != null)
   return fracs.length ? Math.floor(Math.min(...fracs)) : 8
@@ -389,6 +409,27 @@ function blockStyle(c) {
   padding: 60px 0;
   font-size: var(--text-sm, 12px);
   color: var(--text-3, #999);
+}
+
+/* ── 课程类型图例 ─────────────────────────────────────────────────────── */
+.type-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 10px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-2, #666);
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .grid-scroll {

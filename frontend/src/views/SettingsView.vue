@@ -85,15 +85,24 @@
       <h2 class="section-title">修改密码</h2>
       <div class="field-group">
         <label class="field-label">当前密码</label>
-        <input v-model="oldPwd" type="password" class="field-input" autocomplete="current-password" />
+        <div class="pwd-wrap">
+          <input v-model="oldPwd" :type="showOldPwd ? 'text' : 'password'" class="field-input" autocomplete="current-password" />
+          <button type="button" class="pwd-toggle" @click="showOldPwd = !showOldPwd">{{ showOldPwd ? '隐藏' : '显示' }}</button>
+        </div>
       </div>
       <div class="field-group">
         <label class="field-label">新密码</label>
-        <input v-model="newPwd" type="password" class="field-input" autocomplete="new-password" />
+        <div class="pwd-wrap">
+          <input v-model="newPwd" :type="showNewPwd ? 'text' : 'password'" class="field-input" autocomplete="new-password" />
+          <button type="button" class="pwd-toggle" @click="showNewPwd = !showNewPwd">{{ showNewPwd ? '隐藏' : '显示' }}</button>
+        </div>
       </div>
       <div class="field-group">
         <label class="field-label">确认新密码</label>
-        <input v-model="newPwdConfirm" type="password" class="field-input" autocomplete="new-password" />
+        <div class="pwd-wrap">
+          <input v-model="newPwdConfirm" :type="showNewPwdConfirm ? 'text' : 'password'" class="field-input" autocomplete="new-password" />
+          <button type="button" class="pwd-toggle" @click="showNewPwdConfirm = !showNewPwdConfirm">{{ showNewPwdConfirm ? '隐藏' : '显示' }}</button>
+        </div>
       </div>
       <p v-if="pwdError"   class="msg-error">{{ pwdError }}</p>
       <p v-if="pwdSuccess" class="msg-success">{{ pwdSuccess }}</p>
@@ -137,6 +146,9 @@ const newPwdConfirm = ref('')
 const pwdLoading   = ref(false)
 const pwdError     = ref('')
 const pwdSuccess   = ref('')
+const showOldPwd        = ref(false)
+const showNewPwd        = ref(false)
+const showNewPwdConfirm = ref(false)
 
 async function changePassword() {
   pwdError.value   = ''
@@ -366,6 +378,32 @@ async function copyUrl() {
   padding-left: 18px;
 }
 .instructions li { margin-bottom: 3px; }
+
+/* Password field with toggle */
+.pwd-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pwd-wrap .field-input {
+  flex: 1;
+  padding-right: 52px;
+}
+.pwd-toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  padding: 0 10px;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.pwd-toggle:hover { color: var(--accent); }
 
 /* State messages */
 .state-msg {

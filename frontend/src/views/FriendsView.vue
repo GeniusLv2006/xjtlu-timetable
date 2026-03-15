@@ -102,13 +102,20 @@
             </span>
           </div>
           <div class="friend-actions">
-            <router-link
-              :to="`/compare/${otherId(f)}`"
-              class="btn btn-secondary btn-sm"
-            >
-              对比课表
-            </router-link>
-            <button class="btn btn-danger btn-sm" @click="removeFriend(f)">删除</button>
+            <template v-if="confirmRemoveId === f.id">
+              <span class="confirm-label">确认删除？</span>
+              <button class="btn btn-danger btn-sm" @click="confirmRemove(f)">是</button>
+              <button class="btn btn-secondary btn-sm" @click="confirmRemoveId = null">否</button>
+            </template>
+            <template v-else>
+              <router-link
+                :to="`/compare/${otherId(f)}`"
+                class="btn btn-secondary btn-sm"
+              >
+                对比课表
+              </router-link>
+              <button class="btn btn-danger btn-sm" @click="confirmRemoveId = f.id">删除</button>
+            </template>
           </div>
         </div>
       </section>
@@ -282,8 +289,10 @@ async function deleteRequest(f) {
   }
 }
 
-async function removeFriend(f) {
-  if (!confirm('确定要删除这位好友吗？')) return
+const confirmRemoveId = ref(null)
+
+async function confirmRemove(f) {
+  confirmRemoveId.value = null
   await deleteRequest(f)
 }
 </script>
@@ -417,8 +426,14 @@ async function removeFriend(f) {
 
 .friend-actions {
   display: flex;
+  align-items: center;
   gap: var(--sp-2);
   flex-shrink: 0;
+}
+.confirm-label {
+  font-size: var(--text-xs);
+  color: var(--red);
+  white-space: nowrap;
 }
 
 /* Small buttons */

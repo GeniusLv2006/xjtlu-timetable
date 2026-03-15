@@ -78,6 +78,12 @@ const authStore = useAuthStore()
   background: #2A2A2C;
 }
 
+@media (max-width: 480px) {
+  .brand { font-size: 12px; }
+  .nav-links { gap: 0; }
+  .nav-links a { padding: 5px 8px; font-size: 12px; }
+}
+
 .main-content {
   flex: 1;
 }

@@ -22,21 +22,43 @@
         <select v-if="timetables.length > 1" v-model="selectedId" class="tt-select">
           <option v-for="t in timetables" :key="t.id" :value="t.id">{{ t.label }}</option>
         </select>
-        <select
-          v-if="timetables.length > 0"
-          v-model="visibility"
-          class="vis-select"
-          :title="visLabel"
-          @change="updateVisibility"
-        >
-          <option value="private">仅自己</option>
-          <option value="friends">好友可见</option>
-        </select>
+        <div v-if="timetables.length > 0" class="vis-wrap">
+          <select
+            v-model="visibility"
+            class="vis-select"
+            :title="visLabel"
+            :disabled="visUpdating"
+            @change="updateVisibility"
+          >
+            <option value="private">仅自己</option>
+            <option value="friends">好友可见</option>
+            <option value="public">所有人可见</option>
+          </select>
+          <Transition name="vis-saved">
+            <span v-if="visSaved" class="vis-saved-mark">✓</span>
+          </Transition>
+        </div>
+        <button
+          v-if="timetables.length > 0 && !confirmDeleteId"
+          class="btn btn-danger btn-xs"
+          @click="confirmDeleteId = selectedId"
+        >删除</button>
         <span v-if="timetables.length === 0 && !loading" class="empty-hint">
           还没有课表 — <router-link to="/import">去导入</router-link>
         </span>
       </div>
     </div>
+
+    <!-- Delete confirmation -->
+    <Transition name="confirm-bar">
+      <div v-if="confirmDeleteId" class="confirm-bar">
+        <span class="confirm-text">确定删除"{{ selectedTimetable?.label }}"？此操作不可撤回。</span>
+        <button class="btn btn-danger btn-xs" :disabled="deleting" @click="deleteTimetable">
+          {{ deleting ? '删除中…' : '确认删除' }}
+        </button>
+        <button class="btn btn-secondary btn-xs" @click="confirmDeleteId = null">取消</button>
+      </div>
+    </Transition>
 
     <!-- States -->
     <div v-if="loading" class="state-msg">加载中…</div>
@@ -93,12 +115,20 @@ const selectedId = ref(null)
 const courses    = ref([])
 const loading    = ref(true)
 const error      = ref('')
-const visibility = ref('private')
+const visibility   = ref('private')
+const visUpdating  = ref(false)
+const visSaved     = ref(false)
+const confirmDeleteId = ref(null)
+const deleting     = ref(false)
 
 const visLabel = computed(() => {
-  const map = { private: '仅自己可见', friends: '好友可见' }
+  const map = { private: '仅自己可见', friends: '好友可见', public: '所有人可见' }
   return map[visibility.value] ?? ''
 })
+
+const selectedTimetable = computed(() =>
+  timetables.value.find(t => t.id === selectedId.value) ?? null
+)
 
 onMounted(async () => {
   try {
@@ -140,7 +170,8 @@ watch(selectedId, async (id) => {
 })
 
 async function updateVisibility() {
-  if (!selectedId.value) return
+  if (!selectedId.value || visUpdating.value) return
+  visUpdating.value = true
   try {
     await pb.collection('timetables').update(
       selectedId.value,
@@ -151,8 +182,32 @@ async function updateVisibility() {
     if (idx !== -1) {
       timetables.value[idx] = { ...timetables.value[idx], visibility: visibility.value }
     }
+    visSaved.value = true
+    setTimeout(() => { visSaved.value = false }, 1500)
   } catch (e) {
     error.value = e.message
+  } finally {
+    visUpdating.value = false
+  }
+}
+
+async function deleteTimetable() {
+  if (!selectedId.value || deleting.value) return
+  deleting.value = true
+  try {
+    await pb.collection('timetables').delete(selectedId.value, { requestKey: null })
+    timetables.value = timetables.value.filter(t => t.id !== selectedId.value)
+    confirmDeleteId.value = null
+    if (timetables.value.length > 0) {
+      selectedId.value = timetables.value[0].id
+    } else {
+      selectedId.value = null
+      courses.value = []
+    }
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    deleting.value = false
   }
 }
 </script>
@@ -275,8 +330,51 @@ async function updateVisibility() {
 }
 .tt-select:focus,
 .vis-select:focus { border-color: var(--border-strong); }
+.vis-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 .vis-select {
   color: var(--text-2);
+  font-size: var(--text-xs);
+}
+.vis-select:disabled { cursor: not-allowed; opacity: 0.6; }
+.vis-saved-mark {
+  font-size: var(--text-xs);
+  color: var(--green);
+  font-weight: 600;
+}
+.vis-saved-enter-active  { transition: opacity 0.2s; }
+.vis-saved-leave-active  { transition: opacity 0.5s; }
+.vis-saved-enter-from,
+.vis-saved-leave-to { opacity: 0; }
+
+/* Delete confirmation bar */
+.confirm-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--red-bg);
+  border: 1px solid #E5B4AF;
+  border-radius: 3px;
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+}
+.confirm-text {
+  font-size: var(--text-sm);
+  color: var(--red);
+  flex: 1;
+  min-width: 0;
+}
+.confirm-bar-enter-active { transition: opacity 0.15s, transform 0.15s; }
+.confirm-bar-leave-active { transition: opacity 0.15s; }
+.confirm-bar-enter-from  { opacity: 0; transform: translateY(-4px); }
+.confirm-bar-leave-to    { opacity: 0; }
+
+.btn-xs {
+  padding: 3px 8px;
   font-size: var(--text-xs);
 }
 
