@@ -17,7 +17,7 @@
             v-model="email"
             type="email"
             class="field-input"
-            placeholder="student@xjtlu.edu.cn"
+            placeholder="email@example.com"
             autocomplete="email"
             required
           />
