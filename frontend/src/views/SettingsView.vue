@@ -345,6 +345,8 @@ const webcalUrl = computed(() =>
 )
 
 onMounted(async () => {
+  // 刷新用户信息，确保 can_invite 等字段是最新值
+  try { await pb.collection('users').authRefresh({ requestKey: null }) } catch { /* ignore */ }
   loadMyInvites()
   try {
     const records = await pb.collection('ical_tokens').getFullList({
