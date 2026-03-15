@@ -44,6 +44,18 @@
           />
         </div>
 
+        <div v-if="isRegister" class="field-group">
+          <label class="field-label">邀请码</label>
+          <input
+            v-model="inviteCode"
+            type="text"
+            class="field-input invite-input"
+            placeholder="请输入邀请码"
+            autocomplete="off"
+            required
+          />
+        </div>
+
         <p v-if="error" class="login-error">{{ error }}</p>
 
         <button type="submit" class="btn btn-primary login-submit" :disabled="loading" :class="{ 'btn-loading': loading }">
@@ -71,6 +83,7 @@ const authStore = useAuthStore()
 const email           = ref('')
 const password        = ref('')
 const passwordConfirm = ref('')
+const inviteCode      = ref('')
 const isRegister      = ref(false)
 const error           = ref('')
 const loading         = ref(false)
@@ -85,7 +98,7 @@ async function handleSubmit() {
   loading.value = true
   try {
     if (isRegister.value) {
-      await authStore.register(email.value, password.value, passwordConfirm.value)
+      await authStore.register(email.value, password.value, passwordConfirm.value, inviteCode.value)
     } else {
       await authStore.login(email.value, password.value)
     }
@@ -215,4 +228,11 @@ async function handleSubmit() {
   transition: color 0.12s;
 }
 .toggle-btn:hover { color: var(--accent); }
+
+/* Invite code field */
+.invite-input {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 </style>

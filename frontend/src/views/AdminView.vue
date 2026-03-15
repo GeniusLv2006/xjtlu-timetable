@@ -118,6 +118,7 @@
                   </router-link>
                   <button class="btn btn-secondary btn-xs" @click="openChangeEmail(u)">改邮箱</button>
                   <button class="btn btn-secondary btn-xs" @click="openResetPwd(u)">重置密码</button>
+                  <button class="btn btn-secondary btn-xs" @click="openInvitePerms(u)">邀请权限</button>
                   <button
                     class="btn btn-xs"
                     :class="u.is_banned ? 'btn-primary' : 'btn-danger'"
@@ -172,6 +173,63 @@
                 </td>
                 <td class="action-cell">
                   <button class="btn btn-danger btn-xs" @click="deleteSemester(s)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ── Invites tab ─────────────────────────────────────────── -->
+        <div v-if="activeTab === 'invites'" class="tab-content">
+
+          <div class="tab-toolbar">
+            <button class="btn btn-primary btn-sm" @click="openCreateInvite">+ 新建邀请码</button>
+          </div>
+
+          <div v-if="invitesLoading" class="state-msg">加载中…</div>
+          <div v-else-if="invitesError" class="state-msg state-error">{{ invitesError }}</div>
+
+          <table v-else class="admin-table">
+            <thead>
+              <tr>
+                <th>邀请码</th>
+                <th>创建者</th>
+                <th>备注</th>
+                <th>使用次数</th>
+                <th>到期时间</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="invites.length === 0">
+                <td colspan="7" class="empty-cell">暂无邀请码</td>
+              </tr>
+              <tr v-for="inv in invites" :key="inv.id" :class="{ 'row-banned': !inv.is_active }">
+                <td class="mono-cell invite-code-cell">
+                  {{ inv.code }}
+                  <button class="icon-btn" title="复制" @click="copyInviteCode(inv.code)">⎘</button>
+                </td>
+                <td class="dimmed">{{ inv.expand?.created_by?.name || inv.expand?.created_by?.email || '管理员' }}</td>
+                <td class="dimmed">{{ inv.note || '—' }}</td>
+                <td class="mono-cell">
+                  {{ inv.uses }}
+                  <span v-if="inv.max_uses > 0" class="text-faded"> / {{ inv.max_uses }}</span>
+                  <span v-else class="text-faded"> / ∞</span>
+                </td>
+                <td class="mono-cell dimmed">{{ inv.expires_at ? inv.expires_at.slice(0, 10) : '永不过期' }}</td>
+                <td>
+                  <span class="status-badge" :class="inv.is_active ? 'active' : 'banned'">
+                    {{ inv.is_active ? '有效' : '停用' }}
+                  </span>
+                </td>
+                <td class="action-cell">
+                  <button
+                    class="btn btn-xs"
+                    :class="inv.is_active ? 'btn-danger' : 'btn-primary'"
+                    @click="toggleInvite(inv)"
+                  >{{ inv.is_active ? '停用' : '启用' }}</button>
+                  <button class="btn btn-danger btn-xs" @click="deleteInvite(inv)">删除</button>
                 </td>
               </tr>
             </tbody>
@@ -285,6 +343,70 @@
         </div>
       </div>
 
+      <!-- ── Create Invite Modal ───────────────────────────────────────── -->
+      <div v-if="createInviteModal" class="modal-overlay" @click.self="createInviteModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">新建邀请码</h3>
+          <div class="field-group">
+            <label class="field-label">邀请码（留空自动生成）</label>
+            <input v-model="newInvite.code" class="field-input" placeholder="如：XJTLU2026" style="font-family:var(--font-mono);text-transform:uppercase" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">最大使用次数（0 = 不限）</label>
+            <input v-model.number="newInvite.max_uses" type="number" min="0" class="field-input" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">到期日期（留空不限）</label>
+            <input v-model="newInvite.expires_at" type="date" class="field-input" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">备注</label>
+            <input v-model="newInvite.note" class="field-input" placeholder="可选说明" />
+          </div>
+          <p v-if="createInviteError" class="msg-error">{{ createInviteError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="createInviteModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="createInviteLoading" @click="createInvite">
+              {{ createInviteLoading ? '创建中…' : '创建' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Invite Permissions Modal ──────────────────────────────────── -->
+      <div v-if="invitePermsModal" class="modal-overlay" @click.self="invitePermsModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">邀请权限 — {{ invitePermsTarget?.name || invitePermsTarget?.email }}</h3>
+          <div class="field-group checkbox-group">
+            <label class="checkbox-label">
+              <input v-model="invitePerms.can_invite" type="checkbox" />
+              允许该用户创建邀请码
+            </label>
+          </div>
+          <template v-if="invitePerms.can_invite">
+            <div class="field-group">
+              <label class="field-label">可创建邀请码上限（0 = 不限）</label>
+              <input v-model.number="invitePerms.invite_quota" type="number" min="0" class="field-input" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">默认有效天数（0 = 不限）</label>
+              <input v-model.number="invitePerms.invite_validity_days" type="number" min="0" class="field-input" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">默认每码最大使用次数（0 = 不限）</label>
+              <input v-model.number="invitePerms.invite_max_uses" type="number" min="0" class="field-input" />
+            </div>
+          </template>
+          <p v-if="invitePermsError" class="msg-error">{{ invitePermsError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="invitePermsModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="invitePermsLoading" @click="saveInvitePerms">
+              {{ invitePermsLoading ? '保存中…' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -327,17 +449,20 @@ function adminLogout() {
 const tabs = [
   { key: 'users',     label: '用户管理' },
   { key: 'semesters', label: '学期管理' },
+  { key: 'invites',   label: '邀请码' },
 ]
 const activeTab = ref('users')
 
 watch(activeTab, (tab) => {
   if (tab === 'users')     loadUsers()
   if (tab === 'semesters') loadSemesters()
+  if (tab === 'invites')   loadInvites()
 })
 
 function loadAll() {
   loadUsers()
   loadSemesters()
+  loadInvites()
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────
@@ -606,6 +731,135 @@ async function createSemester() {
     createSemesterError.value = e.message
   } finally {
     createSemesterLoading.value = false
+  }
+}
+
+// ── Invite Codes ──────────────────────────────────────────────────────────
+const invites        = ref([])
+const invitesLoading = ref(false)
+const invitesError   = ref('')
+
+async function loadInvites() {
+  invitesLoading.value = true
+  invitesError.value = ''
+  try {
+    invites.value = await adminPb.collection('invite_codes').getFullList({
+      sort: '-created',
+      expand: 'created_by',
+      requestKey: null,
+    })
+  } catch (e) {
+    invitesError.value = e.message
+  } finally {
+    invitesLoading.value = false
+  }
+}
+
+async function toggleInvite(inv) {
+  try {
+    await adminPb.collection('invite_codes').update(inv.id, { is_active: !inv.is_active }, { requestKey: null })
+    inv.is_active = !inv.is_active
+  } catch (e) {
+    invitesError.value = e.message
+  }
+}
+
+async function deleteInvite(inv) {
+  if (!confirm(`删除邀请码「${inv.code}」？`)) return
+  try {
+    await adminPb.collection('invite_codes').delete(inv.id, { requestKey: null })
+    invites.value = invites.value.filter(x => x.id !== inv.id)
+  } catch (e) {
+    invitesError.value = e.message
+  }
+}
+
+async function copyInviteCode(code) {
+  try {
+    await navigator.clipboard.writeText(code)
+  } catch {
+    prompt('复制邀请码：', code)
+  }
+}
+
+// Create invite modal
+const createInviteModal   = ref(false)
+const createInviteLoading = ref(false)
+const createInviteError   = ref('')
+const newInvite = reactive({ code: '', max_uses: 1, expires_at: '', note: '' })
+
+function openCreateInvite() {
+  Object.assign(newInvite, { code: '', max_uses: 1, expires_at: '', note: '' })
+  createInviteError.value = ''
+  createInviteModal.value = true
+}
+
+async function createInvite() {
+  createInviteError.value = ''
+  createInviteLoading.value = true
+  try {
+    const payload = {
+      max_uses:  newInvite.max_uses,
+      note:      newInvite.note || '',
+      uses:      0,
+      is_active: true,
+    }
+    if (newInvite.code.trim()) payload.code = newInvite.code.trim().toUpperCase()
+    if (newInvite.expires_at) payload.expires_at = newInvite.expires_at + ' 00:00:00.000Z'
+    const record = await adminPb.collection('invite_codes').create(payload, { requestKey: null })
+    invites.value.unshift(record)
+    createInviteModal.value = false
+  } catch (e) {
+    createInviteError.value = e.message
+  } finally {
+    createInviteLoading.value = false
+  }
+}
+
+// Invite permissions modal
+const invitePermsModal   = ref(false)
+const invitePermsLoading = ref(false)
+const invitePermsError   = ref('')
+const invitePermsTarget  = ref(null)
+const invitePerms = reactive({
+  can_invite:          false,
+  invite_quota:        0,
+  invite_validity_days: 7,
+  invite_max_uses:     1,
+})
+
+function openInvitePerms(u) {
+  invitePermsTarget.value = u
+  invitePermsError.value  = ''
+  Object.assign(invitePerms, {
+    can_invite:           u.can_invite           ?? false,
+    invite_quota:         u.invite_quota          ?? 0,
+    invite_validity_days: u.invite_validity_days  ?? 7,
+    invite_max_uses:      u.invite_max_uses        ?? 1,
+  })
+  invitePermsModal.value = true
+}
+
+async function saveInvitePerms() {
+  invitePermsError.value   = ''
+  invitePermsLoading.value = true
+  try {
+    const updated = await adminPb.collection('users').update(
+      invitePermsTarget.value.id,
+      {
+        can_invite:           invitePerms.can_invite,
+        invite_quota:         invitePerms.invite_quota,
+        invite_validity_days: invitePerms.invite_validity_days,
+        invite_max_uses:      invitePerms.invite_max_uses,
+      },
+      { requestKey: null }
+    )
+    Object.assign(invitePermsTarget.value, updated)
+    invitePermsModal.value = false
+  } catch (e) {
+    invitePermsError.value = e.message
+  } finally {
+    invitePermsLoading.value = false
   }
 }
 
@@ -895,4 +1149,14 @@ tr:hover .icon-btn { opacity: 1; }
 /* State */
 .state-msg { padding: var(--sp-8) 0; text-align: center; font-size: var(--text-sm); color: var(--text-3); }
 .state-error { color: var(--red); }
+
+/* Invite codes */
+.invite-code-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+}
+.text-faded { color: var(--text-3); }
 </style>

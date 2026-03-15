@@ -81,6 +81,50 @@
       </template>
     </section>
 
+    <!-- 邀请码 -->
+    <section v-if="authStore.model?.can_invite" class="settings-section">
+      <h2 class="section-title">邀请码</h2>
+
+      <div class="invite-quota-row">
+        <span class="invite-quota-label">可创建</span>
+        <span class="invite-quota-val">
+          {{ inviteQuotaLeft }}
+        </span>
+        <span class="invite-quota-hint" v-if="inviteSettings.validity_days || inviteSettings.max_uses">
+          （有效期 {{ inviteSettings.validity_days || '不限' }} 天 · 最多使用 {{ inviteSettings.max_uses || '不限' }} 次）
+        </span>
+      </div>
+
+      <button
+        class="btn btn-primary"
+        :disabled="inviteCreating || inviteQuotaExhausted"
+        @click="createMyInvite"
+      >
+        {{ inviteCreating ? '生成中…' : '生成邀请码' }}
+      </button>
+
+      <p v-if="inviteCreateError" class="msg-error">{{ inviteCreateError }}</p>
+
+      <div v-if="myInvites.length > 0" class="invite-list">
+        <div
+          v-for="inv in myInvites"
+          :key="inv.id"
+          class="invite-item"
+          :class="{ 'invite-inactive': !inv.is_active }"
+        >
+          <span class="invite-item-code">{{ inv.code }}</span>
+          <span class="invite-item-meta">
+            {{ inv.uses }}/{{ inv.max_uses || '∞' }} 次
+            <template v-if="inv.expires_at"> · {{ inv.expires_at.slice(0, 10) }} 到期</template>
+          </span>
+          <span class="invite-item-status">{{ inv.is_active ? '有效' : '停用' }}</span>
+          <button class="btn btn-secondary btn-xs" @click="copyInvite(inv.code)">复制</button>
+          <button class="btn btn-danger btn-xs" @click="deleteMyInvite(inv)">删除</button>
+        </div>
+      </div>
+      <p v-else-if="!inviteCreating && inviteLoaded" class="section-desc">暂无邀请码，点击上方按钮生成。</p>
+    </section>
+
     <!-- 修改密码 -->
     <section class="settings-section">
       <h2 class="section-title">修改密码</h2>
@@ -149,11 +193,76 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import pb from '../lib/pocketbase'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
+
+// ── 邀请码 ────────────────────────────────────────────────────────────────
+const myInvites        = ref([])
+const inviteLoaded     = ref(false)
+const inviteCreating   = ref(false)
+const inviteCreateError = ref('')
+
+const inviteSettings = computed(() => ({
+  validity_days: authStore.model?.invite_validity_days || 0,
+  max_uses:      authStore.model?.invite_max_uses      || 0,
+}))
+
+const inviteQuotaLeft = computed(() => {
+  const quota = authStore.model?.invite_quota || 0
+  if (quota === 0) return '不限个'
+  return `${quota - myInvites.value.length} / ${quota} 个`
+})
+
+const inviteQuotaExhausted = computed(() => {
+  const quota = authStore.model?.invite_quota || 0
+  return quota > 0 && myInvites.value.length >= quota
+})
+
+async function loadMyInvites() {
+  if (!authStore.model?.can_invite) return
+  try {
+    myInvites.value = await pb.collection('invite_codes').getFullList({
+      sort: '-created',
+      requestKey: null,
+    })
+  } catch { /* ignore */ } finally {
+    inviteLoaded.value = true
+  }
+}
+
+async function createMyInvite() {
+  inviteCreateError.value = ''
+  inviteCreating.value = true
+  try {
+    const record = await pb.collection('invite_codes').create({}, { requestKey: null })
+    myInvites.value.unshift(record)
+  } catch (e) {
+    inviteCreateError.value = e.message || '生成失败，请重试'
+  } finally {
+    inviteCreating.value = false
+  }
+}
+
+async function deleteMyInvite(inv) {
+  if (!confirm(`删除邀请码「${inv.code}」？`)) return
+  try {
+    await pb.collection('invite_codes').delete(inv.id, { requestKey: null })
+    myInvites.value = myInvites.value.filter(x => x.id !== inv.id)
+  } catch (e) {
+    inviteCreateError.value = e.message
+  }
+}
+
+async function copyInvite(code) {
+  try {
+    await navigator.clipboard.writeText(code)
+  } catch {
+    prompt('复制邀请码：', code)
+  }
+}
 
 // ── 好友码 ────────────────────────────────────────────────────────────────
 const friendCodeCopied = ref(false)
@@ -234,6 +343,7 @@ const webcalUrl = computed(() =>
 )
 
 onMounted(async () => {
+  loadMyInvites()
   try {
     const records = await pb.collection('ical_tokens').getFullList({
       requestKey: null,
@@ -532,4 +642,63 @@ async function copyUrl() {
   color: var(--text-3);
 }
 .state-error { color: var(--red); }
+
+/* Invite codes */
+.invite-quota-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.invite-quota-label {
+  font-size: var(--text-sm);
+  color: var(--text-3);
+}
+.invite-quota-val {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.invite-quota-hint {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.invite-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  flex-wrap: wrap;
+}
+.invite-inactive {
+  opacity: 0.55;
+}
+.invite-item-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.invite-item-meta {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+.invite-item-status {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  margin-left: auto;
+}
 </style>

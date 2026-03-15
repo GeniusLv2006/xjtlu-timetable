@@ -25,8 +25,11 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/')
   }
 
-  async function register(email, password, passwordConfirm) {
-    await pb.collection('users').create({ email, password, passwordConfirm }, { requestKey: null })
+  async function register(email, password, passwordConfirm, inviteCode) {
+    await pb.collection('users').create(
+      { email, password, passwordConfirm, invite_code: inviteCode },
+      { requestKey: null }
+    )
     await login(email, password)
   }
 
