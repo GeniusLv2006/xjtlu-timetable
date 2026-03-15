@@ -214,9 +214,7 @@ const freeSlots = computed(() => {
 
 <style scoped>
 .compare-page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-10);
+  padding: 28px 32px 40px;
 }
 
 /* Toolbar */
