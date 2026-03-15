@@ -60,7 +60,6 @@
               <ol>
                 <li>点击上方 "添加到 Apple Calendar" 按钮</li>
                 <li>或打开 Calendar → 文件 → 新建日历订阅，粘贴上方 URL</li>
-                <li>刷新频率建议设为 "每小时"</li>
               </ol>
               <p class="mt"><strong>Google Calendar：</strong>
                 设置 → 通过 URL 添加日历 → 粘贴上方 URL
