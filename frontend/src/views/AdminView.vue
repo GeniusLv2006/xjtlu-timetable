@@ -206,9 +206,11 @@
                 <td colspan="7" class="empty-cell">暂无邀请码</td>
               </tr>
               <tr v-for="inv in invites" :key="inv.id" :class="{ 'row-banned': !inv.is_active }">
-                <td class="mono-cell invite-code-cell">
-                  {{ inv.code }}
-                  <button class="icon-btn" title="复制" @click="copyInviteCode(inv.code)">⎘</button>
+                <td class="mono-cell">
+                  <span class="invite-code-cell">
+                    {{ inv.code }}
+                    <button class="icon-btn" title="复制" @click="copyInviteCode(inv.code)">⎘</button>
+                  </span>
                 </td>
                 <td class="dimmed">{{ inv.expand?.created_by?.name || inv.expand?.created_by?.email || '管理员' }}</td>
                 <td class="dimmed">{{ inv.note || '—' }}</td>
