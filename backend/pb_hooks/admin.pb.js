@@ -6,6 +6,6 @@ onRecordBeforeAuthWithPasswordRequest(function(e) {
   if (!record) return
 
   if (record.getBool('is_banned')) {
-    throw new BadRequestError('账户已被停用，请联系管理员。')
+    throw new BadRequestError('账户已被停用，请联系管理员')
   }
 }, 'users')
