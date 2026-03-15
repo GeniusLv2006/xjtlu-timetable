@@ -56,7 +56,7 @@
 
           <div class="instructions">
             <template v-if="isProduction">
-              <p><strong>订阅方式（自动更新）：</strong></p>
+              <p><strong>订阅方式：</strong></p>
               <ol>
                 <li>点击上方按钮，系统会用默认日历 App 打开（支持 Apple Calendar、Outlook、Fantastical 等）</li>
                 <li>或在日历 App 中手动新建订阅，粘贴上方 URL</li>
@@ -507,11 +507,9 @@ async function copyUrl() {
 }
 
 .section-title {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--text);
 }
 
 .section-desc {
