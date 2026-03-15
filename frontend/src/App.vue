@@ -30,6 +30,12 @@
         </nav>
       </header>
 
+      <!-- Site notice banner -->
+      <div v-if="siteNotice && !noticeDismissed" class="notice-banner">
+        <span>{{ siteNotice }}</span>
+        <button class="notice-close" @click="noticeDismissed = true">×</button>
+      </div>
+
       <main class="main-content">
         <router-view v-slot="{ Component }">
           <KeepAlive include="Home">
@@ -48,8 +54,28 @@
 </template>
 
 <script setup>
+import { ref, onMounted, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
+import pb from './lib/pocketbase'
+
 const authStore = useAuthStore()
+const siteNotice     = ref('')
+const noticeDismissed = ref(false)
+
+async function fetchNotice() {
+  try {
+    const list = await pb.collection('site_config').getList(1, 1, { requestKey: null })
+    if (list.items.length) siteNotice.value = list.items[0].site_notice || ''
+  } catch { /* ignore — collection may not exist yet */ }
+}
+
+onMounted(() => {
+  if (authStore.isLoggedIn) fetchNotice()
+})
+
+watch(() => authStore.isLoggedIn, (v) => {
+  if (v) fetchNotice()
+})
 </script>
 
 <style scoped>
@@ -205,6 +231,33 @@ const authStore = useAuthStore()
 }
 .mobile-nav a:hover { color: #fff; background: rgba(255,255,255,0.07); text-decoration: none; }
 .mobile-nav a.router-link-exact-active { color: #fff; }
+
+/* ── Notice banner ────────────────────────────────────────────────────── */
+.notice-banner {
+  background: #EEF4FF;
+  border-bottom: 1px solid #C7D7F5;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #1A4080;
+  flex-shrink: 0;
+}
+.notice-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: #1A4080;
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: opacity 0.12s;
+}
+.notice-close:hover { opacity: 1; }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

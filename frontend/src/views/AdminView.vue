@@ -179,6 +179,73 @@
           </table>
         </div>
 
+        <!-- ── Site Config tab ────────────────────────────────────── -->
+        <div v-if="activeTab === 'siteConfig'" class="tab-content">
+
+          <div v-if="configError" class="msg-error" style="padding:8px 12px;border-radius:3px">{{ configError }}</div>
+
+          <!-- 系统概览 -->
+          <div class="config-section">
+            <div class="config-section-title">系统概览</div>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value">{{ stats.users ?? '—' }}</div>
+                <div class="stat-label">注册用户</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ stats.timetables ?? '—' }}</div>
+                <div class="stat-label">课表数量</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ currentSemesterName }}</div>
+                <div class="stat-label">当前学期</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 注册设置 -->
+          <div class="config-section">
+            <div class="config-section-title">注册设置</div>
+            <div class="config-row">
+              <div class="config-row-label">
+                <span>开放注册</span>
+                <span class="config-row-hint">关闭后所有用户无法注册新账号（包括邀请码注册）</span>
+              </div>
+              <label class="toggle-switch">
+                <input v-model="siteConfig.registration_open" type="checkbox" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="field-group">
+              <label class="field-label">允许的邮箱后缀（逗号分隔，留空不限制）</label>
+              <input v-model="siteConfig.allowed_email_suffixes" class="field-input" placeholder="xjtlu.edu.cn,liverpool.ac.uk" />
+              <p class="field-hint">例：xjtlu.edu.cn,liverpool.ac.uk · 仅填写域名，不含 @</p>
+            </div>
+            <div class="config-actions">
+              <button class="btn btn-primary btn-sm" :disabled="configSaving" @click="saveSiteConfig">
+                {{ configSaving ? '保存中…' : '保存注册设置' }}
+              </button>
+              <span v-if="configSaved" class="config-saved-tip">已保存 ✓</span>
+            </div>
+          </div>
+
+          <!-- 站点公告 -->
+          <div class="config-section">
+            <div class="config-section-title">站点公告</div>
+            <div class="field-group">
+              <label class="field-label">公告内容（留空则不显示横幅）</label>
+              <textarea v-model="siteConfig.site_notice" class="field-input" rows="3" placeholder="系统维护通知、新功能公告等…" style="resize:vertical" />
+            </div>
+            <div class="config-actions">
+              <button class="btn btn-primary btn-sm" :disabled="noticeSaving" @click="saveNotice">
+                {{ noticeSaving ? '保存中…' : '保存公告' }}
+              </button>
+              <span v-if="noticeSaved" class="config-saved-tip">已保存 ✓</span>
+            </div>
+          </div>
+
+        </div>
+
         <!-- ── Invites tab ─────────────────────────────────────────── -->
         <div v-if="activeTab === 'invites'" class="tab-content">
 
@@ -449,16 +516,18 @@ function adminLogout() {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 const tabs = [
-  { key: 'users',     label: '用户管理' },
-  { key: 'semesters', label: '学期管理' },
-  { key: 'invites',   label: '邀请码' },
+  { key: 'users',      label: '用户管理' },
+  { key: 'semesters',  label: '学期管理' },
+  { key: 'invites',    label: '邀请码' },
+  { key: 'siteConfig', label: '系统设置' },
 ]
 const activeTab = ref('users')
 
 watch(activeTab, (tab) => {
-  if (tab === 'users')     loadUsers()
-  if (tab === 'semesters') loadSemesters()
-  if (tab === 'invites')   loadInvites()
+  if (tab === 'users')      loadUsers()
+  if (tab === 'semesters')  loadSemesters()
+  if (tab === 'invites')    loadInvites()
+  if (tab === 'siteConfig') { loadSiteConfig(); loadStats() }
 })
 
 function loadAll() {
@@ -865,6 +934,85 @@ async function saveInvitePerms() {
   }
 }
 
+// ── Site Config ────────────────────────────────────────────────────────────
+const siteConfig   = reactive({ registration_open: true, allowed_email_suffixes: '', site_notice: '' })
+const siteConfigId = ref('')
+const configSaving = ref(false)
+const noticeSaving = ref(false)
+const configSaved  = ref(false)
+const noticeSaved  = ref(false)
+const configError  = ref('')
+const stats        = reactive({ users: null, timetables: null })
+
+const currentSemesterName = computed(() => {
+  const cur = semesters.value.find(s => s.is_current)
+  return cur ? cur.name : '未设置'
+})
+
+async function loadSiteConfig() {
+  configError.value = ''
+  try {
+    const list = await adminPb.collection('site_config').getList(1, 1, { requestKey: null })
+    if (list.items.length) {
+      const cfg = list.items[0]
+      siteConfigId.value = cfg.id
+      Object.assign(siteConfig, {
+        registration_open: cfg.registration_open,
+        allowed_email_suffixes: cfg.allowed_email_suffixes || '',
+        site_notice: cfg.site_notice || '',
+      })
+    }
+  } catch (e) {
+    configError.value = e.message
+  }
+}
+
+async function loadStats() {
+  try {
+    const [u, t] = await Promise.all([
+      adminPb.collection('users').getList(1, 1, { requestKey: null }),
+      adminPb.collection('timetables').getList(1, 1, { requestKey: null }),
+    ])
+    stats.users = u.totalItems
+    stats.timetables = t.totalItems
+  } catch { /* ignore */ }
+}
+
+async function saveSiteConfig() {
+  configError.value = ''
+  configSaving.value = true
+  configSaved.value = false
+  try {
+    await adminPb.collection('site_config').update(siteConfigId.value, {
+      registration_open: siteConfig.registration_open,
+      allowed_email_suffixes: siteConfig.allowed_email_suffixes,
+    }, { requestKey: null })
+    configSaved.value = true
+    setTimeout(() => { configSaved.value = false }, 2500)
+  } catch (e) {
+    configError.value = e.message
+  } finally {
+    configSaving.value = false
+  }
+}
+
+async function saveNotice() {
+  configError.value = ''
+  noticeSaving.value = true
+  noticeSaved.value = false
+  try {
+    await adminPb.collection('site_config').update(siteConfigId.value, {
+      site_notice: siteConfig.site_notice,
+    }, { requestKey: null })
+    noticeSaved.value = true
+    setTimeout(() => { noticeSaved.value = false }, 2500)
+  } catch (e) {
+    configError.value = e.message
+  } finally {
+    noticeSaving.value = false
+  }
+}
+
 // ── Utils ─────────────────────────────────────────────────────────────────
 function fmtDate(iso) {
   if (!iso) return '—'
@@ -1151,6 +1299,113 @@ tr:hover .icon-btn { opacity: 1; }
 /* State */
 .state-msg { padding: var(--sp-8) 0; text-align: center; font-size: var(--text-sm); color: var(--text-3); }
 .state-error { color: var(--red); }
+
+/* ── Config sections ─────────────────────────────────────────────────────── */
+.config-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.config-section-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.config-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+.config-row-hint {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  font-weight: 400;
+}
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.config-saved-tip {
+  font-size: var(--text-xs);
+  color: var(--green);
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+.stat-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--sp-4);
+  text-align: center;
+}
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  margin-top: var(--sp-1);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-track {
+  display: block;
+  width: 38px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  transition: background 0.2s;
+  position: relative;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: var(--accent); }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
 
 /* Invite codes */
 .invite-code-cell {

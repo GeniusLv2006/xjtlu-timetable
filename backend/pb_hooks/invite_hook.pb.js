@@ -9,6 +9,34 @@
 
 // ── 注册：验证邀请码 ───────────────────────────────────────────────────────
 onRecordBeforeCreateRequest(function(e) {
+  // ── 全局注册配置检查 ──────────────────────────────────────────────────
+  var configs
+  try {
+    configs = $app.dao().findRecordsByFilter('site_config', 'id != ""', '', 1, 0)
+  } catch(_) { configs = [] }
+
+  if (configs.length > 0) {
+    var cfg = configs[0]
+
+    // 注册开关
+    if (!cfg.getBool('registration_open')) {
+      throw new BadRequestError('注册暂未开放，请联系管理员')
+    }
+
+    // 邮箱后缀白名单
+    var suffixes = cfg.getString('allowed_email_suffixes').trim()
+    if (suffixes) {
+      var ri0  = e.httpContext.get('requestInfo')
+      var dat0 = (ri0 && ri0.data) ? ri0.data : {}
+      var email = (dat0['email'] || '').toLowerCase()
+      var allowed = suffixes.split(',').map(function(s) { return s.trim().replace(/^@/, '').toLowerCase() })
+      var ok = allowed.some(function(s) { return email.endsWith('@' + s) })
+      if (!ok) {
+        throw new BadRequestError('仅限以下邮箱后缀注册：@' + allowed.join('、@'))
+      }
+    }
+  }
+
   var ri   = e.httpContext.get('requestInfo')
   var data = (ri && ri.data) ? ri.data : {}
   var code = (data['invite_code'] || '').trim()
