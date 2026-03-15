@@ -134,17 +134,17 @@ const authStore = useAuthStore()
 }
 .foot-copy {
   font-size: 10px;
-  color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.42);
   letter-spacing: 0.02em;
   line-height: 1.6;
 }
 .foot-link {
   font-size: 10px;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.50);
   text-decoration: none;
   transition: color 0.12s;
 }
-.foot-link:hover { color: rgba(255,255,255,0.5); text-decoration: none; }
+.foot-link:hover { color: rgba(255,255,255,0.8); text-decoration: none; }
 
 /* ── Main wrap ────────────────────────────────────────────────────────── */
 .main-wrap {
