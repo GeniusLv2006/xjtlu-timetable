@@ -197,7 +197,7 @@ async function changePassword() {
   try {
     await pb.collection('users').update(
       authStore.model.id,
-      { oldPassword: oldPwd.value, password: newPwd.value, passwordConfirm: newPwdConfirm.value },
+      { oldPassword: oldPwd.value, password: newPwd.value, passwordConfirm: newPwdConfirm.value, must_change_pwd: false },
       { requestKey: null }
     )
     pwdSuccess.value = '密码已更新，请重新登录。'

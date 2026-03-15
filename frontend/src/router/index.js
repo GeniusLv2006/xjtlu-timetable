@@ -46,6 +46,12 @@ const routes = [
     component: () => import('../views/TermsView.vue'),
     meta: { public: true },
   },
+  {
+    path: '/change-password',
+    name: 'ChangePassword',
+    component: () => import('../views/ChangePasswordView.vue'),
+    meta: { public: false },
+  },
 ]
 
 const router = createRouter({
@@ -57,6 +63,14 @@ router.beforeEach((to) => {
   const authStore = useAuthStore()
   if (!to.meta.public && !authStore.isLoggedIn) {
     return { name: 'Login' }
+  }
+  // Force password change if admin set must_change_pwd
+  if (
+    authStore.isLoggedIn &&
+    authStore.model?.must_change_pwd &&
+    to.name !== 'ChangePassword'
+  ) {
+    return { name: 'ChangePassword' }
   }
 })
 

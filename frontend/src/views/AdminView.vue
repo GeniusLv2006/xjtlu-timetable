@@ -474,7 +474,7 @@ async function doResetPwd() {
   try {
     await adminPb.collection('users').update(
       resetPwdTarget.value.id,
-      { password: resetPwdValue.value, passwordConfirm: resetPwdValue.value },
+      { password: resetPwdValue.value, passwordConfirm: resetPwdValue.value, must_change_pwd: true },
       { requestKey: null }
     )
     resetPwdModal.value = false
@@ -513,6 +513,7 @@ async function createUser() {
       password:        newUser.password,
       passwordConfirm: newUser.password,
       emailVisibility: true,
+      must_change_pwd: true,
     }, { requestKey: null })
     users.value.unshift(record)
     createUserModal.value = false
