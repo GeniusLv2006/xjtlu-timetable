@@ -282,8 +282,7 @@ async function handleImport() {
         last_synced: new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z',
       })
     } else {
-      const label =
-        new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' }) + ' 导入'
+      const label = `${userId.slice(0, 8)}-${Math.floor(Date.now() / 1000)}`
       timetable = await pb.collection('timetables').create({
         user:        userId,
         hash,

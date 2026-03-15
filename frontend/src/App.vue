@@ -18,6 +18,10 @@
         </KeepAlive>
       </router-view>
     </main>
+    <footer v-if="authStore.isLoggedIn" class="site-footer">
+      <span class="footer-copy">© 2026 Tingkai Lyu · All rights reserved · Built with Claude Code</span>
+      <router-link to="/terms" class="footer-link">用户协议</router-link>
+    </footer>
   </div>
 </template>
 
@@ -91,4 +95,26 @@ const authStore = useAuthStore()
 .main-content {
   flex: 1;
 }
+
+.site-footer {
+  border-top: 1px solid #2C2C2E;
+  padding: 12px var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.footer-copy {
+  font-size: 11px;
+  color: #3A3830;
+  letter-spacing: 0.03em;
+}
+.footer-link {
+  font-size: 11px;
+  color: #3A3830;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.footer-link:hover { color: #8A8680; }
 </style>

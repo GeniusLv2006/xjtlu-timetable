@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import pb from '../lib/pocketbase'
 import TimetableGrid from '../components/TimetableGrid.vue'
 
@@ -131,7 +131,9 @@ const selectedTimetable = computed(() =>
   timetables.value.find(t => t.id === selectedId.value) ?? null
 )
 
-onMounted(async () => {
+async function loadTimetables() {
+  loading.value = true
+  error.value = ''
   try {
     const userId = pb.authStore.model?.id
     const result = await pb.collection('timetables').getFullList({
@@ -141,15 +143,27 @@ onMounted(async () => {
     })
     timetables.value = result
     if (result.length > 0) {
-      selectedId.value = result[0].id
-      visibility.value = result[0].visibility ?? 'private'
+      // 若当前选中的课表仍在列表中则保持，否则切到第一个
+      const stillExists = result.find(t => t.id === selectedId.value)
+      if (!stillExists) {
+        selectedId.value = result[0].id
+        visibility.value = result[0].visibility ?? 'private'
+      } else {
+        visibility.value = stillExists.visibility ?? 'private'
+      }
+    } else {
+      selectedId.value = null
+      courses.value = []
     }
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadTimetables)
+onActivated(loadTimetables)
 
 watch(selectedId, async (id) => {
   if (!id) { courses.value = []; return }
