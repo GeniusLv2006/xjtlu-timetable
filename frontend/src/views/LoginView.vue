@@ -4,8 +4,7 @@
 
       <!-- Header -->
       <div class="login-header">
-        <div class="login-logo">XJTLU</div>
-        <div class="login-title">课表系统</div>
+        <div class="login-title">XJTLU Timetable Tool</div>
         <div class="login-sub">Xi'an Jiaotong-Liverpool University</div>
       </div>
 
@@ -69,6 +68,11 @@
         <button class="toggle-btn" type="button" @click="toggle">
           {{ isRegister ? '已有账号？返回登录' : '还没有账号？注册' }}
         </button>
+      </div>
+
+      <!-- Disclaimer -->
+      <div class="login-disclaimer">
+        本工具为学生自制，与西交利物浦大学官方无关。
       </div>
 
     </div>
@@ -161,7 +165,7 @@ async function handleSubmit() {
 }
 .login-sub {
   font-size: var(--text-xs);
-  color: #4A4840;
+  color: #7A7870;
   letter-spacing: 0.04em;
 }
 
@@ -237,6 +241,16 @@ async function handleSubmit() {
   transition: color 0.12s;
 }
 .toggle-btn:hover { color: var(--accent); }
+
+/* Disclaimer */
+.login-disclaimer {
+  padding: var(--sp-3) var(--sp-6);
+  text-align: center;
+  font-size: 11px;
+  color: #3A3830;
+  border-top: 1px solid #232320;
+  line-height: 1.6;
+}
 
 /* Invite code field */
 .invite-input {
