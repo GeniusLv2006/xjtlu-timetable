@@ -216,6 +216,16 @@
                 <span class="toggle-track"></span>
               </label>
             </div>
+            <div class="config-row">
+              <div class="config-row-label">
+                <span>需要邀请码</span>
+                <span class="config-row-hint">关闭后任何人可直接注册，无需邀请码</span>
+              </div>
+              <label class="toggle-switch">
+                <input v-model="siteConfig.require_invite" type="checkbox" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
             <div class="field-group">
               <label class="field-label">允许的邮箱后缀（逗号分隔，留空不限制）</label>
               <input v-model="siteConfig.allowed_email_suffixes" class="field-input" placeholder="xjtlu.edu.cn,liverpool.ac.uk" />
@@ -935,7 +945,7 @@ async function saveInvitePerms() {
 }
 
 // ── Site Config ────────────────────────────────────────────────────────────
-const siteConfig   = reactive({ registration_open: true, allowed_email_suffixes: '', site_notice: '' })
+const siteConfig   = reactive({ registration_open: true, require_invite: true, allowed_email_suffixes: '', site_notice: '' })
 const siteConfigId = ref('')
 const configSaving = ref(false)
 const noticeSaving = ref(false)
@@ -957,9 +967,10 @@ async function loadSiteConfig() {
       const cfg = list.items[0]
       siteConfigId.value = cfg.id
       Object.assign(siteConfig, {
-        registration_open: cfg.registration_open,
+        registration_open:      cfg.registration_open,
+        require_invite:         cfg.require_invite,
         allowed_email_suffixes: cfg.allowed_email_suffixes || '',
-        site_notice: cfg.site_notice || '',
+        site_notice:            cfg.site_notice || '',
       })
     }
   } catch (e) {
@@ -984,7 +995,8 @@ async function saveSiteConfig() {
   configSaved.value = false
   try {
     await adminPb.collection('site_config').update(siteConfigId.value, {
-      registration_open: siteConfig.registration_open,
+      registration_open:      siteConfig.registration_open,
+      require_invite:         siteConfig.require_invite,
       allowed_email_suffixes: siteConfig.allowed_email_suffixes,
     }, { requestKey: null })
     configSaved.value = true

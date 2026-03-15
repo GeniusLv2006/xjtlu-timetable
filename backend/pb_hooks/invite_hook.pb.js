@@ -37,6 +37,10 @@ onRecordBeforeCreateRequest(function(e) {
     }
   }
 
+  // 是否需要邀请码
+  var requireInvite = configs.length === 0 || configs[0].getBool('require_invite')
+  if (!requireInvite) return
+
   var ri   = e.httpContext.get('requestInfo')
   var data = (ri && ri.data) ? ri.data : {}
   var code = (data['invite_code'] || '').trim()

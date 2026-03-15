@@ -44,7 +44,7 @@
           />
         </div>
 
-        <div v-if="isRegister" class="field-group">
+        <div v-if="isRegister && requireInvite" class="field-group">
           <label class="field-label">邀请码</label>
           <input
             v-model="inviteCode"
@@ -76,8 +76,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import pb from '../lib/pocketbase'
 
 const authStore = useAuthStore()
 const email           = ref('')
@@ -87,6 +88,14 @@ const inviteCode      = ref('')
 const isRegister      = ref(false)
 const error           = ref('')
 const loading         = ref(false)
+const requireInvite   = ref(true)  // default safe: require invite until config loaded
+
+onMounted(async () => {
+  try {
+    const list = await pb.collection('site_config').getList(1, 1, { requestKey: null })
+    if (list.items.length) requireInvite.value = list.items[0].require_invite
+  } catch { /* ignore */ }
+})
 
 function toggle() {
   isRegister.value = !isRegister.value
