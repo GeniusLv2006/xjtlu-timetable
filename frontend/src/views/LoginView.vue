@@ -231,7 +231,7 @@ async function handleSubmit() {
   border: none;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-  color: var(--text-3);
+  color: var(--text-2);
   cursor: pointer;
   padding: 0;
   transition: color 0.12s;
