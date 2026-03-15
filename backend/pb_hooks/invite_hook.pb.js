@@ -1,7 +1,7 @@
-// ── 邀请码系统 ────────────────────────────────────────────────────────────
+// ── 邀请码系统（PocketBase 0.22+ API）────────────────────────────────────
 //
-// 1. onRecordBeforeCreateRequest (users)   — 注册时验证邀请码
-// 2. onRecordAfterCreateRequest  (users)   — 注册成功后计数 +1
+// 1. onRecordBeforeCreateRequest (users)        — 注册时验证邀请码
+// 2. onRecordAfterCreateRequest  (users)        — 注册成功后计数 +1
 // 3. onRecordBeforeCreateRequest (invite_codes) — 用户创建邀请码时检查权限
 
 // 模块级 Map：email → invite_id，用于在 after-hook 中增计数
@@ -17,14 +17,15 @@ onRecordBeforeCreateRequest(function(e) {
   }
 
   // 防注入：只保留字母数字和常见符号
-  var safeCode = code.replace(/['"\\;\-\-]/g, '')
+  var safeCode = code.replace(/["'\\]/g, '')
 
   var invites
   try {
-    invites = $app.dao().findRecordsByFilter(
+    invites = $app.findRecordsByFilter(
       'invite_codes',
-      'code = "' + safeCode + '"',
-      '-created', 1, 0
+      'code = {:code}',
+      '-created', 1, 0,
+      { code: safeCode }
     )
   } catch (err) {
     throw new BadRequestError('邀请码无效')
@@ -64,52 +65,49 @@ onRecordAfterCreateRequest(function(e) {
   delete _pendingInvites[email]
 
   try {
-    var invite  = $app.dao().findRecordById('invite_codes', inviteId)
+    var invite  = $app.findRecordById('invite_codes', inviteId)
     var maxUses = invite.getInt('max_uses')
     var newUses = invite.getInt('uses') + 1
     invite.set('uses', newUses)
     if (maxUses > 0 && newUses >= maxUses) {
       invite.set('is_active', false)
     }
-    $app.dao().saveRecord(invite)
+    $app.save(invite)
   } catch (err) {
-    // 非关键错误，不影响注册流程
     console.error('invite_hook: failed to update invite uses:', err)
   }
 }, 'users')
 
 // ── 用户创建邀请码：权限 & 配额检查 ──────────────────────────────────────
 onRecordBeforeCreateRequest(function(e) {
-  // 管理员直接放行，只自动补全默认值
+  // 管理员直接放行
   if (e.requestInfo.admin) {
     if (!e.record.getString('code')) {
       e.record.set('code', _generateCode())
     }
-    if (!e.record.getInt('uses')) {
-      e.record.set('uses', 0)
-    }
-    if (e.record.getString('is_active') === '') {
-      e.record.set('is_active', true)
-    }
+    e.record.set('uses', 0)
+    e.record.set('is_active', true)
     return
   }
 
   var authUser = e.requestInfo.authRecord
   if (!authUser) {
-    throw new UnauthorizedError('请先登录')
+    throw new BadRequestError('请先登录')
   }
 
   if (!authUser.getBool('can_invite')) {
-    throw new ForbiddenError('您没有创建邀请码的权限')
+    throw new BadRequestError('您没有创建邀请码的权限')
   }
 
   // 检查配额
   var quota = authUser.getInt('invite_quota')
   if (quota > 0) {
-    var existing = $app.dao().findRecordsByFilter(
+    var userId   = authUser.getString('id')
+    var existing = $app.findRecordsByFilter(
       'invite_codes',
-      'created_by = "' + authUser.id + '"',
-      '', 0, 0
+      'created_by = {:uid}',
+      '', 500, 0,
+      { uid: userId }
     )
     if (existing.length >= quota) {
       throw new BadRequestError('邀请码数量已达上限（' + quota + ' 个）')
@@ -130,12 +128,7 @@ onRecordBeforeCreateRequest(function(e) {
   }
 
   // 强制设置 created_by 为当前用户
-  e.record.set('created_by', authUser.id)
-
-  // 自动生成邀请码
-  if (!e.record.getString('code')) {
-    e.record.set('code', _generateCode())
-  }
+  e.record.set('created_by', authUser.getString('id'))
 
   e.record.set('uses', 0)
   e.record.set('is_active', true)
