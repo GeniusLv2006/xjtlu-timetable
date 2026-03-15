@@ -27,7 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(email, password, passwordConfirm, inviteCode) {
     await pb.collection('users').create(
-      { email, password, passwordConfirm, invite_code: inviteCode },
+      { email, password, passwordConfirm, name: email.split('@')[0], emailVisibility: true, invite_code: inviteCode },
       { requestKey: null }
     )
     await login(email, password)
