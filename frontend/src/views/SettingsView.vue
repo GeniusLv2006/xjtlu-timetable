@@ -322,13 +322,15 @@ function cancelNickname() {
 async function saveNickname() {
   nicknameSaving.value = true
   nicknameError.value = ''
+  const value = nicknameInput.value.trim()
   try {
     await pb.collection('users').update(
       authStore.model.id,
-      { nickname: nicknameInput.value.trim() },
+      { nickname: value },
       { requestKey: null }
     )
-    await pb.collection('users').authRefresh({ requestKey: null })
+    // Directly update the local auth store so Vue reactivity triggers immediately
+    pb.authStore.save(pb.authStore.token, { ...pb.authStore.model, nickname: value })
     editingNickname.value = false
   } catch (e) {
     nicknameError.value = e.message

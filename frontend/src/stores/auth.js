@@ -17,7 +17,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => model.value !== null && pb.authStore.isValid && !pb.authStore.isAdmin)
 
   pb.authStore.onChange(() => {
-    model.value = pb.authStore.model
+    // Spread to create a new object reference so Vue detects the change
+    model.value = pb.authStore.model ? { ...pb.authStore.model } : null
   })
 
   async function login(email, password) {
