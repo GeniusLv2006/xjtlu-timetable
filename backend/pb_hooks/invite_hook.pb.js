@@ -1,11 +1,16 @@
-// ── 邀请码系统（PocketBase 0.22，使用 $app.dao() API）────────────────────
+// ── 邀请码系统（PocketBase 0.22，e.httpContext.get() API）────────────────
 //
-// 1. onRecordBeforeCreateRequest (users)        — 注册时验证邀请码，并立即 +1 计数
+// PB 0.22 中 e.requestInfo 已废弃，改用：
+//   e.httpContext.get('authRecord') — 当前登录用户
+//   e.httpContext.get('admin')      — 当前登录管理员
+//
+// 1. onRecordBeforeCreateRequest (users)        — 注册时验证邀请码并 +1 计数
 // 2. onRecordBeforeCreateRequest (invite_codes) — 用户创建邀请码时检查权限
 
 // ── 注册：验证邀请码 ───────────────────────────────────────────────────────
 onRecordBeforeCreateRequest(function(e) {
-  var data = e.requestInfo.data || {}
+  var ri   = e.httpContext.get('requestInfo')
+  var data = (ri && ri.data) ? ri.data : {}
   var code = (data['invite_code'] || '').trim()
 
   if (!code) {
@@ -46,7 +51,7 @@ onRecordBeforeCreateRequest(function(e) {
     throw new BadRequestError('邀请码已达使用上限')
   }
 
-  // 验证通过：立即 +1（若后续用户创建失败计数会略有偏差，可接受）
+  // 验证通过：立即 +1
   var newUses = uses + 1
   invite.set('uses', newUses)
   if (maxUses > 0 && newUses >= maxUses) {
@@ -61,14 +66,16 @@ onRecordBeforeCreateRequest(function(e) {
 
 // ── 用户创建邀请码：权限 & 配额检查 ──────────────────────────────────────
 onRecordBeforeCreateRequest(function(e) {
+  var isAdmin  = !!e.httpContext.get('admin')
+  var authUser = e.httpContext.get('authRecord')
+
   // 管理员直接放行
-  if (e.requestInfo.admin) {
+  if (isAdmin) {
     e.record.set('uses', 0)
     e.record.set('is_active', true)
     return
   }
 
-  var authUser = e.requestInfo.authRecord
   if (!authUser) {
     throw new BadRequestError('请先登录')
   }
@@ -80,7 +87,7 @@ onRecordBeforeCreateRequest(function(e) {
   // 检查配额
   var quota = authUser.getInt('invite_quota')
   if (quota > 0) {
-    var userId = authUser.getString('id')
+    var userId = authUser.id
     var existing
     try {
       existing = $app.dao().findRecordsByFilter(
@@ -109,7 +116,7 @@ onRecordBeforeCreateRequest(function(e) {
     e.record.set('expires_at', expires.toISOString().slice(0, 19).replace('T', ' '))
   }
 
-  e.record.set('created_by', authUser.getString('id'))
+  e.record.set('created_by', authUser.id)
   e.record.set('uses', 0)
   e.record.set('is_active', true)
 }, 'invite_codes')
