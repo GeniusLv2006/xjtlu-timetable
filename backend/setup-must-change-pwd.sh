@@ -34,20 +34,11 @@ fi
 # Detect API format
 if echo "$COLLECTION" | grep -q '"fields"'; then
   echo "→ Detected PocketBase v0.22+ (fields format)"
-  FIELD_JSON='{
-    "type": "bool",
-    "name": "must_change_pwd",
-    "required": false
-  }'
+  FIELD_JSON='{"type":"bool","name":"must_change_pwd","required":false}'
   PATCH_KEY="fields"
 else
   echo "→ Detected PocketBase v0.20 (schema format)"
-  FIELD_JSON='{
-    "type": "bool",
-    "name": "must_change_pwd",
-    "required": false,
-    "options": {}
-  }'
+  FIELD_JSON='{"type":"bool","name":"must_change_pwd","required":false,"options":{}}'
   PATCH_KEY="schema"
 fi
 
@@ -57,7 +48,7 @@ import json, sys
 data = json.load(sys.stdin)
 key = '$PATCH_KEY'
 fields = data.get(key, [])
-new_field = $FIELD_JSON
+new_field = json.loads('$FIELD_JSON')
 fields.append(new_field)
 print(json.dumps({key: fields}))
 ")
