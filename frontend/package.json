@@ -10,6 +10,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/noto-sans-sc": "^5.2.9",
     "pinia": "^2.1.7",
     "pocketbase": "^0.21.5",
     "vue": "^3.4.0",
