@@ -5,122 +5,135 @@
       <h1 class="page-title">好友</h1>
     </div>
 
-    <!-- 我的好友码 -->
-    <section class="friends-section">
-      <h2 class="section-title">我的好友码</h2>
-      <p class="section-desc">将好友码发给同学，让对方在此页面添加你。</p>
-      <div class="code-row">
-        <span class="my-code">{{ myId }}</span>
-        <button class="btn btn-secondary" @click="copyMyCode">
-          {{ codeCopied ? '✓ 已复制' : '复制' }}
-        </button>
+    <div class="friends-layout">
+
+      <!-- 左列：管理 -->
+      <div class="friends-col">
+
+        <!-- 我的好友码 -->
+        <section class="friends-section">
+          <h2 class="section-title">我的好友码</h2>
+          <p class="section-desc">将好友码发给同学，让对方在此页面添加你。</p>
+          <div class="code-row">
+            <span class="my-code">{{ myId }}</span>
+            <button class="btn btn-secondary" @click="copyMyCode">
+              {{ codeCopied ? '✓ 已复制' : '复制' }}
+            </button>
+          </div>
+        </section>
+
+        <!-- 添加好友 -->
+        <section class="friends-section">
+          <h2 class="section-title">添加好友</h2>
+          <div class="add-row">
+            <input
+              v-model="addInput"
+              class="field-input add-input"
+              placeholder="输入对方 15 位好友码"
+              :disabled="adding"
+              @keydown.enter="sendRequest"
+            />
+            <button
+              class="btn btn-primary"
+              :disabled="!addInput.trim() || adding"
+              @click="sendRequest"
+            >
+              {{ adding ? '发送中…' : '发送申请' }}
+            </button>
+          </div>
+          <p v-if="addError" class="msg-error add-msg">{{ addError }}</p>
+          <p v-if="addOk"    class="msg-success add-msg">{{ addOk }}</p>
+        </section>
+
       </div>
-    </section>
 
-    <!-- 添加好友 -->
-    <section class="friends-section">
-      <h2 class="section-title">添加好友</h2>
-      <div class="add-row">
-        <input
-          v-model="addInput"
-          class="field-input add-input"
-          placeholder="输入对方 15 位好友码"
-          :disabled="adding"
-          @keydown.enter="sendRequest"
-        />
-        <button
-          class="btn btn-primary"
-          :disabled="!addInput.trim() || adding"
-          @click="sendRequest"
-        >
-          {{ adding ? '发送中…' : '发送申请' }}
-        </button>
+      <!-- 右列：列表 -->
+      <div class="friends-col">
+
+        <!-- 初次加载 -->
+        <div v-if="listLoading" class="state-msg">加载中…</div>
+        <div v-else-if="listError" class="state-msg state-error">{{ listError }}</div>
+
+        <template v-else>
+
+          <!-- 待处理请求 -->
+          <section v-if="incoming.length || outgoing.length" class="friends-section">
+            <h2 class="section-title">
+              待处理请求
+              <span class="badge">{{ incoming.length + outgoing.length }}</span>
+            </h2>
+
+            <!-- 收到的 -->
+            <template v-if="incoming.length">
+              <div class="subsection-label">收到的申请</div>
+              <div v-for="f in incoming" :key="f.id" class="friend-row">
+                <div class="friend-info">
+                  <span class="friend-name">{{ displayName(f, 'from') }}</span>
+                  <span class="friend-id">{{ f.expand?.from_user?.email ?? otherId(f) }}</span>
+                </div>
+                <div class="friend-actions">
+                  <button class="btn btn-primary btn-sm" @click="acceptRequest(f)">接受</button>
+                  <button class="btn btn-danger  btn-sm" @click="deleteRequest(f)">拒绝</button>
+                </div>
+              </div>
+            </template>
+
+            <!-- 发出的 -->
+            <template v-if="outgoing.length">
+              <div class="subsection-label">发出的申请（等待对方接受）</div>
+              <div v-for="f in outgoing" :key="f.id" class="friend-row">
+                <div class="friend-info">
+                  <span class="friend-name">{{ displayName(f, 'to') }}</span>
+                  <span class="friend-id">{{ f.expand?.to_user?.email ?? otherId(f) }}</span>
+                </div>
+                <div class="friend-actions">
+                  <button class="btn btn-danger btn-sm" @click="deleteRequest(f)">取消</button>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <!-- 好友列表 -->
+          <section class="friends-section">
+            <h2 class="section-title">
+              好友列表
+              <span class="badge">{{ friends.length }}</span>
+            </h2>
+
+            <div v-if="friends.length === 0" class="panel-empty">
+              还没有好友，发送申请或等待对方添加你。
+            </div>
+
+            <div v-for="f in friends" :key="f.id" class="friend-row">
+              <div class="friend-info">
+                <span class="friend-name">{{ displayName(f, 'other') }}</span>
+                <span class="friend-id">
+                  {{ (f.from_user === myId ? f.expand?.to_user?.email : f.expand?.from_user?.email) ?? otherId(f) }}
+                </span>
+              </div>
+              <div class="friend-actions">
+                <template v-if="confirmRemoveId === f.id">
+                  <span class="confirm-label">确认删除？</span>
+                  <button class="btn btn-danger btn-sm" @click="confirmRemove(f)">是</button>
+                  <button class="btn btn-secondary btn-sm" @click="confirmRemoveId = null">否</button>
+                </template>
+                <template v-else>
+                  <router-link
+                    :to="`/compare/${otherId(f)}`"
+                    class="btn btn-secondary btn-sm"
+                  >
+                    对比课表
+                  </router-link>
+                  <button class="btn btn-danger btn-sm" @click="confirmRemoveId = f.id">删除</button>
+                </template>
+              </div>
+            </div>
+          </section>
+
+        </template>
       </div>
-      <p v-if="addError" class="msg-error add-msg">{{ addError }}</p>
-      <p v-if="addOk"    class="msg-success add-msg">{{ addOk }}</p>
-    </section>
 
-    <!-- 初次加载 -->
-    <div v-if="listLoading" class="state-msg">加载中…</div>
-    <div v-else-if="listError" class="state-msg state-error">{{ listError }}</div>
-
-    <template v-else>
-
-      <!-- 待处理请求 -->
-      <section v-if="incoming.length || outgoing.length" class="friends-section">
-        <h2 class="section-title">
-          待处理请求
-          <span class="badge">{{ incoming.length + outgoing.length }}</span>
-        </h2>
-
-        <!-- 收到的 -->
-        <template v-if="incoming.length">
-          <div class="subsection-label">收到的申请</div>
-          <div v-for="f in incoming" :key="f.id" class="friend-row">
-            <div class="friend-info">
-              <span class="friend-name">{{ displayName(f, 'from') }}</span>
-              <span class="friend-id">{{ f.expand?.from_user?.email ?? otherId(f) }}</span>
-            </div>
-            <div class="friend-actions">
-              <button class="btn btn-primary btn-sm" @click="acceptRequest(f)">接受</button>
-              <button class="btn btn-danger  btn-sm" @click="deleteRequest(f)">拒绝</button>
-            </div>
-          </div>
-        </template>
-
-        <!-- 发出的 -->
-        <template v-if="outgoing.length">
-          <div class="subsection-label">发出的申请（等待对方接受）</div>
-          <div v-for="f in outgoing" :key="f.id" class="friend-row">
-            <div class="friend-info">
-              <span class="friend-name">{{ displayName(f, 'to') }}</span>
-              <span class="friend-id">{{ f.expand?.to_user?.email ?? otherId(f) }}</span>
-            </div>
-            <div class="friend-actions">
-              <button class="btn btn-danger btn-sm" @click="deleteRequest(f)">取消</button>
-            </div>
-          </div>
-        </template>
-      </section>
-
-      <!-- 好友列表 -->
-      <section class="friends-section">
-        <h2 class="section-title">
-          好友列表
-          <span class="badge">{{ friends.length }}</span>
-        </h2>
-
-        <div v-if="friends.length === 0" class="panel-empty">
-          还没有好友，发送申请或等待对方添加你。
-        </div>
-
-        <div v-for="f in friends" :key="f.id" class="friend-row">
-          <div class="friend-info">
-            <span class="friend-name">{{ displayName(f, 'other') }}</span>
-            <span class="friend-id">
-              {{ (f.from_user === myId ? f.expand?.to_user?.email : f.expand?.from_user?.email) ?? otherId(f) }}
-            </span>
-          </div>
-          <div class="friend-actions">
-            <template v-if="confirmRemoveId === f.id">
-              <span class="confirm-label">确认删除？</span>
-              <button class="btn btn-danger btn-sm" @click="confirmRemove(f)">是</button>
-              <button class="btn btn-secondary btn-sm" @click="confirmRemoveId = null">否</button>
-            </template>
-            <template v-else>
-              <router-link
-                :to="`/compare/${otherId(f)}`"
-                class="btn btn-secondary btn-sm"
-              >
-                对比课表
-              </router-link>
-              <button class="btn btn-danger btn-sm" @click="confirmRemoveId = f.id">删除</button>
-            </template>
-          </div>
-        </div>
-      </section>
-
-    </template>
+    </div>
   </div>
 </template>
 
@@ -299,7 +312,7 @@ async function confirmRemove(f) {
 
 <style scoped>
 .friends-page {
-  max-width: 560px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--sp-5) var(--sp-4) var(--sp-10);
 }
@@ -313,6 +326,26 @@ async function confirmRemove(f) {
   font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+
+/* Two-column layout */
+.friends-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-8);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .friends-layout {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+.friends-col {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Section */
