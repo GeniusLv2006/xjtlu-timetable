@@ -46,7 +46,7 @@
 
           <div class="action-row">
             <a v-if="isProduction" :href="webcalUrl" class="btn btn-primary">
-              添加到 Apple Calendar
+              在日历 App 中订阅
             </a>
             <a v-else :href="icalUrl" download="timetable.ics" class="btn btn-primary">
               下载 .ics 文件
@@ -58,11 +58,10 @@
             <template v-if="isProduction">
               <p><strong>订阅方式（自动更新）：</strong></p>
               <ol>
-                <li>点击上方 "添加到 Apple Calendar" 按钮</li>
-                <li>或打开 Calendar → 文件 → 新建日历订阅，粘贴上方 URL</li>
+                <li>点击上方按钮，系统会用默认日历 App 打开（支持 Apple Calendar、Outlook、Fantastical 等）</li>
+                <li>或在日历 App 中手动新建订阅，粘贴上方 URL</li>
               </ol>
-              <p class="mt"><strong>Google Calendar：</strong>
-                设置 → 通过 URL 添加日历 → 粘贴上方 URL
+              <p class="mt"><strong>Google Calendar：</strong>不支持 webcal:// 链接，请在设置 → 通过 URL 添加日历中粘贴上方 URL。
               </p>
             </template>
             <template v-else>
