@@ -186,11 +186,11 @@
           <h3 class="modal-title">新建用户</h3>
           <div class="field-group">
             <label class="field-label">真实姓名</label>
-            <input v-model="newUser.name" class="field-input" placeholder="张三" />
+            <input v-model="newUser.name" class="field-input" />
           </div>
           <div class="field-group">
             <label class="field-label">邮箱</label>
-            <input v-model="newUser.email" type="email" class="field-input" placeholder="s123456@student.xjtlu.edu.cn" required />
+            <input v-model="newUser.email" type="email" class="field-input" required />
           </div>
           <div class="field-group">
             <label class="field-label">初始密码</label>
@@ -218,7 +218,7 @@
           <h3 class="modal-title">更改邮箱 — {{ changeEmailTarget?.email }}</h3>
           <div class="field-group">
             <label class="field-label">新邮箱地址</label>
-            <input v-model="changeEmailValue" type="email" class="field-input" placeholder="new@xjtlu.edu.cn" />
+            <input v-model="changeEmailValue" type="email" class="field-input" />
           </div>
           <p v-if="changeEmailError" class="msg-error">{{ changeEmailError }}</p>
           <div class="modal-actions">
@@ -237,7 +237,7 @@
           <div class="field-group">
             <label class="field-label">新密码</label>
             <div class="password-row">
-              <input v-model="resetPwdValue" class="field-input" :type="showResetPwd ? 'text' : 'password'" placeholder="至少 8 位" />
+              <input v-model="resetPwdValue" class="field-input" :type="showResetPwd ? 'text' : 'password'" />
               <button type="button" class="btn btn-secondary btn-xs" @click="showResetPwd = !showResetPwd">
                 {{ showResetPwd ? '隐藏' : '显示' }}
               </button>
@@ -259,7 +259,7 @@
           <h3 class="modal-title">新建学期</h3>
           <div class="field-group">
             <label class="field-label">学期名称</label>
-            <input v-model="newSemester.name" class="field-input" placeholder="2025 Spring" />
+            <input v-model="newSemester.name" class="field-input" />
           </div>
           <div class="field-group">
             <label class="field-label">第一周周一日期</label>

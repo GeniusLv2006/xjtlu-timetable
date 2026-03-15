@@ -17,7 +17,6 @@
             v-model="email"
             type="email"
             class="field-input"
-            placeholder="email@example.com"
             autocomplete="email"
             required
           />
@@ -29,7 +28,6 @@
             v-model="password"
             type="password"
             class="field-input"
-            placeholder="••••••••"
             autocomplete="current-password"
             required
           />
@@ -41,7 +39,6 @@
             v-model="passwordConfirm"
             type="password"
             class="field-input"
-            placeholder="••••••••"
             autocomplete="new-password"
             required
           />
