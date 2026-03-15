@@ -82,47 +82,49 @@
     </section>
 
     <!-- 邀请码 -->
-    <section v-if="authStore.model?.can_invite" class="settings-section">
+    <section class="settings-section">
       <h2 class="section-title">邀请码</h2>
 
-      <div class="invite-quota-row">
-        <span class="invite-quota-label">可创建</span>
-        <span class="invite-quota-val">
-          {{ inviteQuotaLeft }}
-        </span>
-        <span class="invite-quota-hint" v-if="inviteSettings.validity_days || inviteSettings.max_uses">
-          （有效期 {{ inviteSettings.validity_days || '不限' }} 天 · 最多使用 {{ inviteSettings.max_uses || '不限' }} 次）
-        </span>
-      </div>
-
-      <button
-        class="btn btn-primary"
-        :disabled="inviteCreating || inviteQuotaExhausted"
-        @click="createMyInvite"
-      >
-        {{ inviteCreating ? '生成中…' : '生成邀请码' }}
-      </button>
-
-      <p v-if="inviteCreateError" class="msg-error">{{ inviteCreateError }}</p>
-
-      <div v-if="myInvites.length > 0" class="invite-list">
-        <div
-          v-for="inv in myInvites"
-          :key="inv.id"
-          class="invite-item"
-          :class="{ 'invite-inactive': !inv.is_active }"
-        >
-          <span class="invite-item-code">{{ inv.code }}</span>
-          <span class="invite-item-meta">
-            {{ inv.uses }}/{{ inv.max_uses || '∞' }} 次
-            <template v-if="inv.expires_at"> · {{ inv.expires_at.slice(0, 10) }} 到期</template>
+      <template v-if="authStore.model?.can_invite">
+        <div class="invite-quota-row">
+          <span class="invite-quota-label">可创建</span>
+          <span class="invite-quota-val">{{ inviteQuotaLeft }}</span>
+          <span class="invite-quota-hint" v-if="inviteSettings.validity_days || inviteSettings.max_uses">
+            （有效期 {{ inviteSettings.validity_days || '不限' }} 天 · 最多使用 {{ inviteSettings.max_uses || '不限' }} 次）
           </span>
-          <span class="invite-item-status">{{ inv.is_active ? '有效' : '停用' }}</span>
-          <button class="btn btn-secondary btn-xs" @click="copyInvite(inv.code)">复制</button>
-          <button class="btn btn-danger btn-xs" @click="deleteMyInvite(inv)">删除</button>
         </div>
-      </div>
-      <p v-else-if="!inviteCreating && inviteLoaded" class="section-desc">暂无邀请码，点击上方按钮生成。</p>
+
+        <button
+          class="btn btn-primary"
+          :disabled="inviteCreating || inviteQuotaExhausted"
+          @click="createMyInvite"
+        >
+          {{ inviteCreating ? '生成中…' : '生成邀请码' }}
+        </button>
+
+        <p v-if="inviteCreateError" class="msg-error">{{ inviteCreateError }}</p>
+
+        <div v-if="myInvites.length > 0" class="invite-list">
+          <div
+            v-for="inv in myInvites"
+            :key="inv.id"
+            class="invite-item"
+            :class="{ 'invite-inactive': !inv.is_active }"
+          >
+            <span class="invite-item-code">{{ inv.code }}</span>
+            <span class="invite-item-meta">
+              {{ inv.uses }}/{{ inv.max_uses || '∞' }} 次
+              <template v-if="inv.expires_at"> · {{ inv.expires_at.slice(0, 10) }} 到期</template>
+            </span>
+            <span class="invite-item-status">{{ inv.is_active ? '有效' : '停用' }}</span>
+            <button class="btn btn-secondary btn-xs" @click="copyInvite(inv.code)">复制</button>
+            <button class="btn btn-danger btn-xs" @click="deleteMyInvite(inv)">删除</button>
+          </div>
+        </div>
+        <p v-else-if="!inviteCreating && inviteLoaded" class="section-desc">暂无邀请码，点击上方按钮生成。</p>
+      </template>
+
+      <p v-else class="section-desc">你目前没有生成邀请码的权限，如需开通请联系管理员。</p>
     </section>
 
     <!-- 修改密码 -->
