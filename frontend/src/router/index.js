@@ -40,6 +40,12 @@ const routes = [
     name: 'Settings',
     component: () => import('../views/SettingsView.vue'),
   },
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: () => import('../views/TermsView.vue'),
+    meta: { public: true },
+  },
 ]
 
 const router = createRouter({

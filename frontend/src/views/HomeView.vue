@@ -32,7 +32,6 @@
           >
             <option value="private">仅自己</option>
             <option value="friends">好友可见</option>
-            <option value="public">所有人可见</option>
           </select>
           <Transition name="vis-saved">
             <span v-if="visSaved" class="vis-saved-mark">✓</span>

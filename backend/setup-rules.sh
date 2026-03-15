@@ -154,6 +154,21 @@ patch_rules "ical_tokens" "$ID_ICAL_TOKENS" "$(jq -n \
   --arg dr '@request.auth.is_banned != true && @request.auth.id = user.id' \
   '{listRule:$lr, viewRule:$vr, createRule:$cr, updateRule:null, deleteRule:$dr}')"
 
+# ── 9. users ─────────────────────────────────────────────────────────────────
+#
+# deleteRule：允许用户自行注销账号
+# 其余规则不改动（由 PocketBase 默认管理）
+
+echo "→ 设置 users deleteRule..."
+USERS_RESP=$(curl -sf -X PATCH "$PB_URL/api/collections/users" \
+  -H "Authorization: $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"deleteRule":"@request.auth.id = id"}')
+
+USERS_DEL=$(echo "$USERS_RESP" | jq -r '.deleteRule // "null"')
+yellow "  deleteRule → $USERS_DEL"
+green  "  users ✓"
+
 # ── 完成 ─────────────────────────────────────────────────────────────────────
 
 echo

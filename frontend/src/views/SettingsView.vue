@@ -114,7 +114,33 @@
     <!-- 危险操作 -->
     <section class="settings-section">
       <h2 class="section-title">账号操作</h2>
-      <button class="btn btn-danger" @click="authStore.logout">退出登录</button>
+      <div class="action-row">
+        <button class="btn btn-danger" @click="authStore.logout">退出登录</button>
+        <button class="btn btn-danger" @click="showDeleteConfirm = true" :disabled="deleting">
+          注销账号
+        </button>
+      </div>
+
+      <!-- 注销确认 -->
+      <Transition name="confirm-bar">
+        <div v-if="showDeleteConfirm" class="delete-confirm">
+          <p class="delete-warn">
+            <strong>此操作不可撤回。</strong>
+            你的账号、所有课表、课程、好友关系及 iCal 令牌将被永久删除。
+          </p>
+          <p v-if="deleteError" class="msg-error">{{ deleteError }}</p>
+          <div class="delete-btns">
+            <button class="btn btn-danger" :disabled="deleting" @click="deleteAccount">
+              {{ deleting ? '删除中…' : '确认永久注销' }}
+            </button>
+            <button class="btn btn-secondary" :disabled="deleting" @click="showDeleteConfirm = false">
+              取消
+            </button>
+          </div>
+        </div>
+      </Transition>
+
+      <router-link to="/terms" class="terms-footer-link">用户协议与隐私政策</router-link>
     </section>
 
   </div>
@@ -253,6 +279,49 @@ async function resetToken() {
   } catch (e) {
     icalError.value = e.message
     icalLoading.value = false
+  }
+}
+
+// ── 注销账号 ──────────────────────────────────────────────────────────────
+const showDeleteConfirm = ref(false)
+const deleting    = ref(false)
+const deleteError = ref('')
+
+async function deleteAccount() {
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    const userId = authStore.model.id
+
+    // 1. 删除 ical_tokens
+    const tokens = await pb.collection('ical_tokens').getFullList({ requestKey: null })
+    await Promise.all(tokens.map(t => pb.collection('ical_tokens').delete(t.id, { requestKey: null })))
+
+    // 2. 删除 friendships（双向）
+    const friendships = await pb.collection('friendships').getFullList({ requestKey: null })
+    await Promise.all(friendships.map(f => pb.collection('friendships').delete(f.id, { requestKey: null })))
+
+    // 3. 删除课程和课表
+    const timetables = await pb.collection('timetables').getFullList({
+      filter: `user = "${userId}"`, requestKey: null,
+    })
+    for (const tt of timetables) {
+      const courses = await pb.collection('courses').getFullList({
+        filter: `timetable = "${tt.id}"`, requestKey: null,
+      })
+      await Promise.all(courses.map(c => pb.collection('courses').delete(c.id, { requestKey: null })))
+      await pb.collection('timetables').delete(tt.id, { requestKey: null })
+    }
+
+    // 4. 删除用户账号
+    await pb.collection('users').delete(userId, { requestKey: null })
+
+    // 5. 登出并清除本地存储
+    localStorage.removeItem('xjtlu_terms_v1')
+    authStore.logout()
+  } catch (e) {
+    deleteError.value = e.message || '注销失败，请重试或联系管理员'
+    deleting.value = false
   }
 }
 
@@ -404,6 +473,41 @@ async function copyUrl() {
   transition: color 0.12s;
 }
 .pwd-toggle:hover { color: var(--accent); }
+
+/* Delete account */
+.delete-confirm {
+  padding: var(--sp-4);
+  background: var(--red-bg);
+  border: 1px solid #E5B4AF;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.delete-warn {
+  font-size: var(--text-sm);
+  color: var(--red);
+  line-height: 1.6;
+  margin: 0;
+}
+.delete-btns {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.confirm-bar-enter-active { transition: opacity 0.15s, transform 0.15s; }
+.confirm-bar-leave-active { transition: opacity 0.15s; }
+.confirm-bar-enter-from  { opacity: 0; transform: translateY(-4px); }
+.confirm-bar-leave-to    { opacity: 0; }
+
+.terms-footer-link {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  text-decoration: none;
+  margin-top: var(--sp-1);
+  align-self: flex-start;
+}
+.terms-footer-link:hover { color: var(--accent); }
 
 /* State messages */
 .state-msg {

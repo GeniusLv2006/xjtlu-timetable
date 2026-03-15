@@ -1,5 +1,33 @@
 <template>
-  <div class="import-page">
+  <!-- 协议门控 -->
+  <div v-if="!termsAccepted" class="terms-gate">
+    <div class="terms-card">
+      <div class="tg-header">
+        <div class="tg-title">使用前请阅读并同意用户协议</div>
+        <div class="tg-sub">首次使用导入功能前需确认以下内容</div>
+      </div>
+      <div class="tg-body">
+        <p>本服务是由个人开发者独立开发和运营的课表辅助工具，<strong>与西交利物浦大学官方不存在任何隶属、授权或合作关系</strong>。</p>
+        <p>课表数据由你通过书签工具从 e-Bridge 页面自行提取并上传，本服务不会直接访问 e-Bridge 系统。<strong>课表数据以 e-Bridge 官方系统为准</strong>，本服务展示内容仅供个人参考，不得用于任何正式考勤、考试安排或法律用途。</p>
+        <p>本服务启用 <strong>Cloudflare</strong> 提供安全防护，并通过 <strong>Cloudflare Web Analytics</strong>（无 Cookie、无跨站追踪）收集聚合访问统计数据。你主动提供的数据（邮箱、课表内容等）仅用于功能实现，不会出售或用于商业目的。</p>
+        <p>你可以随时在"设置"页面注销账号并永久删除全部数据。</p>
+        <router-link to="/terms" target="_blank" class="terms-link">查看完整用户协议与隐私政策 →</router-link>
+      </div>
+      <label class="tg-check">
+        <input type="checkbox" v-model="agreedToTerms" />
+        <span>我已阅读并同意上述<router-link to="/terms" target="_blank">用户协议与隐私政策</router-link></span>
+      </label>
+      <button
+        class="btn btn-primary tg-btn"
+        :disabled="!agreedToTerms"
+        @click="acceptTerms"
+      >
+        同意并继续
+      </button>
+    </div>
+  </div>
+
+  <div v-else class="import-page">
 
     <div class="page-toolbar">
       <h1 class="page-title">导入课表</h1>
@@ -27,7 +55,7 @@
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-body">
-        <div class="step-title">在 ebridge 课表页运行书签</div>
+        <div class="step-title">在 e-Bridge 课表页运行书签</div>
         <div class="step-desc">
           登录 <code class="inline-code">ebridge.xjtlu.edu.cn</code>，打开课表页面，
           等课表加载完毕后点击书签，出现 "✓ HASH 已复制" 提示即成功。
@@ -81,15 +109,25 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+
+// ── 协议门控 ──────────────────────────────────────────────────────────────
+const TERMS_KEY = 'xjtlu_terms_v1'
+const termsAccepted = ref(localStorage.getItem(TERMS_KEY) === '1')
+const agreedToTerms = ref(false)
+function acceptTerms() {
+  localStorage.setItem(TERMS_KEY, '1')
+  termsAccepted.value = true
+}
 import pb from '../lib/pocketbase'
 
 const router = useRouter()
 
 // ── 书签代码 ─────────────────────────────────────────────────────────────────
-const BOOKMARKLET = `javascript:(function(){var f=document.getElementById('myFrame');var src=f&&(f.src||f.getAttribute('src'));if(!src){var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){if((frames[i].src||'').includes('timetableplus')){src=frames[i].src;break;}}}if(!src){alert('未找到课表框架\\n请确保：\\n1. 已登录 ebridge\\n2. 当前页面已展示课表（非空白）');return;}var m=src.match(/[#\\/]([0-9A-Fa-f]{40,})/);if(!m){alert('找到框架但无法提取 HASH，src: '+src.slice(0,80));return;}navigator.clipboard.writeText(m[1].toUpperCase()).then(function(){alert('✓ HASH 已复制到剪贴板\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制以下 HASH：',m[1].toUpperCase());});})();`
+const BOOKMARKLET = `javascript:(function(){var f=document.getElementById('myFrame');var src=f&&(f.src||f.getAttribute('src'));if(!src){var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){if((frames[i].src||'').includes('timetableplus')){src=frames[i].src;break;}}}if(!src){alert('未找到课表框架\\n请确保：\\n1. 已登录 e-Bridge\\n2. 当前页面已展示课表（非空白）');return;}var m=src.match(/[#\\/]([0-9A-Fa-f]{40,})/);if(!m){alert('找到框架但无法提取 HASH，src: '+src.slice(0,80));return;}navigator.clipboard.writeText(m[1].toUpperCase()).then(function(){alert('✓ HASH 已复制到剪贴板\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制以下 HASH：',m[1].toUpperCase());});})();`
 
 // ── 常量 ─────────────────────────────────────────────────────────────────────
 const SCHEDULED_DAY_MAP = {
@@ -292,6 +330,78 @@ async function handleImport() {
 </script>
 
 <style scoped>
+/* ── 协议门控 ────────────────────────────────────────────────────────────── */
+.terms-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: var(--bg);
+}
+.terms-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tg-header {
+  background: #18181A;
+  padding: var(--sp-5) var(--sp-6);
+}
+.tg-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.tg-sub {
+  font-size: var(--text-xs);
+  color: #5A5850;
+}
+.tg-body {
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+.tg-body p {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.7;
+  margin: 0;
+}
+.terms-link {
+  font-size: var(--text-xs);
+  color: var(--accent);
+  text-decoration: none;
+  margin-top: calc(-1 * var(--sp-1));
+}
+.terms-link:hover { text-decoration: underline; }
+.tg-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-6);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.tg-check input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+.tg-check a { color: var(--accent); text-decoration: none; }
+.tg-check a:hover { text-decoration: underline; }
+.tg-btn {
+  width: calc(100% - var(--sp-6) * 2);
+  margin: 0 var(--sp-6) var(--sp-5);
+  justify-content: center;
+  padding: 9px;
+}
+
+/* ── 正文 ─────────────────────────────────────────────────────────────────── */
 .import-page {
   max-width: 600px;
   margin: 0 auto;
