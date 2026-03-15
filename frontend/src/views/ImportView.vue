@@ -37,17 +37,47 @@
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-body">
-        <div class="step-title">添加书签工具</div>
-        <div class="step-desc">
-          复制下方代码，在浏览器书签栏新建书签，将 URL 替换为复制的代码。只需做一次。
+        <div class="step-title">添加书签工具 <span class="step-once">只需做一次</span></div>
+
+        <!-- 方法一：拖拽 -->
+        <div class="method-block">
+          <div class="method-label">方法一：拖拽（推荐）</div>
+          <p class="step-desc">将下方按钮直接拖到浏览器顶部的书签栏即可。</p>
+          <a
+            :href="BOOKMARKLET"
+            class="btn btn-secondary drag-btn"
+            draggable="true"
+            @click.prevent
+          >⚙ 课表书签工具</a>
+          <p class="step-hint">
+            看不到书签栏？按
+            <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>
+            <span class="hint-sep">（Mac：</span>
+            <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>
+            <span class="hint-sep">）</span>
+            显示。
+          </p>
         </div>
-        <div class="code-block">
-          <div class="code-text">{{ BOOKMARKLET }}</div>
-          <div class="code-fade" />
+
+        <!-- 方法二：手动 -->
+        <div class="method-block">
+          <div class="method-label">方法二：手动添加</div>
+          <ol class="step-ol">
+            <li>点击下方"复制书签代码"按钮</li>
+            <li>在书签栏空白处<strong>右键 → 添加书签</strong>（Edge 显示为"添加网页"）</li>
+            <li>名称随意填写，如"课表书签"</li>
+            <li>将地址/URL 栏内容<strong>全部清空</strong>，然后粘贴刚才复制的代码</li>
+            <li>点击保存</li>
+          </ol>
+          <div class="code-block">
+            <div class="code-text">{{ BOOKMARKLET }}</div>
+            <div class="code-fade" />
+          </div>
+          <button class="btn btn-secondary" @click="copyBookmarklet">
+            {{ bookmarkCopied ? '✓ 已复制' : '复制书签代码' }}
+          </button>
         </div>
-        <button class="btn btn-secondary" @click="copyBookmarklet">
-          {{ bookmarkCopied ? '✓ 已复制' : '复制书签代码' }}
-        </button>
+
       </div>
     </div>
 
@@ -460,12 +490,80 @@ async function handleImport() {
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.step-once {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 7px;
 }
 
 .step-desc {
   font-size: var(--text-sm);
   color: var(--text-2);
   line-height: 1.7;
+  margin: 0;
+}
+
+/* Method blocks */
+.method-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.method-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.drag-btn {
+  align-self: flex-start;
+  cursor: grab;
+  user-select: none;
+}
+.drag-btn:active { cursor: grabbing; }
+.step-hint {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  margin: 0;
+  line-height: 1.6;
+}
+.hint-sep { color: var(--text-3); }
+kbd {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.8;
+  color: var(--text-2);
+}
+.step-ol {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.step-ol li {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  line-height: 1.6;
 }
 
 /* Bookmarklet code block */
