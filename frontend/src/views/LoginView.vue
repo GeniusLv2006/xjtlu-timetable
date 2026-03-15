@@ -63,16 +63,12 @@
         </button>
       </form>
 
-      <!-- Toggle -->
+      <!-- Toggle + Disclaimer -->
       <div class="login-footer">
         <button class="toggle-btn" type="button" @click="toggle">
           {{ isRegister ? '已有账号？返回登录' : '还没有账号？注册' }}
         </button>
-      </div>
-
-      <!-- Disclaimer -->
-      <div class="login-disclaimer">
-        本工具为学生自制，与西交利物浦大学官方无关。
+        <p class="login-disclaimer">非官方独立项目，与西交利物浦大学无任何隶属或背书关系。</p>
       </div>
 
     </div>
@@ -244,12 +240,11 @@ async function handleSubmit() {
 
 /* Disclaimer */
 .login-disclaimer {
-  padding: var(--sp-3) var(--sp-6);
-  text-align: center;
+  margin: var(--sp-2) 0 0;
   font-size: 11px;
-  color: #3A3830;
-  border-top: 1px solid #232320;
-  line-height: 1.6;
+  color: var(--text-3);
+  letter-spacing: 0.01em;
+  line-height: 1.5;
 }
 
 /* Invite code field */
