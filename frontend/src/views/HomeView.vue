@@ -59,6 +59,17 @@
       </div>
     </Transition>
 
+    <!-- iCal tip (dismissable, shown once) -->
+    <Transition name="tip-bar">
+      <div v-if="showIcalTip && timetables.length > 0 && !loading" class="ical-tip">
+        <span class="ical-tip-icon">📅</span>
+        <span class="ical-tip-text">
+          可在<router-link to="/settings" class="ical-tip-link">设置</router-link>页生成订阅链接，将课表同步到 Apple Calendar 或 Google Calendar。
+        </span>
+        <button class="ical-tip-close" @click="dismissIcalTip">×</button>
+      </div>
+    </Transition>
+
     <!-- States -->
     <div v-if="loading" class="state-msg">加载中…</div>
     <div v-else-if="error" class="state-msg state-error">{{ error }}</div>
@@ -94,8 +105,15 @@ const greetingWord = computed(() => {
 })
 
 // Show once per browser session
-const GREET_KEY = 'xjtlu_greeted'
+const GREET_KEY    = 'xjtlu_greeted'
+const ICAL_TIP_KEY = 'xjtlu_ical_tip_dismissed'
 const showGreeting = ref(false)
+const showIcalTip  = ref(!localStorage.getItem(ICAL_TIP_KEY))
+
+function dismissIcalTip() {
+  showIcalTip.value = false
+  localStorage.setItem(ICAL_TIP_KEY, '1')
+}
 
 onMounted(() => {
   if (!sessionStorage.getItem(GREET_KEY)) {
@@ -399,6 +417,44 @@ async function deleteTimetable() {
   font-size: var(--text-sm);
   color: var(--text-3);
 }
+
+/* ── iCal tip ────────────────────────────────────────────────────────────── */
+.ical-tip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 9px 14px;
+  margin-bottom: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.ical-tip-icon { flex-shrink: 0; font-size: 14px; }
+.ical-tip-text { flex: 1; line-height: 1.5; }
+.ical-tip-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.ical-tip-link:hover { text-decoration: underline; }
+.ical-tip-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+.ical-tip-close:hover { color: var(--text); }
+.tip-bar-enter-active { transition: opacity 0.2s, transform 0.2s; }
+.tip-bar-leave-active { transition: opacity 0.2s; }
+.tip-bar-enter-from  { opacity: 0; transform: translateY(-4px); }
+.tip-bar-leave-to    { opacity: 0; }
 
 .state-msg {
   padding: var(--sp-10) 0;
