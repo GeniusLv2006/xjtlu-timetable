@@ -75,6 +75,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import pb from '../lib/pocketbase'
 import TimetableGrid from '../components/TimetableGrid.vue'
 
+defineOptions({ name: 'Home' })
+
 // ── Greeting ──────────────────────────────────────────────────────────────
 
 const model = pb.authStore.model

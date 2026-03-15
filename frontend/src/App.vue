@@ -12,7 +12,11 @@
       </div>
     </header>
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <KeepAlive include="Home">
+          <component :is="Component" />
+        </KeepAlive>
+      </router-view>
     </main>
   </div>
 </template>
