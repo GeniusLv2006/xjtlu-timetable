@@ -14,10 +14,6 @@
           <router-link to="/settings" class="nav-item">设置</router-link>
         </nav>
       </div>
-      <div class="sidebar-foot">
-        <span class="foot-copy">© 2026 Tingkai Lyu · Built with Claude Code</span>
-        <router-link to="/terms" class="foot-link">用户协议</router-link>
-      </div>
     </aside>
 
     <!-- ── Main wrap ─────────────────────────────────────────────────── -->
@@ -41,6 +37,11 @@
           </KeepAlive>
         </router-view>
       </main>
+
+      <footer v-if="authStore.isLoggedIn" class="site-footer">
+        <span class="foot-copy">© 2026 Tingkai Lyu · All rights reserved · Built with Claude Code</span>
+        <router-link to="/terms" class="foot-link">用户协议</router-link>
+      </footer>
     </div>
 
   </div>
@@ -124,27 +125,33 @@ const authStore = useAuthStore()
   border-left-color: rgba(255,255,255,0.42);
 }
 
-.sidebar-foot {
+/* ── Site footer ──────────────────────────────────────────────────────── */
+.site-footer {
   flex-shrink: 0;
-  padding: 14px 18px;
-  border-top: 1px solid #272727;
+  border-top: 1px solid var(--border);
+  padding: 14px 32px;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 .foot-copy {
-  font-size: 10px;
-  color: rgba(255,255,255,0.42);
+  font-size: 12px;
+  color: var(--text-3);
   letter-spacing: 0.02em;
-  line-height: 1.6;
 }
 .foot-link {
-  font-size: 10px;
-  color: rgba(255,255,255,0.50);
+  font-size: 12px;
+  color: var(--text-3);
   text-decoration: none;
   transition: color 0.12s;
 }
-.foot-link:hover { color: rgba(255,255,255,0.8); text-decoration: none; }
+.foot-link:hover { color: var(--text-2); text-decoration: none; }
+
+@media (max-width: 768px) {
+  .site-footer { padding: 12px 16px; }
+}
 
 /* ── Main wrap ────────────────────────────────────────────────────────── */
 .main-wrap {
