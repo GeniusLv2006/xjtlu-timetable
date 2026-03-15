@@ -1,10 +1,11 @@
-import PocketBase from 'pocketbase'
+import PocketBase, { LocalAuthStore } from 'pocketbase'
 
 // Separate PocketBase instance exclusively for admin operations.
-// Uses pb.admins.authWithPassword() — tokens stored here never mix
-// with the regular user session in lib/pocketbase.js.
+// Uses its own LocalAuthStore key so the admin token never overwrites
+// the user session stored under the default 'pocketbase_auth' key.
 const adminPb = new PocketBase(
-  import.meta.env.DEV ? 'http://localhost:8091' : window.location.origin
+  import.meta.env.DEV ? 'http://localhost:8091' : window.location.origin,
+  new LocalAuthStore('pb_admin_auth')
 )
 
 export default adminPb
