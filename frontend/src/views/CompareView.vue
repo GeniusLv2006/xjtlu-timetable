@@ -200,7 +200,7 @@ const commonCourses = computed(() =>
 )
 
 const commonCodes = computed(() =>
-  commonCourses.value.map(c => `${c.code}|${c.courses[0].section}`)
+  commonCourses.value.map(c => `${c.code}|${c.activityType}|${c.courses[0].section}`)
 )
 
 const freeSlots = computed(() => {

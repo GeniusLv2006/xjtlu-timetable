@@ -372,7 +372,7 @@ function blockStyle(c) {
   const height = Math.max((eh - sh) * PPH - 2, 20)
   const colors = getColors(c.activity_type)
 
-  const dimmed = props.highlightCodes.length > 0 && !props.highlightCodes.includes(`${c.code}|${c.section}`)
+  const dimmed = props.highlightCodes.length > 0 && !props.highlightCodes.includes(`${c.code}|${c.activity_type}|${c.section}`)
 
   let left = '3px', right = '3px'
   if (props.compareMode) {

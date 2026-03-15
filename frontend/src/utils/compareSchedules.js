@@ -82,15 +82,18 @@ export function findCommonCourses(first, second) {
   const result = []
 
   for (const candidate of base) {
-    const key = `${candidate.code}|${candidate.section}`
+    const key = `${candidate.code}|${candidate.activity_type}|${candidate.section}`
     if (seen.has(key)) continue  // 同一 section 已处理过
 
-    // 每个其他用户的课表中都能找到相同 code + section
+    // 每个其他用户的课表中都能找到相同 code + activity_type + section
     const matches = []
     let allMatch = true
     for (const others of rest) {
       const match = others.find(
-        (c) => c.code === candidate.code && c.section === candidate.section,
+        (c) =>
+          c.code          === candidate.code &&
+          c.activity_type === candidate.activity_type &&
+          c.section       === candidate.section,
       )
       if (!match) { allMatch = false; break }
       matches.push(match)
