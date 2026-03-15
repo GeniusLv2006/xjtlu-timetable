@@ -235,11 +235,21 @@ async function loadMyInvites() {
   }
 }
 
+function _randomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  return code
+}
+
 async function createMyInvite() {
   inviteCreateError.value = ''
   inviteCreating.value = true
   try {
-    const record = await pb.collection('invite_codes').create({}, { requestKey: null })
+    const record = await pb.collection('invite_codes').create(
+      { code: _randomCode() },
+      { requestKey: null }
+    )
     myInvites.value.unshift(record)
   } catch (e) {
     inviteCreateError.value = e.message || '生成失败，请重试'
