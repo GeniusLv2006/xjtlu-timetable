@@ -482,16 +482,18 @@ async function copyUrl() {
   letter-spacing: -0.01em;
 }
 
-/* Two-column grid */
+/* Two-column masonry */
 .settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px 28px;
-  align-items: start;
+  columns: 2;
+  column-gap: 28px;
+}
+.settings-section {
+  break-inside: avoid;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 900px) {
-  .settings-grid { grid-template-columns: 1fr; }
+  .settings-grid { columns: 1; }
 }
 
 /* Section cards */
