@@ -114,14 +114,14 @@ const authStore = useAuthStore()
 }
 .footer-copy {
   font-size: 11px;
-  color: #3A3830;
+  color: #5A5850;
   letter-spacing: 0.03em;
 }
 .footer-link {
   font-size: 11px;
-  color: #3A3830;
+  color: #5A5850;
   text-decoration: none;
   transition: color 0.12s;
 }
-.footer-link:hover { color: #5A5850; }
+.footer-link:hover { color: #8A8680; }
 </style>
