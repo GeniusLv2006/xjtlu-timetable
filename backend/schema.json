@@ -1,0 +1,248 @@
+[
+  {
+    "name": "timetables",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "hash",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "label",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "visibility",
+        "type": "select",
+        "required": false,
+        "options": {
+          "maxSelect": 1,
+          "values": ["public", "friends", "private"]
+        }
+      },
+      {
+        "name": "last_synced",
+        "type": "date",
+        "required": false,
+        "options": { "min": "", "max": "" }
+      }
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\"",
+    "updateRule": "@request.auth.id = user.id",
+    "deleteRule": "@request.auth.id = user.id"
+  },
+  {
+    "name": "courses",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "timetable",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "timetables",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "code",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "activity_type",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "section",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "day",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "start_time",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "end_time",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "location",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "staff",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "weeks",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "identity",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      }
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\"",
+    "updateRule": "@request.auth.id != \"\"",
+    "deleteRule": "@request.auth.id != \"\""
+  },
+  {
+    "name": "friendships",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "from_user",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "to_user",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "required": false,
+        "options": {
+          "maxSelect": 1,
+          "values": ["pending", "accepted"]
+        }
+      }
+    ],
+    "listRule": "@request.auth.id = from_user.id || @request.auth.id = to_user.id",
+    "viewRule": "@request.auth.id = from_user.id || @request.auth.id = to_user.id",
+    "createRule": "@request.auth.id = from_user.id",
+    "updateRule": "@request.auth.id = to_user.id",
+    "deleteRule": "@request.auth.id = from_user.id || @request.auth.id = to_user.id"
+  },
+  {
+    "name": "semesters",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "name",
+        "type": "text",
+        "required": true,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "required": true,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "name": "weeks_total",
+        "type": "number",
+        "required": false,
+        "options": { "min": null, "max": null, "noDecimal": true }
+      },
+      {
+        "name": "is_current",
+        "type": "bool",
+        "required": false,
+        "options": {}
+      }
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "name": "ical_tokens",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "token",
+        "type": "text",
+        "required": true,
+        "options": { "min": 32, "max": 64, "pattern": "" }
+      }
+    ],
+    "listRule": "@request.auth.id = user.id",
+    "viewRule": "@request.auth.id = user.id",
+    "createRule": "@request.auth.id = user.id",
+    "updateRule": null,
+    "deleteRule": "@request.auth.id = user.id"
+  }
+]

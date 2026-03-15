@@ -1,0 +1,256 @@
+
+<style>
+*{box-sizing:border-box}
+input[type=text]{width:100%;padding:8px 12px;font-family:var(--font-mono);font-size:12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);outline:none}
+input[type=text]:focus{border-color:var(--color-border-primary)}
+code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px}
+.step{display:flex;gap:12px;margin-bottom:18px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;color:var(--color-text-secondary)}
+.step-body{flex:1}
+.step-title{font-size:13px;font-weight:500;margin-bottom:5px;color:var(--color-text-primary)}
+.step-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.7}
+.bm-wrap{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;margin:8px 0;font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary);word-break:break-all;max-height:58px;overflow:hidden;position:relative;line-height:1.5}
+.bm-fade{position:absolute;bottom:0;left:0;right:0;height:22px;background:linear-gradient(transparent,var(--color-background-secondary))}
+.notice{font-size:11px;color:var(--color-text-warning);background:var(--color-background-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);padding:8px 12px;margin-top:12px;line-height:1.6}
+.info{font-size:11px;color:var(--color-text-info);background:var(--color-background-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md);padding:8px 12px;margin-top:10px;line-height:1.6}
+</style>
+<div id="root" style="padding:1rem 0"></div>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+const {useState}=React;
+const h=React.createElement;
+
+const BOOKMARKLET=`javascript:(function(){var f=document.getElementById('myFrame');var src=f&&(f.src||f.getAttribute('src'));if(!src){var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){if((frames[i].src||'').includes('timetableplus')){src=frames[i].src;break;}}}if(!src){alert('未找到课表框架\\n请确保：\\n1. 已登录 ebridge\\n2. 当前页面已展示课表（非空白）');return;}var m=src.match(/[#\\/]([0-9A-Fa-f]{40,})/);if(!m){alert('找到框架但无法提取 HASH，src: '+src.slice(0,80));return;}navigator.clipboard.writeText(m[1].toUpperCase()).then(function(){alert('✓ HASH 已复制到剪贴板\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制以下 HASH：',m[1].toUpperCase());});})();`;
+
+const DAYS_ORDER=['MON','TUE','WED','THU','FRI','SAT','SUN'];
+const DAY_ZH={MON:'周一',TUE:'周二',WED:'周三',THU:'周四',FRI:'周五',SAT:'周六',SUN:'周日'};
+const SCHEDULED_DAY_MAP={'0':'MON','1':'TUE','2':'WED','3':'THU','4':'FRI','5':'SAT','6':'SUN'};
+const PPH=60;
+
+const COLOR_STYLES={
+  'rgb(170,170,255)':{bg:'#EEEDFE',bor:'#AFA9EC',tx:'#3C3489'},
+  'rgb(168,205,251)':{bg:'#E6F1FB',bor:'#85B7EB',tx:'#0C447C'},
+  'rgb(237,207,254)':{bg:'#FBEAF0',bor:'#ED93B1',tx:'#72243E'},
+  'rgb(169,235,179)':{bg:'#EAF3DE',bor:'#97C459',tx:'#27500A'},
+  'rgb(160,223,243)':{bg:'#E1F5EE',bor:'#5DCAA5',tx:'#085041'},
+};
+const TYPE_COLOR={
+  'Lecture':  {bg:'#EEEDFE',bor:'#AFA9EC',tx:'#3C3489'},
+  'Comp.Lab': {bg:'#E6F1FB',bor:'#85B7EB',tx:'#0C447C'},
+  'Tutorial': {bg:'#FBEAF0',bor:'#ED93B1',tx:'#72243E'},
+  'Lab':      {bg:'#EAF3DE',bor:'#97C459',tx:'#27500A'},
+  'Seminar':  {bg:'#E1F5EE',bor:'#5DCAA5',tx:'#085041'},
+};
+function getCS(color,activityType){
+  const byColor=COLOR_STYLES[(color||'').replace(/\s/g,'')];
+  if(byColor)return{...byColor};
+  if(activityType)for(const k of Object.keys(TYPE_COLOR))
+    if(activityType.toLowerCase().includes(k.toLowerCase()))return{...TYPE_COLOR[k]};
+  return{bg:'#F1EFE8',bor:'#B4B2A9',tx:'#5F5E5A'};
+}
+function isoToCST(iso,subtractMinutes=0){
+  if(!iso)return null;
+  let hh,mm;
+  if(iso.includes('T')){const d=new Date(iso);hh=d.getUTCHours();mm=d.getUTCMinutes();}
+  else{const part=iso.includes(' ')?iso.split(' ')[1]:iso;[hh,mm]=(part||'00:00').split(':').map(Number);}
+  const totalMin=hh*60+mm+480-subtractMinutes;
+  const ch=Math.floor(totalMin/60)%24,cm=totalMin%60;
+  return{frac:ch+cm/60,str:`${String(ch).padStart(2,'0')}:${String(cm).padStart(2,'0')}`};
+}
+function normalizeActivities(raw){
+  if(!Array.isArray(raw))return[];
+  return raw.map(a=>{
+    if(!a)return null;
+    const startRaw=a.startTime||a.start||'';
+    const endRaw=a.endTime||a.end||'';
+    const nameRaw=a.name||'';
+    const activityType=a.activityType||'';
+    const day=SCHEDULED_DAY_MAP[String(a.scheduledDay)]
+      ||(startRaw?['SUN','MON','TUE','WED','THU','FRI','SAT'][new Date(startRaw).getDay()]:'MON');
+    const start=isoToCST(startRaw,0);
+    const end=isoToCST(endRaw,10);
+    const m=nameRaw.match(/^([A-Z]+\d+)[-–]([^-–]+)[-–](.+)$/);
+    const code=m?m[1]:(a.moduleId||nameRaw.split(/[-–]/)[0]||nameRaw);
+    const type=activityType||(m?m[2].trim():'');
+    return{
+      id:a.identity||a.id||Math.random().toString(36).slice(2),
+      code,type,section:m?m[3].trim():'',full:nameRaw,day,
+      sh:start?.frac??9,eh:end?.frac??10,
+      st:start?.str??'--:--',et:end?.str??'--:--',
+      loc:(a.location||'').trim(),
+      teachers:(a.staff||'').split(',').map(s=>s.trim()).filter(Boolean),
+      weeks:a.weekPattern||a.week||'',
+      color:a.color||a.colour||'',
+    };
+  }).filter(Boolean);
+}
+function extractHash(input){
+  const s=(input||'').trim();
+  const m=s.match(/[#/]([0-9A-Fa-f]{40,})/);
+  if(m)return m[1].toUpperCase();
+  if(/^[0-9A-Fa-f]{40,}$/.test(s))return s.toUpperCase();
+  return null;
+}
+
+function Grid({courses}){
+  const activeDays=DAYS_ORDER.filter(d=>courses.some(c=>c.day===d));
+  if(!activeDays.length)return h('div',{style:{textAlign:'center',padding:'40px 0',fontSize:13,color:'var(--color-text-tertiary)'}},'暂无课程数据');
+  const allSh=courses.map(c=>c.sh).filter(n=>isFinite(n));
+  const allEh=courses.map(c=>c.eh).filter(n=>isFinite(n));
+  const gridStart=Math.floor(Math.min(...allSh));
+  const gridEnd=Math.ceil(Math.max(...allEh));
+  const gridH=(gridEnd-gridStart)*PPH;
+  const hourTicks=[];for(let i=gridStart;i<=gridEnd;i++)hourTicks.push(i);
+  return h('div',{style:{overflowX:'auto',marginTop:8}},
+    h('div',{style:{display:'flex',minWidth:360}},
+      h('div',{style:{width:44,flexShrink:0,paddingTop:30}},
+        h('div',{style:{position:'relative',height:gridH}},
+          hourTicks.map(hr=>h('div',{key:hr,style:{position:'absolute',top:(hr-gridStart)*PPH-7,right:4,fontSize:10,color:'var(--color-text-tertiary)',lineHeight:1,whiteSpace:'nowrap'}},`${String(hr).padStart(2,'0')}:00`))
+        )
+      ),
+      activeDays.map(day=>{
+        const dc=courses.filter(c=>c.day===day);
+        return h('div',{key:day,style:{flex:1,minWidth:90}},
+          h('div',{style:{height:30,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:500,color:'var(--color-text-secondary)',borderBottom:'0.5px solid var(--color-border-tertiary)',borderLeft:'0.5px solid var(--color-border-tertiary)'}},`${day} ${DAY_ZH[day]}`),
+          h('div',{style:{position:'relative',height:gridH,borderLeft:'0.5px solid var(--color-border-tertiary)'}},
+            hourTicks.map(hr=>h('div',{key:hr,style:{position:'absolute',top:(hr-gridStart)*PPH,left:0,right:0,height:'0.5px',background:'var(--color-border-tertiary)'}})),
+            hourTicks.slice(0,-1).map(hr=>h('div',{key:'hh'+hr,style:{position:'absolute',top:(hr+0.5-gridStart)*PPH,left:0,right:0,height:'0.5px',background:'var(--color-border-tertiary)',opacity:0.4}})),
+            dc.map(c=>{
+              const top=(c.sh-gridStart)*PPH,ht=Math.max((c.eh-c.sh)*PPH-2,20);
+              const cs=getCS(c.color,c.type);
+              return h('div',{key:c.id,style:{position:'absolute',top:top+1,left:3,right:3,height:ht,background:cs.bg,border:`0.5px solid ${cs.bor}`,borderRadius:4,padding:'3px 5px',overflow:'hidden'}},
+                h('div',{style:{fontSize:11,fontWeight:500,color:cs.tx,lineHeight:1.3}},c.code),
+                ht>28&&h('div',{style:{fontSize:10,color:cs.tx,opacity:0.85,lineHeight:1.2}},c.type),
+                ht>44&&c.teachers.length>0&&h('div',{style:{fontSize:10,color:cs.tx,opacity:0.75,lineHeight:1.2}},c.teachers.join(', ')),
+                ht>62&&h('div',{style:{fontSize:10,color:cs.tx,opacity:0.7,lineHeight:1.2}},c.loc),
+                ht>78&&h('div',{style:{fontSize:10,color:cs.tx,opacity:0.6,lineHeight:1.2}},`Week: ${c.weeks}`),
+                ht>94&&h('div',{style:{fontSize:10,color:cs.tx,opacity:0.6,lineHeight:1.2}},`${c.st} – ${c.et}`)
+              );
+            })
+          )
+        );
+      })
+    )
+  );
+}
+
+function App(){
+  const [tab,setTab]=useState('import');
+  const [hashInput,setHashInput]=useState('');
+  const [courses,setCourses]=useState([]);
+  const [status,setStatus]=useState(null);
+  const [rawData,setRawData]=useState(null);
+  const [copied,setCopied]=useState(false);
+
+  async function copyBm(){
+    try{await navigator.clipboard.writeText(BOOKMARKLET);setCopied(true);setTimeout(()=>setCopied(false),2000);}
+    catch(e){alert('请手动复制书签代码');}
+  }
+  async function fetchTimetable(){
+    const hash=extractHash(hashInput);
+    if(!hash){setStatus({err:'无法识别 HASH，请粘贴剪贴板内容'});return;}
+    setStatus('loading');
+    try{
+      const res=await fetch(
+        `https://timetableplus.xjtlu.edu.cn/ptapi/api/enrollment/hash/${hash}/activity`,
+        {headers:{Accept:'application/json'}}
+      );
+      if(!res.ok)throw new Error(`HTTP ${res.status} — HASH 可能已失效，请重新运行书签`);
+      const data=await res.json();
+      const list=Array.isArray(data)?data:(data.data||data.activities||data.result||[]);
+      if(!list.length)throw new Error('返回空数据，可能是空课表或 HASH 已过期');
+      setRawData(list);   // ← 存完整数组
+      setCourses(normalizeActivities(list));
+      setStatus('ok');
+      setTab('preview');
+    }catch(e){setStatus({err:e.message});}
+  }
+
+  const tabs=[
+    {id:'import',label:'导入'},
+    {id:'preview',label:courses.length?`课表预览 (${courses.length})`:'课表预览'},
+    rawData&&{id:'raw',label:`原始字段 (${rawData.length})`},
+  ].filter(Boolean);
+
+  return h('div',{style:{paddingTop:'0.5rem'}},
+    h('div',{style:{display:'flex',borderBottom:'0.5px solid var(--color-border-tertiary)',marginBottom:20}},
+      tabs.map(t=>h('button',{key:t.id,onClick:()=>setTab(t.id),style:{padding:'8px 16px',fontSize:13,cursor:'pointer',background:'none',border:'none',borderBottom:tab===t.id?'2px solid var(--color-text-primary)':'2px solid transparent',fontWeight:tab===t.id?500:400,color:tab===t.id?'var(--color-text-primary)':'var(--color-text-secondary)',marginBottom:-1}},t.label))
+    ),
+
+    tab==='import'&&h('div',null,
+      h('div',{className:'step'},
+        h('div',{className:'step-num'},'1'),
+        h('div',{className:'step-body'},
+          h('div',{className:'step-title'},'添加书签'),
+          h('div',{className:'step-desc'},'点击下方按钮复制书签代码，在浏览器书签栏新建书签，将 URL 字段替换为复制的代码。只需做一次。'),
+          h('div',{className:'bm-wrap'},BOOKMARKLET,h('div',{className:'bm-fade'})),
+          h('button',{onClick:copyBm,style:{marginTop:8,fontSize:12,padding:'5px 12px',cursor:'pointer',borderRadius:'var(--border-radius-md)'}},copied?'✓ 已复制':'复制书签代码')
+        )
+      ),
+      h('div',{className:'step'},
+        h('div',{className:'step-num'},'2'),
+        h('div',{className:'step-body'},
+          h('div',{className:'step-title'},'在 ebridge 课表页运行书签'),
+          h('div',{className:'step-desc'},'登录 ',h('code',null,'ebridge.xjtlu.edu.cn'),'，打开课表页面，等课表加载完毕后点击书签。',h('br'),'出现 "✓ HASH 已复制到剪贴板" 提示即成功。'),
+          h('div',{className:'info'},'书签直接从页面内的 iframe 元素读取链接，无需打开 DevTools 或子页面。')
+        )
+      ),
+      h('div',{className:'step'},
+        h('div',{className:'step-num'},'3'),
+        h('div',{className:'step-body'},
+          h('div',{className:'step-title'},'粘贴并获取课表'),
+          h('div',{style:{display:'flex',gap:8,marginTop:8}},
+            h('input',{type:'text',value:hashInput,onChange:e=>setHashInput(e.target.value),onKeyDown:e=>e.key==='Enter'&&fetchTimetable(),placeholder:'粘贴 HASH（64位十六进制）'}),
+            h('button',{onClick:fetchTimetable,disabled:status==='loading'||!hashInput.trim(),style:{padding:'8px 14px',fontSize:13,cursor:'pointer',whiteSpace:'nowrap',borderRadius:'var(--border-radius-md)',flexShrink:0,opacity:hashInput.trim()?1:0.5}},status==='loading'?'获取中…':'获取课表')
+          ),
+          status&&status.err&&h('div',{style:{fontSize:12,color:'var(--color-text-danger)',marginTop:6}},status.err),
+          status==='ok'&&h('div',{style:{fontSize:12,color:'var(--color-text-success)',marginTop:6}},'✓ 已加载 '+courses.length+' 节课'),
+        )
+      ),
+      h('div',{className:'notice'},'⚠ HASH 是课表的只读访问凭证，持有者无需登录即可查询你的课表。',h('br'),'有效期由学校服务端控制，可能在学期结束或重新选课后失效。失效后重新运行书签获取新 HASH 即可。'),
+      h('div',{style:{marginTop:16,padding:'10px 14px',background:'var(--color-background-secondary)',borderRadius:'var(--border-radius-md)'}},
+        h('div',{style:{fontSize:11,fontWeight:500,color:'var(--color-text-secondary)',marginBottom:8}},'课程类型颜色'),
+        h('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px 16px'}},
+          Object.entries(TYPE_COLOR).map(([lb,s])=>
+            h('div',{key:lb,style:{display:'flex',alignItems:'center',gap:5}},
+              h('div',{style:{width:10,height:10,borderRadius:2,background:s.bg,border:`0.5px solid ${s.bor}`,flexShrink:0}}),
+              h('span',{style:{fontSize:11,color:'var(--color-text-secondary)'}},lb)
+            )
+          )
+        )
+      )
+    ),
+
+    tab==='preview'&&h('div',null,
+      courses.length===0
+        ?h('div',{style:{textAlign:'center',padding:'40px 0',fontSize:13,color:'var(--color-text-tertiary)'}},'请先在「导入」标签获取课表')
+        :h('div',null,
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}},
+            h('div',null,
+              h('div',{style:{fontSize:12,color:'var(--color-text-secondary)'}},'已加载 '+courses.length+' 节课'),
+              h('div',{style:{fontSize:11,color:'var(--color-text-tertiary)',marginTop:2}},[...new Set(courses.map(c=>c.code))].join(' · '))
+            ),
+            h('button',{onClick:()=>setTab('import'),style:{fontSize:11,padding:'4px 10px',cursor:'pointer',borderRadius:'var(--border-radius-md)',color:'var(--color-text-secondary)'}},'重新导入')
+          ),
+          h(Grid,{courses})
+        )
+    ),
+
+    tab==='raw'&&rawData&&h('div',null,
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
+        h('div',{style:{fontSize:12,color:'var(--color-text-secondary)'}},'API 完整原始返回（'+rawData.length+' 条）'),
+        h('button',{
+          onClick:()=>navigator.clipboard.writeText(JSON.stringify(rawData,null,2)),
+          style:{fontSize:11,padding:'4px 10px',cursor:'pointer',borderRadius:'var(--border-radius-md)',color:'var(--color-text-secondary)'}
+        },'复制全部')
+      ),
+      h('pre',{style:{fontSize:10,fontFamily:'var(--font-mono)',background:'var(--color-background-secondary)',padding:12,borderRadius:'var(--border-radius-md)',overflow:'auto',color:'var(--color-text-secondary)',lineHeight:1.6,whiteSpace:'pre-wrap',wordBreak:'break-all',maxHeight:'600px'}},
+        JSON.stringify(rawData,null,2)
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
