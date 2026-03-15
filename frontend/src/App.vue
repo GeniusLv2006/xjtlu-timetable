@@ -31,6 +31,12 @@ const authStore = useAuthStore()
 </script>
 
 <style scoped>
+#layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .site-header {
   background: #18181A;
   border-bottom: 1px solid #2C2C2E;
@@ -97,6 +103,7 @@ const authStore = useAuthStore()
 }
 
 .site-footer {
+  background: #18181A;
   border-top: 1px solid #2C2C2E;
   padding: 12px var(--sp-4);
   display: flex;
@@ -116,5 +123,5 @@ const authStore = useAuthStore()
   text-decoration: none;
   transition: color 0.12s;
 }
-.footer-link:hover { color: #8A8680; }
+.footer-link:hover { color: #5A5850; }
 </style>
