@@ -28,6 +28,7 @@ const routes = [
     path: '/compare/:userId',
     name: 'Compare',
     component: () => import('../views/CompareView.vue'),
+    meta: { public: true },
   },
   {
     path: '/friends',

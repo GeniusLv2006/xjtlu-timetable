@@ -101,8 +101,13 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import pb from '../lib/pocketbase'
+import adminPb from '../lib/adminPb'
 import TimetableGrid from '../components/TimetableGrid.vue'
 import { findCommonCourses, findFreeSlots } from '../utils/compareSchedules'
+
+// Use adminPb when accessed from admin panel (bypasses visibility rules)
+const isAdmin = adminPb.authStore.isValid && adminPb.authStore.isAdmin
+const client = isAdmin ? adminPb : pb
 
 const route  = useRoute()
 const userId = route.params.userId
@@ -129,18 +134,27 @@ onMounted(async () => {
   try {
     myId.value = pb.authStore.model?.id ?? ''
 
-    const [myTTs, otherTTs] = await Promise.all([
-      pb.collection('timetables').getFullList({
-        filter: `user = "${myId.value}"`,
-        sort: '-created',
-        requestKey: null,
-      }),
-      pb.collection('timetables').getFullList({
+    const fetches = [
+      client.collection('timetables').getFullList({
         filter: `user = "${userId}"`,
         sort: '-created',
         requestKey: null,
       }),
-    ])
+    ]
+    if (myId.value && myId.value !== userId) {
+      fetches.unshift(
+        client.collection('timetables').getFullList({
+          filter: `user = "${myId.value}"`,
+          sort: '-created',
+          requestKey: null,
+        })
+      )
+    }
+
+    const results = await Promise.all(fetches)
+    const [myTTs, otherTTs] = myId.value && myId.value !== userId
+      ? results
+      : [[], results[0]]
 
     myTimetables.value    = myTTs
     otherTimetables.value = otherTTs
@@ -164,7 +178,7 @@ onMounted(async () => {
 async function loadCourses(timetableId, target) {
   if (!timetableId) { target.value = []; return }
   try {
-    target.value = await pb.collection('courses').getFullList({
+    target.value = await client.collection('courses').getFullList({
       filter: `timetable = "${timetableId}"`,
       requestKey: null,
     })
