@@ -116,9 +116,8 @@
               {{ inv.uses }}/{{ inv.max_uses || '∞' }} 次
               <template v-if="inv.expires_at"> · {{ inv.expires_at.slice(0, 10) }} 到期</template>
             </span>
-            <span class="invite-item-status">{{ inv.is_active ? '有效' : '停用' }}</span>
+            <span class="invite-item-status">{{ inv.is_active ? '有效' : '已停用' }}</span>
             <button class="btn btn-secondary btn-xs" @click="copyInvite(inv.code)">复制</button>
-            <button class="btn btn-danger btn-xs" @click="deleteMyInvite(inv)">删除</button>
           </div>
         </div>
         <p v-else-if="!inviteCreating && inviteLoaded" class="section-desc">暂无邀请码，点击上方按钮生成。</p>
@@ -214,8 +213,9 @@ const inviteSettings = computed(() => ({
 
 const inviteQuotaLeft = computed(() => {
   const quota = authStore.model?.invite_quota || 0
-  if (quota === 0) return '不限个'
-  return `${quota - myInvites.value.length} / ${quota} 个`
+  const used  = myInvites.value.length
+  if (quota === 0) return `已创建 ${used} 个（不限上限）`
+  return `${used} / ${quota} 个`
 })
 
 const inviteQuotaExhausted = computed(() => {
