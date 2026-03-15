@@ -100,6 +100,8 @@ const authStore = useAuthStore()
 
 .main-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .site-footer {
@@ -114,14 +116,14 @@ const authStore = useAuthStore()
 }
 .footer-copy {
   font-size: 11px;
-  color: #5A5850;
+  color: #8A8680;
   letter-spacing: 0.03em;
 }
 .footer-link {
   font-size: 11px;
-  color: #5A5850;
+  color: #8A8680;
   text-decoration: none;
   transition: color 0.12s;
 }
-.footer-link:hover { color: #8A8680; }
+.footer-link:hover { color: #C0BBB0; }
 </style>

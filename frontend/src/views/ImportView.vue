@@ -331,7 +331,7 @@ async function handleImport() {
 <style scoped>
 /* ── 协议门控 ────────────────────────────────────────────────────────────── */
 .terms-gate {
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
