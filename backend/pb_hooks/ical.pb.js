@@ -170,6 +170,16 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
 
   var userId = tokenRecord.getString('user')
 
+  // 1b. 验证用户未被停用
+  try {
+    var userRecord = $app.dao().findRecordById('users', userId)
+    if (userRecord.getBool('is_banned')) {
+      return c.json(403, { error: 'Account suspended' })
+    }
+  } catch (e) {
+    return c.json(404, { error: 'User not found' })
+  }
+
   // 2. 查当前学期
   var semester
   try {
