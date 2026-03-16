@@ -9,7 +9,7 @@
       </div>
 
       <form class="card-form" @submit.prevent="handleSubmit">
-        <div class="field-group">
+        <div v-if="!authStore.tempPwd" class="field-group">
           <label class="field-label">当前密码（初始密码）</label>
           <div class="pwd-wrap">
             <input
@@ -95,7 +95,8 @@ const error        = ref('')
 
 async function handleSubmit() {
   error.value = ''
-  if (!oldPwd.value || !newPwd.value || !newPwdConfirm.value) {
+  const currentPwd = authStore.tempPwd || oldPwd.value
+  if (!currentPwd || !newPwd.value || !newPwdConfirm.value) {
     error.value = '请填写所有字段'
     return
   }
@@ -107,7 +108,7 @@ async function handleSubmit() {
     error.value = '新密码至少 8 位'
     return
   }
-  if (newPwd.value === oldPwd.value) {
+  if (newPwd.value === currentPwd) {
     error.value = '新密码不能与当前密码相同'
     return
   }
@@ -118,7 +119,7 @@ async function handleSubmit() {
     await pb.collection('users').update(
       userId,
       {
-        oldPassword:     oldPwd.value,
+        oldPassword:     currentPwd,
         password:        newPwd.value,
         passwordConfirm: newPwdConfirm.value,
         must_change_pwd: false,
@@ -127,6 +128,7 @@ async function handleSubmit() {
     )
     // Re-authenticate with new password so token stays valid
     await pb.collection('users').authWithPassword(authStore.model.email, newPwd.value)
+    authStore.tempPwd = ''
     router.push('/')
   } catch (e) {
     error.value = e.message || '密码修改失败，请确认当前密码是否正确'

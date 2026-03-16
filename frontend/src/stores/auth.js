@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const model = ref(pb.authStore.model)
+  const tempPwd = ref('')
   // isLoggedIn must depend on model (a Vue ref) so that computed() re-evaluates
   // after login. pb.authStore.isValid is a plain JS property — Vue cannot track it,
   // so computed(() => pb.authStore.isValid) would return a stale cached value.
@@ -23,6 +24,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email, password) {
     await pb.collection('users').authWithPassword(email, password, { requestKey: null })
+    if (pb.authStore.model?.must_change_pwd) {
+      tempPwd.value = password
+    }
     const redirect = router.currentRoute.value.query.redirect
     router.push(redirect && typeof redirect === 'string' && !redirect.startsWith('/login') ? redirect : '/')
   }
@@ -40,5 +44,5 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/login')
   }
 
-  return { model, isLoggedIn, login, register, logout }
+  return { model, isLoggedIn, tempPwd, login, register, logout }
 })
