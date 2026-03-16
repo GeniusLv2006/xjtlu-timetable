@@ -55,12 +55,33 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import pb from './lib/pocketbase'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const siteNotice     = ref('')
 const noticeDismissed = ref(false)
+
+// Validate the session against the server.
+// If the user was deleted (401) or suspended (400), clear local auth and redirect to login.
+async function validateSession() {
+  if (!pb.authStore.isValid) return
+  try {
+    await pb.collection('users').authRefresh({ requestKey: null })
+  } catch {
+    pb.authStore.clear()
+    router.push('/login')
+  }
+}
+
+// Re-validate when the tab becomes visible (catches delete/ban while tab was in background)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && authStore.isLoggedIn) {
+    validateSession()
+  }
+})
 
 async function fetchNotice() {
   try {
@@ -70,7 +91,10 @@ async function fetchNotice() {
 }
 
 onMounted(() => {
-  if (authStore.isLoggedIn) fetchNotice()
+  if (authStore.isLoggedIn) {
+    fetchNotice()
+    validateSession()
+  }
 })
 
 watch(() => authStore.isLoggedIn, (v) => {
