@@ -113,21 +113,23 @@
                   </span>
                 </td>
                 <td class="dimmed">{{ fmtDate(u.created) }}</td>
-                <td class="action-cell">
-                  <router-link :to="`/compare/${u.id}`" class="btn btn-secondary btn-xs" target="_blank">
-                    查看课表
-                  </router-link>
-                  <button class="btn btn-secondary btn-xs" @click="openChangeEmail(u)">改邮箱</button>
-                  <button class="btn btn-secondary btn-xs" @click="openResetPwd(u)">重置密码</button>
-                  <button class="btn btn-secondary btn-xs" @click="openInvitePerms(u)">邀请权限</button>
-                  <button
-                    class="btn btn-xs"
-                    :class="u.is_banned ? 'btn-primary' : 'btn-danger'"
-                    @click="toggleBan(u)"
-                  >
-                    {{ u.is_banned ? '恢复' : '停用' }}
-                  </button>
-                  <button class="btn btn-danger btn-xs" @click="deleteUser(u)">删除</button>
+                <td>
+                  <div class="action-cell">
+                    <router-link :to="`/compare/${u.id}`" class="btn btn-secondary btn-xs" target="_blank">
+                      查看课表
+                    </router-link>
+                    <button class="btn btn-secondary btn-xs" @click="openChangeEmail(u)">改邮箱</button>
+                    <button class="btn btn-secondary btn-xs" @click="openResetPwd(u)">重置密码</button>
+                    <button class="btn btn-secondary btn-xs" @click="openInvitePerms(u)">邀请权限</button>
+                    <button
+                      class="btn btn-xs"
+                      :class="u.is_banned ? 'btn-primary' : 'btn-danger'"
+                      @click="toggleBan(u)"
+                    >
+                      {{ u.is_banned ? '恢复' : '停用' }}
+                    </button>
+                    <button class="btn btn-danger btn-xs" @click="deleteUser(u)">删除</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -172,8 +174,10 @@
                     设为当前
                   </button>
                 </td>
-                <td class="action-cell">
-                  <button class="btn btn-danger btn-xs" @click="deleteSemester(s)">删除</button>
+                <td>
+                  <div class="action-cell">
+                    <button class="btn btn-danger btn-xs" @click="deleteSemester(s)">删除</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -303,13 +307,15 @@
                     {{ inv.is_active ? '有效' : '停用' }}
                   </span>
                 </td>
-                <td class="action-cell">
-                  <button
-                    class="btn btn-xs"
-                    :class="inv.is_active ? 'btn-danger' : 'btn-primary'"
-                    @click="toggleInvite(inv)"
-                  >{{ inv.is_active ? '停用' : '启用' }}</button>
-                  <button class="btn btn-danger btn-xs" @click="deleteInvite(inv)">删除</button>
+                <td>
+                  <div class="action-cell">
+                    <button
+                      class="btn btn-xs"
+                      :class="inv.is_active ? 'btn-danger' : 'btn-primary'"
+                      @click="toggleInvite(inv)"
+                    >{{ inv.is_active ? '停用' : '启用' }}</button>
+                    <button class="btn btn-danger btn-xs" @click="deleteInvite(inv)">删除</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
