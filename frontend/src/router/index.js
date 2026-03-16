@@ -47,6 +47,12 @@ const routes = [
     meta: { public: true },
   },
   {
+    path: '/changelog',
+    name: 'Changelog',
+    component: () => import('../views/ChangelogView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/change-password',
     name: 'ChangePassword',
     component: () => import('../views/ChangePasswordView.vue'),

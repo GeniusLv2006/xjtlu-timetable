@@ -36,6 +36,17 @@
         <button class="notice-close" @click="noticeDismissed = true">×</button>
       </div>
 
+      <!-- Changelog banner -->
+      <div v-if="changelogEntry && !changelogDismissed" class="changelog-banner">
+        <span>
+          <strong>{{ changelogEntry.version }}</strong> 已发布 &nbsp;·&nbsp; {{ changelogEntry.title }}
+        </span>
+        <div class="changelog-banner-right">
+          <router-link to="/changelog" class="changelog-link" @click="dismissChangelog">查看详情</router-link>
+          <button class="notice-close" @click="dismissChangelog">×</button>
+        </div>
+      </div>
+
       <main class="main-content">
         <router-view v-slot="{ Component }">
           <KeepAlive include="Home">
@@ -46,7 +57,10 @@
 
       <footer v-if="authStore.isLoggedIn" class="site-footer">
         <span class="foot-copy">© 2026 Tingkai Lyu · All rights reserved · Built with Claude Code</span>
-        <router-link to="/terms" class="foot-link">用户协议</router-link>
+        <div class="foot-links">
+          <router-link to="/changelog" class="foot-link">更新日志</router-link>
+          <router-link to="/terms" class="foot-link">用户协议</router-link>
+        </div>
       </footer>
     </div>
 
@@ -55,14 +69,17 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import pb from './lib/pocketbase'
 
 const authStore = useAuthStore()
 const router = useRouter()
-const siteNotice     = ref('')
+const route  = useRoute()
+const siteNotice      = ref('')
 const noticeDismissed = ref(false)
+const changelogEntry    = ref(null)
+const changelogDismissed = ref(false)
 
 // Validate the session against the server.
 // If the user was deleted (401) or suspended (400), clear local auth and redirect to login.
@@ -90,15 +107,43 @@ async function fetchNotice() {
   } catch { /* ignore — collection may not exist yet */ }
 }
 
+async function fetchChangelog() {
+  try {
+    const list = await pb.collection('changelogs').getList(1, 1, {
+      sort: '-published_at',
+      requestKey: null,
+    })
+    if (!list.items.length) return
+    const latest = list.items[0]
+    const seen = localStorage.getItem('xjtlu_last_changelog_seen')
+    if (!seen || latest.published_at > seen) {
+      changelogEntry.value = latest
+    }
+  } catch { /* ignore */ }
+}
+
+function dismissChangelog() {
+  if (changelogEntry.value) {
+    localStorage.setItem('xjtlu_last_changelog_seen', changelogEntry.value.published_at)
+  }
+  changelogDismissed.value = true
+}
+
 onMounted(() => {
   if (authStore.isLoggedIn) {
     fetchNotice()
+    fetchChangelog()
     validateSession()
   }
 })
 
 watch(() => authStore.isLoggedIn, (v) => {
-  if (v) fetchNotice()
+  if (v) { fetchNotice(); fetchChangelog() }
+})
+
+// Auto-dismiss when user navigates to /changelog
+watch(() => route.name, (name) => {
+  if (name === 'Changelog') dismissChangelog()
 })
 </script>
 
@@ -191,6 +236,10 @@ watch(() => authStore.isLoggedIn, (v) => {
   color: var(--text-3);
   letter-spacing: 0.02em;
 }
+.foot-links {
+  display: flex;
+  gap: 16px;
+}
 .foot-link {
   font-size: var(--text-sm);
   color: var(--text-3);
@@ -282,6 +331,35 @@ watch(() => authStore.isLoggedIn, (v) => {
   transition: opacity 0.12s;
 }
 .notice-close:hover { opacity: 1; }
+
+/* ── Changelog banner ─────────────────────────────────────────────────── */
+.changelog-banner {
+  background: #1A2A1A;
+  border-bottom: 1px solid #2D4A2D;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-sm);
+  color: #7BC47B;
+  flex-shrink: 0;
+}
+.changelog-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.changelog-link {
+  font-size: var(--text-xs);
+  color: #7BC47B;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.12s;
+}
+.changelog-link:hover { opacity: 0.8; }
+.changelog-banner .notice-close { color: #7BC47B; }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

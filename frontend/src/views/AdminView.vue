@@ -378,6 +378,45 @@
 
         </div>
 
+        <!-- ── Changelogs tab ──────────────────────────────────────── -->
+        <div v-if="activeTab === 'changelogs'" class="tab-content">
+
+          <div class="tab-toolbar">
+            <button class="btn btn-primary btn-sm" @click="openChangelogModal(null)">+ 新建公告</button>
+          </div>
+
+          <div v-if="changelogsLoading" class="state-msg">加载中…</div>
+          <div v-else-if="changelogsError" class="state-msg state-error">{{ changelogsError }}</div>
+
+          <table v-else class="admin-table">
+            <thead>
+              <tr>
+                <th>版本号</th>
+                <th>标题</th>
+                <th>发布时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="changelogs.length === 0">
+                <td colspan="4" class="empty-cell">暂无公告</td>
+              </tr>
+              <tr v-for="cl in changelogs" :key="cl.id">
+                <td><span class="version-badge">{{ cl.version }}</span></td>
+                <td>{{ cl.title }}</td>
+                <td class="mono-cell dimmed">{{ fmtDate(cl.published_at) }}</td>
+                <td>
+                  <div class="action-cell">
+                    <button class="btn btn-secondary btn-xs" @click="openChangelogModal(cl)">编辑</button>
+                    <button class="btn btn-danger btn-xs" @click="deleteChangelog(cl)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+
       </div><!-- /admin-body -->
 
       <!-- ── Create User Modal ──────────────────────────────────────────── -->
@@ -549,6 +588,36 @@
         </div>
       </div>
 
+      <!-- ── Changelog Modal ────────────────────────────────────────── -->
+      <div v-if="changelogModal" class="modal-overlay" @click.self="changelogModal = false">
+        <div class="modal-card modal-card-lg">
+          <h3 class="modal-title">{{ editingChangelog ? '编辑公告' : '新建公告' }}</h3>
+          <div class="field-group">
+            <label class="field-label">版本号</label>
+            <input v-model="changelogForm.version" class="field-input" placeholder="例：v1.3.0" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">标题</label>
+            <input v-model="changelogForm.title" class="field-input" placeholder="简短描述本次更新" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">发布时间</label>
+            <input v-model="changelogForm.published_at" type="date" class="field-input" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">内容</label>
+            <RichTextEditor v-model="changelogForm.content" />
+          </div>
+          <p v-if="changelogsError" class="msg-error">{{ changelogsError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="changelogModal = false">取消</button>
+            <button class="btn btn-primary" :disabled="changelogSaving" @click="saveChangelog">
+              {{ changelogSaving ? '保存中…' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -556,6 +625,7 @@
 <script setup>
 import { ref, computed, watch, reactive, onMounted } from 'vue'
 import adminPb from '../lib/adminPb'
+import RichTextEditor from '../components/RichTextEditor.vue'
 
 // ── Admin auth ────────────────────────────────────────────────────────────
 const loginEmail    = ref('')
@@ -594,6 +664,7 @@ const tabs = [
   { key: 'invites',    label: '邀请码' },
   { key: 'siteConfig', label: '系统设置' },
   { key: 'logs',       label: '日志' },
+  { key: 'changelogs', label: '公告' },
 ]
 const activeTab = ref('users')
 
@@ -603,6 +674,7 @@ watch(activeTab, (tab) => {
   if (tab === 'invites')    loadInvites()
   if (tab === 'siteConfig') { loadSiteConfig(); loadStats() }
   if (tab === 'logs')       loadLogs()
+  if (tab === 'changelogs') loadChangelogs()
 })
 
 function loadAll() {
@@ -1130,6 +1202,84 @@ async function loadLogs() {
     logsLoading.value = false
   }
 }
+
+// ── Changelogs ─────────────────────────────────────────────────────────────
+const changelogs       = ref([])
+const changelogsLoading = ref(false)
+const changelogsError   = ref('')
+const changelogModal    = ref(false)
+const changelogSaving   = ref(false)
+const editingChangelog  = ref(null)
+const changelogForm     = reactive({ version: '', title: '', published_at: '', content: '' })
+
+async function loadChangelogs() {
+  changelogsLoading.value = true
+  changelogsError.value = ''
+  try {
+    changelogs.value = await adminPb.collection('changelogs').getFullList({
+      sort: '-published_at', requestKey: null,
+    })
+  } catch (e) {
+    changelogsError.value = e.message
+  } finally {
+    changelogsLoading.value = false
+  }
+}
+
+function openChangelogModal(cl) {
+  changelogsError.value = ''
+  editingChangelog.value = cl
+  if (cl) {
+    changelogForm.version    = cl.version
+    changelogForm.title      = cl.title
+    changelogForm.published_at = cl.published_at?.slice(0, 10) ?? ''
+    changelogForm.content    = cl.content || ''
+  } else {
+    changelogForm.version    = ''
+    changelogForm.title      = ''
+    changelogForm.published_at = new Date().toISOString().slice(0, 10)
+    changelogForm.content    = ''
+  }
+  changelogModal.value = true
+}
+
+async function saveChangelog() {
+  changelogsError.value = ''
+  changelogSaving.value = true
+  try {
+    const data = {
+      version:      changelogForm.version.trim(),
+      title:        changelogForm.title.trim(),
+      published_at: changelogForm.published_at,
+      content:      changelogForm.content,
+    }
+    if (editingChangelog.value) {
+      const updated = await adminPb.collection('changelogs').update(
+        editingChangelog.value.id, data, { requestKey: null }
+      )
+      const idx = changelogs.value.findIndex(c => c.id === editingChangelog.value.id)
+      if (idx !== -1) changelogs.value[idx] = updated
+    } else {
+      const created = await adminPb.collection('changelogs').create(data, { requestKey: null })
+      changelogs.value.unshift(created)
+    }
+    changelogModal.value = false
+  } catch (e) {
+    changelogsError.value = e.message
+  } finally {
+    changelogSaving.value = false
+  }
+}
+
+async function deleteChangelog(cl) {
+  if (!confirm(`删除公告「${cl.version} ${cl.title}」？`)) return
+  try {
+    await adminPb.collection('changelogs').delete(cl.id, { requestKey: null })
+    changelogs.value = changelogs.value.filter(c => c.id !== cl.id)
+  } catch (e) {
+    changelogsError.value = e.message
+  }
+}
 </script>
 
 <style scoped>
@@ -1382,6 +1532,19 @@ tr:hover .icon-btn { opacity: 1; }
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+}
+.modal-card-lg {
+  max-width: 700px;
+}
+.version-badge {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--accent);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 .modal-title {
   font-size: var(--text-md);
