@@ -141,9 +141,14 @@ watch(() => authStore.isLoggedIn, (v) => {
   if (v) { fetchNotice(); fetchChangelog() }
 })
 
-// Auto-dismiss when user navigates to /changelog
+// Auto-dismiss when user navigates to /changelog;
+// re-check for new changelogs on every other navigation (catches entries published after page load)
 watch(() => route.name, (name) => {
-  if (name === 'Changelog') dismissChangelog()
+  if (name === 'Changelog') {
+    dismissChangelog()
+  } else if (authStore.isLoggedIn && !changelogDismissed.value) {
+    fetchChangelog()
+  }
 })
 </script>
 
