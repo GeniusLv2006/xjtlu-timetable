@@ -50,8 +50,20 @@
       <!-- 右列：列表 -->
       <div class="friends-col">
 
-        <!-- 初次加载 -->
-        <div v-if="listLoading" class="state-msg">加载中…</div>
+        <!-- 初次加载：骨架屏 -->
+        <div v-if="listLoading" class="skeleton-wrap">
+          <div class="skeleton-section">
+            <div class="skeleton-title"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row skeleton-row-short"></div>
+            <div class="skeleton-row"></div>
+          </div>
+          <div class="skeleton-section">
+            <div class="skeleton-title"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row skeleton-row-short"></div>
+          </div>
+        </div>
         <div v-else-if="listError" class="state-msg state-error">{{ listError }}</div>
 
         <template v-else>
@@ -72,8 +84,10 @@
                   <span class="friend-id">{{ secondaryName(f, 'from') }}</span>
                 </div>
                 <div class="friend-actions">
-                  <button class="btn btn-primary btn-sm" @click="acceptRequest(f)">接受</button>
-                  <button class="btn btn-danger  btn-sm" @click="deleteRequest(f)">拒绝</button>
+                  <button class="btn btn-primary btn-sm" :disabled="pendingIds.has(f.id)" @click="acceptRequest(f)">
+                    {{ pendingIds.has(f.id) ? '…' : '接受' }}
+                  </button>
+                  <button class="btn btn-danger  btn-sm" :disabled="pendingIds.has(f.id)" @click="deleteRequest(f)">拒绝</button>
                 </div>
               </div>
             </template>
@@ -87,7 +101,7 @@
                   <span class="friend-id">{{ secondaryName(f, 'to') }}</span>
                 </div>
                 <div class="friend-actions">
-                  <button class="btn btn-danger btn-sm" @click="deleteRequest(f)">取消</button>
+                  <button class="btn btn-danger btn-sm" :disabled="pendingIds.has(f.id)" @click="deleteRequest(f)">取消</button>
                 </div>
               </div>
             </template>
@@ -112,8 +126,10 @@
               <div class="friend-actions">
                 <template v-if="confirmRemoveId === f.id">
                   <span class="confirm-label">确认删除？</span>
-                  <button class="btn btn-danger btn-sm" @click="confirmRemove(f)">是</button>
-                  <button class="btn btn-secondary btn-sm" @click="confirmRemoveId = null">否</button>
+                  <button class="btn btn-danger btn-sm" :disabled="pendingIds.has(f.id)" @click="confirmRemove(f)">
+                    {{ pendingIds.has(f.id) ? '…' : '是' }}
+                  </button>
+                  <button class="btn btn-secondary btn-sm" :disabled="pendingIds.has(f.id)" @click="confirmRemoveId = null">否</button>
                 </template>
                 <template v-else>
                   <router-link
@@ -122,7 +138,7 @@
                   >
                     对比课表
                   </router-link>
-                  <button class="btn btn-danger btn-sm" @click="confirmRemoveId = f.id">删除</button>
+                  <button class="btn btn-danger btn-sm" :disabled="pendingIds.has(f.id)" @click="confirmRemoveId = f.id">删除</button>
                 </template>
               </div>
             </div>
@@ -136,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import pb from '../lib/pocketbase'
 
 // ── 我的 ID ───────────────────────────────────────────────────────────────
@@ -289,8 +305,10 @@ async function sendRequest() {
 
 // ── 接受请求 ──────────────────────────────────────────────────────────────
 async function acceptRequest(f) {
+  if (pendingIds.has(f.id)) return
+  pendingIds.add(f.id)
   try {
-    const updated = await pb.collection('friendships').update(
+    await pb.collection('friendships').update(
       f.id, { status: 'accepted' }, { requestKey: null }
     )
     // 本地同步更新
@@ -300,20 +318,28 @@ async function acceptRequest(f) {
     }
   } catch (e) {
     listError.value = e.message
+  } finally {
+    pendingIds.delete(f.id)
   }
 }
 
 // ── 删除/拒绝/取消/解除 ───────────────────────────────────────────────────
 async function deleteRequest(f) {
+  if (pendingIds.has(f.id)) return
+  pendingIds.add(f.id)
   try {
     await pb.collection('friendships').delete(f.id, { requestKey: null })
     allFriendships.value = allFriendships.value.filter(x => x.id !== f.id)
   } catch (e) {
     listError.value = e.message
+  } finally {
+    pendingIds.delete(f.id)
   }
 }
 
 const confirmRemoveId = ref(null)
+// Track in-flight operations to prevent double-clicks
+const pendingIds = reactive(new Set())
 
 async function confirmRemove(f) {
   confirmRemoveId.value = null
@@ -488,6 +514,42 @@ async function confirmRemove(f) {
   color: var(--text-3);
 }
 .state-error { color: var(--red); }
+
+/* Skeleton loader */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.skeleton-section {
+  padding: var(--sp-5) 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.skeleton-title,
+.skeleton-row {
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, rgba(255,255,255,0.06) 50%, var(--surface-2) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-title {
+  height: 14px;
+  width: 120px;
+}
+.skeleton-row {
+  height: 32px;
+  width: 100%;
+}
+.skeleton-row-short {
+  width: 70%;
+}
 
 .panel-empty {
   font-size: var(--text-sm);

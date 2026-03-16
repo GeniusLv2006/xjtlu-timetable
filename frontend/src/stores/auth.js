@@ -23,7 +23,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email, password) {
     await pb.collection('users').authWithPassword(email, password, { requestKey: null })
-    router.push('/')
+    const redirect = router.currentRoute.value.query.redirect
+    router.push(redirect && typeof redirect === 'string' && !redirect.startsWith('/login') ? redirect : '/')
   }
 
   async function register(email, password, passwordConfirm, inviteCode) {

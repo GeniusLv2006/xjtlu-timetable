@@ -329,52 +329,51 @@
             <button
               class="btn btn-sm"
               :class="logsSubTab === 'login' ? 'btn-primary' : 'btn-secondary'"
-              @click="logsSubTab = 'login'"
+              @click="switchLogsTab('login')"
             >登录日志</button>
             <button
               class="btn btn-sm"
               :class="logsSubTab === 'ical' ? 'btn-primary' : 'btn-secondary'"
-              @click="logsSubTab = 'ical'"
+              @click="switchLogsTab('ical')"
             >iCal 访问日志</button>
+            <span class="tab-toolbar-hint" v-if="!logsLoading && logsTotalItems > 0">
+              共 {{ logsTotalItems }} 条
+            </span>
           </div>
 
           <div v-if="logsLoading" class="state-msg">加载中…</div>
           <div v-else-if="logsError" class="state-msg state-error">{{ logsError }}</div>
 
-          <table v-else class="admin-table">
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>用户邮箱</th>
-                <th>完整 IP</th>
-                <th>地区</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-if="logsSubTab === 'login'">
-                <tr v-if="loginLogs.length === 0">
-                  <td colspan="4" class="empty-cell">暂无登录日志</td>
+          <template v-else>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>用户邮箱</th>
+                  <th>完整 IP</th>
+                  <th>地区</th>
                 </tr>
-                <tr v-for="log in loginLogs" :key="log.id">
+              </thead>
+              <tbody>
+                <tr v-if="currentPageLogs.length === 0">
+                  <td colspan="4" class="empty-cell">暂无日志</td>
+                </tr>
+                <tr v-for="log in currentPageLogs" :key="log.id">
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
                   <td>{{ log.email || '—' }}</td>
                   <td class="mono-cell">{{ log.ip_full || '—' }}</td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
                 </tr>
-              </template>
-              <template v-else>
-                <tr v-if="icalLogs.length === 0">
-                  <td colspan="4" class="empty-cell">暂无 iCal 访问日志</td>
-                </tr>
-                <tr v-for="log in icalLogs" :key="log.id">
-                  <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
-                  <td>{{ log.email || '—' }}</td>
-                  <td class="mono-cell">{{ log.ip_full || '—' }}</td>
-                  <td>{{ fmtLogCountry(log.country) }}</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div v-if="logsTotalPages > 1" class="logs-pagination">
+              <button class="btn btn-secondary btn-xs" :disabled="logsPage === 1" @click="setLogsPage(logsPage - 1)">‹ 上一页</button>
+              <span class="logs-page-info">第 {{ logsPage }} / {{ logsTotalPages }} 页</span>
+              <button class="btn btn-secondary btn-xs" :disabled="logsPage === logsTotalPages" @click="setLogsPage(logsPage + 1)">下一页 ›</button>
+            </div>
+          </template>
 
         </div>
 
@@ -482,6 +481,7 @@
               </button>
             </div>
           </div>
+          <p class="field-hint" style="color:var(--amber)">密码重置后用户现有会话将立即失效，下次操作时将被强制重新登录并要求修改密码。</p>
           <p v-if="resetPwdError" class="msg-error">{{ resetPwdError }}</p>
           <div class="modal-actions">
             <button class="btn btn-secondary" @click="resetPwdModal = false">取消</button>
@@ -1170,11 +1170,14 @@ function fmtDate(iso) {
 }
 
 // ── Logs ───────────────────────────────────────────────────────────────────
-const logsSubTab    = ref('login')
-const loginLogs     = ref([])
-const icalLogs      = ref([])
-const logsLoading   = ref(false)
-const logsError     = ref('')
+const LOGS_PER_PAGE   = 50
+const logsSubTab      = ref('login')
+const currentPageLogs = ref([])
+const logsPage        = ref(1)
+const logsTotalItems  = ref(0)
+const logsTotalPages  = ref(1)
+const logsLoading     = ref(false)
+const logsError       = ref('')
 
 const logCountryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
 function fmtLogCountry(code) {
@@ -1186,21 +1189,33 @@ function fmtLogTime(iso) {
   return iso.slice(0, 16).replace('T', ' ')
 }
 
-async function loadLogs() {
+async function loadLogs(page = 1) {
   logsLoading.value = true
   logsError.value = ''
   try {
-    const [ll, il] = await Promise.all([
-      adminPb.collection('login_logs').getList(1, 200, { sort: '-created', requestKey: null }),
-      adminPb.collection('ical_access_logs').getList(1, 200, { sort: '-created', requestKey: null }),
-    ])
-    loginLogs.value = ll.items
-    icalLogs.value  = il.items
+    const collection = logsSubTab.value === 'login' ? 'login_logs' : 'ical_access_logs'
+    const res = await adminPb.collection(collection).getList(page, LOGS_PER_PAGE, {
+      sort: '-created',
+      requestKey: null,
+    })
+    currentPageLogs.value = res.items
+    logsTotalItems.value  = res.totalItems
+    logsTotalPages.value  = res.totalPages
+    logsPage.value        = page
   } catch (e) {
     logsError.value = e.message
   } finally {
     logsLoading.value = false
   }
+}
+
+function switchLogsTab(tab) {
+  logsSubTab.value = tab
+  loadLogs(1)
+}
+
+function setLogsPage(page) {
+  loadLogs(page)
 }
 
 // ── Changelogs ─────────────────────────────────────────────────────────────
@@ -1700,4 +1715,23 @@ tr:hover .icon-btn { opacity: 1; }
   letter-spacing: 0.06em;
 }
 .text-faded { color: var(--text-3); }
+
+/* Logs pagination */
+.tab-toolbar-hint {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  margin-left: auto;
+}
+.logs-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-2);
+}
+.logs-page-info {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
 </style>

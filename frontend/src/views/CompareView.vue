@@ -4,7 +4,7 @@
     <!-- Toolbar -->
     <div class="page-toolbar">
       <div class="toolbar-left">
-        <router-link to="/" class="back-link">← 返回</router-link>
+        <a class="back-link" href="#" @click.prevent="goBack">← 返回</a>
         <h1 class="page-title">课表对比</h1>
       </div>
       <div v-if="!loading && !loadError" class="toolbar-selects">
@@ -99,7 +99,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import pb from '../lib/pocketbase'
 import adminPb from '../lib/adminPb'
 import TimetableGrid from '../components/TimetableGrid.vue'
@@ -110,7 +110,16 @@ const isAdmin = adminPb.authStore.isValid && adminPb.authStore.isAdmin
 const client = isAdmin ? adminPb : pb
 
 const route  = useRoute()
+const router = useRouter()
 const userId = route.params.userId
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/friends')
+  }
+}
 
 const DAY_ZH = { MON:'周一', TUE:'周二', WED:'周三', THU:'周四', FRI:'周五', SAT:'周六', SUN:'周日' }
 

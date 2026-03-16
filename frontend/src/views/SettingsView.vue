@@ -22,14 +22,19 @@
             <button class="btn btn-secondary btn-sm" @click="startNickname">修改</button>
           </template>
           <template v-else>
-            <input
-              v-model="nicknameInput"
-              class="field-input nickname-input"
-              maxlength="30"
-              placeholder="输入昵称"
-              @keydown.enter="saveNickname"
-              @keydown.escape="cancelNickname"
-            />
+            <div class="nickname-input-wrap">
+              <input
+                v-model="nicknameInput"
+                class="field-input nickname-input"
+                maxlength="30"
+                placeholder="输入昵称"
+                @keydown.enter="saveNickname"
+                @keydown.escape="cancelNickname"
+              />
+              <span class="char-count" :class="{ 'char-count-warn': nicknameInput.length >= 25 }">
+                {{ nicknameInput.length }}/30
+              </span>
+            </div>
             <button class="btn btn-primary btn-sm" :disabled="nicknameSaving" @click="saveNickname">
               {{ nicknameSaving ? '…' : '保存' }}
             </button>
@@ -66,8 +71,8 @@
         <!-- 已有 token -->
         <template v-if="icalUrl">
           <div class="url-row">
-            <input :value="icalUrl" readonly class="field-input url-input" />
-            <button class="btn btn-secondary" @click="copyUrl">
+            <input :value="icalUrl" readonly class="field-input url-input" @click="copyUrl" title="点击复制" />
+            <button class="btn btn-secondary url-copy-btn" @click="copyUrl">
               {{ copied ? '✓ 已复制' : '复制' }}
             </button>
           </div>
@@ -212,11 +217,15 @@
     <section class="settings-section">
       <h2 class="section-title">账号操作</h2>
       <div class="action-row">
+        <button class="btn btn-secondary" :disabled="exporting" @click="exportData">
+          {{ exporting ? '导出中…' : '导出我的数据' }}
+        </button>
         <button class="btn btn-danger" @click="authStore.logout">退出登录</button>
         <button class="btn btn-danger" @click="showDeleteConfirm = true" :disabled="deleting">
           注销账号
         </button>
       </div>
+      <p v-if="exportError" class="msg-error">{{ exportError }}</p>
 
       <!-- 注销确认 -->
       <Transition name="confirm-bar">
@@ -404,17 +413,19 @@ async function changePassword() {
   }
   pwdLoading.value = true
   try {
+    const email = authStore.model.email
     await pb.collection('users').update(
       authStore.model.id,
       { oldPassword: oldPwd.value, password: newPwd.value, passwordConfirm: newPwdConfirm.value, must_change_pwd: false },
       { requestKey: null }
     )
-    pwdSuccess.value = '密码已更新，请重新登录。'
+    // Re-authenticate with new password so the session stays valid
+    await pb.collection('users').authWithPassword(email, newPwd.value, { requestKey: null })
+    pwdSuccess.value = '密码已更新 ✓'
     oldPwd.value = ''
     newPwd.value = ''
     newPwdConfirm.value = ''
-    // PocketBase invalidates token after password change — log out
-    setTimeout(() => authStore.logout(), 1500)
+    setTimeout(() => { pwdSuccess.value = '' }, 3000)
   } catch (e) {
     pwdError.value = e.message
   } finally {
@@ -525,6 +536,49 @@ async function resetToken() {
   } catch (e) {
     icalError.value = e.message
     icalLoading.value = false
+  }
+}
+
+// ── 导出数据 ──────────────────────────────────────────────────────────────
+const exporting   = ref(false)
+const exportError = ref('')
+
+async function exportData() {
+  exporting.value = true
+  exportError.value = ''
+  try {
+    const userId = authStore.model.id
+    const timetables = await pb.collection('timetables').getFullList({
+      filter: `user = "${userId}"`, requestKey: null,
+    })
+    const allCourses = []
+    for (const tt of timetables) {
+      const courses = await pb.collection('courses').getFullList({
+        filter: `timetable = "${tt.id}"`, requestKey: null,
+      })
+      allCourses.push(...courses.map(c => ({ ...c, timetable_label: tt.label })))
+    }
+    const payload = {
+      exported_at: new Date().toISOString(),
+      user: { id: authStore.model.id, email: authStore.model.email, nickname: authStore.model.nickname },
+      timetables: timetables.map(({ id, label, hash, visibility, last_synced, created }) =>
+        ({ id, label, hash, visibility, last_synced, created })
+      ),
+      courses: allCourses.map(({ id, timetable, timetable_label, code, activity_type, section, day, start_time, end_time, location, staff, weeks }) =>
+        ({ id, timetable, timetable_label, code, activity_type, section, day, start_time, end_time, location, staff, weeks })
+      ),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `xjtlu-timetable-export-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    exportError.value = e.message || '导出失败，请重试'
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -668,10 +722,26 @@ async function copyUrl() {
   flex: 1;
   min-width: 0;
 }
-.nickname-input {
+.nickname-input-wrap {
+  position: relative;
   flex: 1;
   min-width: 0;
 }
+.nickname-input {
+  width: 100%;
+  padding-right: 44px;
+}
+.char-count {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--text-3);
+  pointer-events: none;
+  font-family: var(--font-mono);
+}
+.char-count-warn { color: var(--amber); }
 .code-row {
   display: flex;
   align-items: center;
@@ -688,14 +758,22 @@ async function copyUrl() {
 .url-row {
   display: flex;
   gap: var(--sp-2);
+  align-items: stretch;
 }
 .url-input {
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-2);
   background: var(--surface-2);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.url-copy-btn {
+  flex-shrink: 0;
 }
 
 /* Action row */

@@ -120,11 +120,17 @@
         </div>
 
         <div v-if="phase === 'fetching'" class="status-line msg-info">正在从 timetableplus 拉取数据…</div>
-        <div v-if="phase === 'saving'" class="status-line msg-info">
+        <div v-if="phase === 'saving' && isReimport" class="status-line msg-info">
+          检测到已有相同课表，正在同步更新… ({{ savedCount + skippedCount }}&thinsp;/&thinsp;{{ totalCount }})
+        </div>
+        <div v-else-if="phase === 'saving'" class="status-line msg-info">
           正在写入数据库… ({{ savedCount + skippedCount }}&thinsp;/&thinsp;{{ totalCount }})
         </div>
         <div v-if="error" class="status-line msg-error">{{ error }}</div>
-        <div v-if="phase === 'done'" class="status-line msg-success">
+        <div v-if="phase === 'done' && isReimport" class="status-line msg-success">
+          ✓ 同步完成：新增 {{ savedCount }} 条，已跳过 {{ skippedCount }} 条（无变化）。即将跳转…
+        </div>
+        <div v-else-if="phase === 'done'" class="status-line msg-success">
           ✓ 导入完成：新增 {{ savedCount }} 条，跳过 {{ skippedCount }} 条（已存在）。即将跳转…
         </div>
       </div>
@@ -177,6 +183,7 @@ const savedCount    = ref(0)
 const skippedCount  = ref(0)
 const totalCount    = ref(0)
 const bookmarkCopied = ref(false)
+const isReimport    = ref(false)
 
 const phaseLabel = computed(() => {
   if (phase.value === 'fetching') return '获取中…'
@@ -267,6 +274,7 @@ async function handleImport() {
   savedCount.value  = 0
   skippedCount.value = 0
   totalCount.value  = 0
+  isReimport.value  = false
 
   const hash = extractHash(hashInput.value)
   if (!hash) {
@@ -312,6 +320,7 @@ async function handleImport() {
     })
     if (existing.totalItems > 0) {
       timetable = existing.items[0]
+      isReimport.value = true
       await pb.collection('timetables').update(timetable.id, {
         last_synced: new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z',
       })

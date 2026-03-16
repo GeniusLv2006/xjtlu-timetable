@@ -68,7 +68,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const authStore = useAuthStore()
   if (!to.meta.public && !authStore.isLoggedIn) {
-    return { name: 'Login' }
+    return { name: 'Login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : undefined }
   }
   // Force password change if admin set must_change_pwd
   if (
