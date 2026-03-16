@@ -52,19 +52,16 @@ onMounted(async () => {
 
 <style scoped>
 .changelog-page {
-  padding: 28px 32px 40px;
-  max-width: 860px;
-}
-
-@media (max-width: 768px) {
-  .changelog-page { padding: 20px 16px 32px; }
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-10);
 }
 
 .page-toolbar {
   display: flex;
   align-items: center;
   gap: var(--sp-4);
-  margin-bottom: 28px;
+  margin-bottom: var(--sp-6);
   padding-bottom: var(--sp-4);
   border-bottom: 1px solid var(--border);
 }
