@@ -171,14 +171,35 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
   var userId = tokenRecord.getString('user')
 
   // 1b. 验证用户未被停用
+  var userRecord
   try {
-    var userRecord = $app.dao().findRecordById('users', userId)
+    userRecord = $app.dao().findRecordById('users', userId)
     if (userRecord.getBool('is_banned')) {
       return c.json(403, { error: 'Account suspended' })
     }
   } catch (e) {
     return c.json(404, { error: 'User not found' })
   }
+
+  // 1c. 记录 iCal 访问日志
+  var logIp = (c.request().header.get('CF-Connecting-IP') ||
+               c.request().header.get('X-Real-IP') ||
+               c.request().header.get('X-Forwarded-For') || '').split(',')[0].trim()
+  var logCountry = c.request().header.get('CF-IPCountry') || ''
+  var logPrefix = logIp
+  var v4m = logIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
+  if (v4m) { logPrefix = v4m[1] + '.x' }
+  else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
+  try {
+    var logCol = $app.dao().findCollectionByNameOrId('ical_access_logs')
+    var logRec = new Record(logCol)
+    logRec.set('user_id', userId)
+    logRec.set('email', userRecord.email())
+    logRec.set('ip_full', logIp)
+    logRec.set('ip_prefix', logPrefix)
+    logRec.set('country', logCountry)
+    $app.dao().saveRecord(logRec)
+  } catch (_) {}
 
   // 2. 查当前学期
   var semester

@@ -72,6 +72,8 @@
             </button>
           </div>
 
+          <p class="ical-warn">此链接包含你的专属访问凭证，请勿截图发布或分享给他人。</p>
+
           <div class="action-row">
             <a v-if="isProduction" :href="webcalUrl" class="btn btn-primary">
               在日历 App 中订阅
@@ -97,6 +99,29 @@
               <p>点击上方按钮下载 .ics 文件，然后双击导入 Calendar。</p>
               <p>部署到生产环境后可直接使用订阅链接。</p>
             </template>
+          </div>
+
+          <!-- iCal 访问记录 -->
+          <div class="ical-logs">
+            <div class="ical-logs-title">最近访问记录</div>
+            <div v-if="accessLogsLoading" class="state-msg">加载中…</div>
+            <div v-else-if="accessLogs.length === 0" class="state-msg">暂无访问记录</div>
+            <table v-else class="logs-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>IP 段</th>
+                  <th>地区</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="log in accessLogs" :key="log.id">
+                  <td class="log-time">{{ fmtLogDate(log.created) }}</td>
+                  <td class="log-ip">{{ log.ip_prefix || '—' }}</td>
+                  <td class="log-country">{{ fmtCountry(log.country) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </template>
 
@@ -397,10 +422,12 @@ async function changePassword() {
   }
 }
 
-const icalToken   = ref(null)
-const icalLoading = ref(true)
-const icalError   = ref('')
-const copied      = ref(false)
+const icalToken        = ref(null)
+const icalLoading      = ref(true)
+const icalError        = ref('')
+const copied           = ref(false)
+const accessLogs       = ref([])
+const accessLogsLoading = ref(false)
 
 const PROD_BASE = 'https://timetable.xjtlu.uk'
 
@@ -417,6 +444,32 @@ const webcalUrl = computed(() =>
   icalUrl.value.replace(/^https?:/, 'webcal:')
 )
 
+async function loadAccessLogs() {
+  accessLogsLoading.value = true
+  try {
+    const res = await pb.collection('ical_access_logs').getList(1, 20, {
+      sort: '-created',
+      requestKey: null,
+    })
+    accessLogs.value = res.items
+  } catch { accessLogs.value = [] } finally {
+    accessLogsLoading.value = false
+  }
+}
+
+const countryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
+function fmtCountry(code) {
+  if (!code) return '—'
+  try { return countryNames.of(code) || code } catch { return code }
+}
+
+function fmtLogDate(str) {
+  if (!str) return '—'
+  const d = new Date(str)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 onMounted(async () => {
   // 刷新用户信息，确保 can_invite 等字段是最新值
   try { await pb.collection('users').authRefresh({ requestKey: null }) } catch { /* ignore */ }
@@ -425,7 +478,10 @@ onMounted(async () => {
     const records = await pb.collection('ical_tokens').getFullList({
       requestKey: null,
     })
-    if (records.length > 0) icalToken.value = records[0]
+    if (records.length > 0) {
+      icalToken.value = records[0]
+      loadAccessLogs()
+    }
   } catch (e) {
     icalError.value = e.message
   } finally {
@@ -448,6 +504,7 @@ async function generateToken() {
       token: randomHex32(),
     }, { requestKey: null })
     icalToken.value = record
+    accessLogs.value = []  // 重置后旧日志清空
   } catch (e) {
     icalError.value = e.message
   } finally {
@@ -665,6 +722,51 @@ async function copyUrl() {
   padding-left: 18px;
 }
 .instructions li { margin-bottom: 3px; }
+
+/* iCal warning */
+.ical-warn {
+  font-size: var(--text-xs);
+  color: #D97706;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* iCal access logs */
+.ical-logs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.ical-logs-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+}
+.logs-table th {
+  text-align: left;
+  color: var(--text-3);
+  font-weight: 600;
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.logs-table td {
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  vertical-align: middle;
+}
+.logs-table tbody tr:last-child td { border-bottom: none; }
+.log-time { font-family: var(--font-mono); white-space: nowrap; color: var(--text); }
+.log-ip   { font-family: var(--font-mono); }
+.log-country { color: var(--text-2); }
 
 /* Password field with toggle */
 .pwd-wrap {

@@ -322,6 +322,62 @@
           </table>
         </div>
 
+        <!-- ── Logs tab ────────────────────────────────────────────── -->
+        <div v-if="activeTab === 'logs'" class="tab-content">
+
+          <div class="tab-toolbar">
+            <button
+              class="btn btn-sm"
+              :class="logsSubTab === 'login' ? 'btn-primary' : 'btn-secondary'"
+              @click="logsSubTab = 'login'"
+            >登录日志</button>
+            <button
+              class="btn btn-sm"
+              :class="logsSubTab === 'ical' ? 'btn-primary' : 'btn-secondary'"
+              @click="logsSubTab = 'ical'"
+            >iCal 访问日志</button>
+          </div>
+
+          <div v-if="logsLoading" class="state-msg">加载中…</div>
+          <div v-else-if="logsError" class="state-msg state-error">{{ logsError }}</div>
+
+          <table v-else class="admin-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>用户邮箱</th>
+                <th>完整 IP</th>
+                <th>地区</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-if="logsSubTab === 'login'">
+                <tr v-if="loginLogs.length === 0">
+                  <td colspan="4" class="empty-cell">暂无登录日志</td>
+                </tr>
+                <tr v-for="log in loginLogs" :key="log.id">
+                  <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
+                  <td>{{ log.email || '—' }}</td>
+                  <td class="mono-cell">{{ log.ip_full || '—' }}</td>
+                  <td>{{ fmtLogCountry(log.country) }}</td>
+                </tr>
+              </template>
+              <template v-else>
+                <tr v-if="icalLogs.length === 0">
+                  <td colspan="4" class="empty-cell">暂无 iCal 访问日志</td>
+                </tr>
+                <tr v-for="log in icalLogs" :key="log.id">
+                  <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
+                  <td>{{ log.email || '—' }}</td>
+                  <td class="mono-cell">{{ log.ip_full || '—' }}</td>
+                  <td>{{ fmtLogCountry(log.country) }}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+        </div>
+
       </div><!-- /admin-body -->
 
       <!-- ── Create User Modal ──────────────────────────────────────────── -->
@@ -537,6 +593,7 @@ const tabs = [
   { key: 'semesters',  label: '学期管理' },
   { key: 'invites',    label: '邀请码' },
   { key: 'siteConfig', label: '系统设置' },
+  { key: 'logs',       label: '日志' },
 ]
 const activeTab = ref('users')
 
@@ -545,6 +602,7 @@ watch(activeTab, (tab) => {
   if (tab === 'semesters')  loadSemesters()
   if (tab === 'invites')    loadInvites()
   if (tab === 'siteConfig') { loadSiteConfig(); loadStats() }
+  if (tab === 'logs')       loadLogs()
 })
 
 function loadAll() {
@@ -1037,6 +1095,40 @@ async function saveNotice() {
 function fmtDate(iso) {
   if (!iso) return '—'
   return iso.slice(0, 10)
+}
+
+// ── Logs ───────────────────────────────────────────────────────────────────
+const logsSubTab    = ref('login')
+const loginLogs     = ref([])
+const icalLogs      = ref([])
+const logsLoading   = ref(false)
+const logsError     = ref('')
+
+const logCountryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
+function fmtLogCountry(code) {
+  if (!code) return '—'
+  try { return logCountryNames.of(code) || code } catch { return code }
+}
+function fmtLogTime(iso) {
+  if (!iso) return '—'
+  return iso.slice(0, 16).replace('T', ' ')
+}
+
+async function loadLogs() {
+  logsLoading.value = true
+  logsError.value = ''
+  try {
+    const [ll, il] = await Promise.all([
+      adminPb.collection('login_logs').getList(1, 200, { sort: '-created', requestKey: null }),
+      adminPb.collection('ical_access_logs').getList(1, 200, { sort: '-created', requestKey: null }),
+    ])
+    loginLogs.value = ll.items
+    icalLogs.value  = il.items
+  } catch (e) {
+    logsError.value = e.message
+  } finally {
+    logsLoading.value = false
+  }
 }
 </script>
 
