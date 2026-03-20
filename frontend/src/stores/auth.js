@@ -26,12 +26,10 @@ export const useAuthStore = defineStore('auth', () => {
     // 先查询数据库中存储的原始大小写邮箱，再走标准 auth 流程
     let loginEmail = email
     try {
-      const res = await pb.send('/api/custom/users/resolve-email', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-        headers: { 'Content-Type': 'application/json' },
-        requestKey: null,
-      })
+      const res = await pb.send(
+        `/api/custom/users/resolve-email?email=${encodeURIComponent(email)}`,
+        { requestKey: null }
+      )
       if (res?.email) loginEmail = res.email
     } catch (_) {}
 
