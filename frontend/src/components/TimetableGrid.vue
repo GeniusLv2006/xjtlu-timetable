@@ -347,11 +347,11 @@ const coursesByDay = computed(() => {
       map[day] = computeOverlapLayout(dayCourses)
       continue
     }
-    const left = dayCourses.filter((c) => c._ownerId === props.ownerId)
-    const right = dayCourses.filter((c) => c._ownerId !== props.ownerId)
+    const leftCourses  = computeOverlapLayout(dayCourses.filter((c) => c._ownerId === props.ownerId))
+    const rightCourses = computeOverlapLayout(dayCourses.filter((c) => c._ownerId !== props.ownerId))
     map[day] = [
-      ...left.map((c) => ({ ...c, _slot: 'left' })),
-      ...right.map((c) => ({ ...c, _slot: 'right' })),
+      ...leftCourses.map((c) => ({ ...c, _slot: 'left' })),
+      ...rightCourses.map((c) => ({ ...c, _slot: 'right' })),
     ]
   }
   return map
@@ -437,8 +437,17 @@ function blockStyle(c) {
 
   let left, right
   if (props.compareMode) {
-    left  = c._slot === 'right' ? '52%' : '2px'
-    right = c._slot === 'right' ? '2px'  : '52%'
+    const colCount = c._colCount ?? 1
+    const colIdx   = c._colIdx   ?? 0
+    // 每侧各占 48%，中间留 4% 间隔（0-48% 为左侧，52-100% 为右侧）
+    const halfPct = 48 / colCount
+    if (c._slot === 'right') {
+      left  = `calc(52% + ${halfPct * colIdx}%)`
+      right = `calc(${halfPct * (colCount - colIdx - 1)}% + 2px)`
+    } else {
+      left  = `calc(${halfPct * colIdx}% + 2px)`
+      right = `calc(52% + ${halfPct * (colCount - colIdx - 1)}%)`
+    }
   } else {
     const colCount = c._colCount ?? 1
     const colIdx   = c._colIdx   ?? 0
