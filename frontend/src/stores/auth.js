@@ -23,7 +23,14 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   async function login(email, password) {
-    await pb.collection('users').authWithPassword(email, password, { requestKey: null })
+    // 使用自定义路由，支持邮箱大小写不敏感登录
+    const authData = await pb.send('/api/custom/users/auth', {
+      method: 'POST',
+      body: JSON.stringify({ identity: email, password }),
+      headers: { 'Content-Type': 'application/json' },
+      requestKey: null,
+    })
+    pb.authStore.save(authData.token, authData.record)
     if (pb.authStore.model?.must_change_pwd) {
       tempPwd.value = password
     }
