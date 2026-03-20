@@ -344,7 +344,7 @@ const coursesByDay = computed(() => {
   for (const day of activeDays.value) {
     const dayCourses = props.courses.filter((c) => c.day === day)
     if (!props.compareMode) {
-      map[day] = dayCourses
+      map[day] = computeOverlapLayout(dayCourses)
       continue
     }
     const left = dayCourses.filter((c) => c._ownerId === props.ownerId)
@@ -356,6 +356,67 @@ const coursesByDay = computed(() => {
   }
   return map
 })
+
+// ── 重叠布局计算 ──────────────────────────────────────────────────────────
+
+/**
+ * 为同一天的课程分配并排列布局（类似 Google Calendar）。
+ * 时间段重叠的课程会被分配到不同列，互不遮挡。
+ * 返回附有 _colIdx（列索引）和 _colCount（总列数）属性的新数组。
+ */
+function computeOverlapLayout(courses) {
+  const sorted = courses
+    .map((c) => ({
+      c,
+      s: timeToFrac(c.start_time) ?? gridStart.value,
+      e: timeToFrac(c.end_time) ?? ((timeToFrac(c.start_time) ?? gridStart.value) + 1),
+    }))
+    .sort((a, b) => a.s - b.s || b.e - a.e)
+
+  const colIdx = new Map()
+  const colCount = new Map()
+
+  let i = 0
+  while (i < sorted.length) {
+    const cluster = [sorted[i]]
+    let clusterEnd = sorted[i].e
+    let j = i + 1
+    while (j < sorted.length && sorted[j].s < clusterEnd) {
+      clusterEnd = Math.max(clusterEnd, sorted[j].e)
+      cluster.push(sorted[j])
+      j++
+    }
+
+    // 贪心分列：找到第一个结束时间 ≤ 当前课程开始时间的列
+    const cols = []
+    for (const item of cluster) {
+      let placed = false
+      for (let k = 0; k < cols.length; k++) {
+        if (item.s >= cols[k]) {
+          colIdx.set(item.c, k)
+          cols[k] = item.e
+          placed = true
+          break
+        }
+      }
+      if (!placed) {
+        colIdx.set(item.c, cols.length)
+        cols.push(item.e)
+      }
+    }
+
+    const total = cols.length
+    for (const item of cluster) colCount.set(item.c, total)
+
+    i = j
+  }
+
+  return courses.map((c) => ({
+    ...c,
+    _colIdx: colIdx.get(c) ?? 0,
+    _colCount: colCount.get(c) ?? 1,
+  }))
+}
 
 // ── 样式计算 ──────────────────────────────────────────────────────────────
 
@@ -374,10 +435,16 @@ function blockStyle(c) {
 
   const dimmed = props.highlightCodes.length > 0 && !props.highlightCodes.includes(`${c.code}|${c.activity_type}|${c.section}`)
 
-  let left = '3px', right = '3px'
+  let left, right
   if (props.compareMode) {
-    if (c._slot === 'left')  { left = '2px'; right = '52%' }
-    if (c._slot === 'right') { left = '52%'; right = '2px' }
+    left  = c._slot === 'right' ? '52%' : '2px'
+    right = c._slot === 'right' ? '2px'  : '52%'
+  } else {
+    const colCount = c._colCount ?? 1
+    const colIdx   = c._colIdx   ?? 0
+    const pct = 100 / colCount
+    left  = `calc(${pct * colIdx}% + 3px)`
+    right = `calc(${pct * (colCount - colIdx - 1)}% + 3px)`
   }
 
   const isOther = props.compareMode && c._slot === 'right'
