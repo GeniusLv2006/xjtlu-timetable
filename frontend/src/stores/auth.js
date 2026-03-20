@@ -23,14 +23,19 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   async function login(email, password) {
-    // 使用自定义路由，支持邮箱大小写不敏感登录
-    const authData = await pb.send('/api/custom/users/auth', {
-      method: 'POST',
-      body: JSON.stringify({ identity: email, password }),
-      headers: { 'Content-Type': 'application/json' },
-      requestKey: null,
-    })
-    pb.authStore.save(authData.token, authData.record)
+    // 先查询数据库中存储的原始大小写邮箱，再走标准 auth 流程
+    let loginEmail = email
+    try {
+      const res = await pb.send('/api/custom/users/resolve-email', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        headers: { 'Content-Type': 'application/json' },
+        requestKey: null,
+      })
+      if (res?.email) loginEmail = res.email
+    } catch (_) {}
+
+    await pb.collection('users').authWithPassword(loginEmail, password, { requestKey: null })
     if (pb.authStore.model?.must_change_pwd) {
       tempPwd.value = password
     }
