@@ -2,6 +2,7 @@ services:
   app:
     build: .
     image: xjtlu-timetable:latest
+    container_name: xjtlu-timetable
     restart: unless-stopped
     ports:
       - "172.17.0.1:8091:8080"
