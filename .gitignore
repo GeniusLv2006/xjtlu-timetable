@@ -19,3 +19,6 @@ frontend/.env.local
 # OS
 .DS_Store
 Thumbs.db
+
+# Private reference docs
+reference/claude_code_prompts.md
