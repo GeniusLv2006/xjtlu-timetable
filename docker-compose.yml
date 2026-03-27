@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    image: xjtlu-timetable:latest
+    restart: unless-stopped
+    ports:
+      - "172.17.0.1:8091:8080"
+    volumes:
+      - ./backend/pb_data:/pb/pb_data

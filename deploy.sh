@@ -8,14 +8,8 @@ cd "$REPO_DIR"
 echo "==> Pulling latest code..."
 git pull
 
-echo "==> Building frontend..."
-cd frontend
-pnpm install --frozen-lockfile
-pnpm build
-cd ..
+echo "==> Building and starting container..."
+docker compose up -d --build
 
-echo "==> Restarting service..."
-systemctl restart xjtlu-timetable
-
-echo "==> Done. Service status:"
-systemctl status xjtlu-timetable --no-pager
+echo "==> Done. Container status:"
+docker compose ps
