@@ -3,6 +3,8 @@
 面向西交利物浦大学（XJTLU）学生的课表可视化与对比工具。支持从 e-Bridge 导入课表、好友课表对比、iCal 订阅导出。
 
 > **注意**：原 timetable.xjtlu.uk 服务已停止运营。本仓库作为开源参考，欢迎自行部署。
+>
+> **PocketBase 版本锁定**：本项目的 `backend/pb_hooks/` 基于 PocketBase **v0.22.x** 的 JS hooks API 编写。v0.23 起 API 有较大变化（如 `$app.dao()` → `$app.db()`），直接使用更新版本会导致 hooks 报错。请使用 [v0.22.x](https://github.com/pocketbase/pocketbase/releases/tag/v0.22.0) 或自行迁移 hooks 代码。
 
 ## 功能
 
