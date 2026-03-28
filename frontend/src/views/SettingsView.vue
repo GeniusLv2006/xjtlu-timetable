@@ -863,8 +863,8 @@ async function copyUrl() {
 .log-ip-chip {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  background: var(--bg-2, #2A2A2E);
-  color: var(--text);
+  background: var(--border);
+  color: var(--text-2);
   padding: 2px 7px;
   border-radius: 3px;
   white-space: nowrap;
