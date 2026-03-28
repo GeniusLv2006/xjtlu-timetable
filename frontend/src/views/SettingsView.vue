@@ -108,25 +108,22 @@
 
           <!-- iCal 访问记录 -->
           <div class="ical-logs">
-            <div class="ical-logs-title">最近访问记录</div>
+            <div class="ical-logs-header">
+              <span class="ical-logs-title">最近访问记录</span>
+              <span v-if="accessLogs.length" class="logs-stats">
+                共 {{ logStats.total }} 次 · {{ logStats.sources }} 个来源
+              </span>
+            </div>
             <div v-if="accessLogsLoading" class="state-msg">加载中…</div>
             <div v-else-if="accessLogs.length === 0" class="state-msg">暂无访问记录</div>
-            <table v-else class="logs-table">
-              <thead>
-                <tr>
-                  <th>时间</th>
-                  <th>IP 段</th>
-                  <th>地区</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="log in accessLogs" :key="log.id">
-                  <td class="log-time">{{ fmtLogDate(log.created) }}</td>
-                  <td class="log-ip">{{ log.ip_prefix || '—' }}</td>
-                  <td class="log-country">{{ fmtCountry(log.country) }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div v-else class="logs-grouped">
+              <div v-for="g in groupedLogs" :key="g.ip" class="log-row">
+                <span class="log-ip-chip">{{ g.ip }}</span>
+                <span class="log-country-name">{{ fmtCountry(g.country) }}</span>
+                <span class="log-count-badge">{{ g.count }} 次</span>
+                <span class="log-latest">{{ fmtLogDate(g.latest) }}</span>
+              </div>
+            </div>
           </div>
         </template>
 
@@ -458,7 +455,7 @@ const webcalUrl = computed(() =>
 async function loadAccessLogs() {
   accessLogsLoading.value = true
   try {
-    const res = await pb.collection('ical_access_logs').getList(1, 20, {
+    const res = await pb.collection('ical_access_logs').getList(1, 50, {
       sort: '-created',
       requestKey: null,
     })
@@ -467,6 +464,24 @@ async function loadAccessLogs() {
     accessLogsLoading.value = false
   }
 }
+
+const groupedLogs = computed(() => {
+  const map = {}
+  for (const log of accessLogs.value) {
+    const key = log.ip_prefix || '未知'
+    if (!map[key]) {
+      map[key] = { ip: key, country: log.country, count: 0, latest: log.created }
+    }
+    map[key].count++
+    if (log.created > map[key].latest) map[key].latest = log.created
+  }
+  return Object.values(map).sort((a, b) => b.latest.localeCompare(a.latest))
+})
+
+const logStats = computed(() => ({
+  total:   accessLogs.value.length,
+  sources: new Set(accessLogs.value.map(l => l.ip_prefix || '未知')).size,
+}))
 
 const countryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
 function fmtCountry(code) {
@@ -813,7 +828,12 @@ async function copyUrl() {
 .ical-logs {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
+}
+.ical-logs-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
 }
 .ical-logs-title {
   font-size: var(--text-xs);
@@ -822,29 +842,51 @@ async function copyUrl() {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.logs-table {
-  width: 100%;
-  border-collapse: collapse;
+.logs-stats {
   font-size: var(--text-xs);
-}
-.logs-table th {
-  text-align: left;
   color: var(--text-3);
-  font-weight: 600;
-  padding: 4px 8px 4px 0;
+}
+.logs-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 6px 0;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.log-row:last-child { border-bottom: none; }
+.log-ip-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--bg-2, #2A2A2E);
+  color: var(--text);
+  padding: 2px 7px;
+  border-radius: 3px;
   white-space: nowrap;
 }
-.logs-table td {
-  padding: 5px 8px 5px 0;
-  border-bottom: 1px solid var(--border);
+.log-country-name {
+  font-size: var(--text-sm);
   color: var(--text-2);
-  vertical-align: middle;
+  flex: 1;
+  min-width: 40px;
 }
-.logs-table tbody tr:last-child td { border-bottom: none; }
-.log-time { font-family: var(--font-mono); white-space: nowrap; color: var(--text); }
-.log-ip   { font-family: var(--font-mono); }
-.log-country { color: var(--text-2); }
+.log-count-badge {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.log-latest {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+}
 
 /* Password field with toggle */
 .pwd-wrap {
