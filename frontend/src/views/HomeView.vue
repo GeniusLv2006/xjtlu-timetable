@@ -451,9 +451,9 @@ async function deleteTimetable() {
   min-width: 0;
 }
 .bar-success {
-  background: #1A2E1A;
-  border-color: #4A8A4A;
-  color: #7EC87E;
+  background: #F0FAF0;
+  border-color: #7EC87E;
+  color: #2D6A2D;
 }
 .bar-error {
   background: var(--red-bg);
