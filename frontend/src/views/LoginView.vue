@@ -121,7 +121,9 @@ async function handleSubmit() {
 
 <style scoped>
 .login-wrap {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh; /* mobile: excludes browser chrome */
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
