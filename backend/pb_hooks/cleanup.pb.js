@@ -2,14 +2,14 @@
 cronAdd('cleanup-logs', '0 2 * * *', function() {
   var cutoff = "datetime('now', '-30 days')"
   try {
-    $app.dao().db()
+    $app.db()
       .newQuery("DELETE FROM ical_access_logs WHERE created < " + cutoff)
       .execute()
   } catch (e) {
     console.error('[cleanup] ical_access_logs:', e)
   }
   try {
-    $app.dao().db()
+    $app.db()
       .newQuery("DELETE FROM login_logs WHERE created < " + cutoff)
       .execute()
   } catch (e) {

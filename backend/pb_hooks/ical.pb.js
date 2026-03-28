@@ -1,9 +1,4 @@
-/// <reference path="../pb_data/types.d.ts" />
-
-// 注意：PocketBase 0.22 使用 goja runtime pool，每次请求使用不同的 runtime 实例。
-// 因此所有辅助函数必须定义在 routerAdd 回调内部，而不是在外层脚本作用域。
-
-routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
+routerAdd('GET', '/ical/:token/timetable.ics', function(e) {
 
   // ── 辅助函数 ──────────────────────────────────────────────────────────────
 
@@ -152,20 +147,20 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
 
   // ── 请求处理 ──────────────────────────────────────────────────────────────
 
-  var token = c.pathParam('token')
+  var token = e.request.pathValue('token')
 
   if (!/^[0-9a-f]{32,64}$/.test(token)) {
-    return c.json(400, { error: 'Invalid token format' })
+    return e.json(400, { error: 'Invalid token format' })
   }
 
   // 1. 查 ical_token 记录
   var tokenRecord
   try {
-    tokenRecord = $app.dao().findFirstRecordByFilter(
+    tokenRecord = $app.findFirstRecordByFilter(
       'ical_tokens', 'token = "' + token + '"'
     )
-  } catch (e) {
-    return c.json(404, { error: 'Token not found' })
+  } catch (err) {
+    return e.json(404, { error: 'Token not found' })
   }
 
   var userId = tokenRecord.getString('user')
@@ -173,57 +168,57 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
   // 1b. 验证用户未被停用
   var userRecord
   try {
-    userRecord = $app.dao().findRecordById('users', userId)
+    userRecord = $app.findRecordById('users', userId)
     if (userRecord.getBool('is_banned')) {
-      return c.json(403, { error: 'Account suspended' })
+      return e.json(403, { error: 'Account suspended' })
     }
-  } catch (e) {
-    return c.json(404, { error: 'User not found' })
+  } catch (err) {
+    return e.json(404, { error: 'User not found' })
   }
 
   // 1c. 记录 iCal 访问日志
-  var logIp = (c.request().header.get('CF-Connecting-IP') ||
-               c.request().header.get('X-Real-IP') ||
-               c.request().header.get('X-Forwarded-For') || '').split(',')[0].trim()
-  var logCountry = c.request().header.get('CF-IPCountry') || ''
+  var logIp = (e.request.header.get('CF-Connecting-IP') ||
+               e.request.header.get('X-Real-IP') ||
+               e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
+  var logCountry = e.request.header.get('CF-IPCountry') || ''
   var logPrefix = logIp
   var v4m = logIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
   if (v4m) { logPrefix = v4m[1] + '.x' }
   else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
   try {
-    var logCol = $app.dao().findCollectionByNameOrId('ical_access_logs')
+    var logCol = $app.findCollectionByNameOrId('ical_access_logs')
     var logRec = new Record(logCol)
     logRec.set('user_id', userId)
     logRec.set('email', userRecord.email())
     logRec.set('ip_full', logIp)
     logRec.set('ip_prefix', logPrefix)
     logRec.set('country', logCountry)
-    $app.dao().saveRecord(logRec)
+    $app.save(logRec)
   } catch (_) {}
 
   // 2. 查当前学期
   var semester
   try {
-    semester = $app.dao().findFirstRecordByFilter('semesters', 'is_current = true')
-  } catch (e) {
-    return c.json(503, { error: '学期未配置，请联系管理员' })
+    semester = $app.findFirstRecordByFilter('semesters', 'is_current = true')
+  } catch (err) {
+    return e.json(503, { error: '学期未配置，请联系管理员' })
   }
 
   var startDateStr = semester.getString('start_date').replace(' ', 'T')
   var startDate = new Date(startDateStr)
   if (isNaN(startDate.getTime())) {
-    return c.json(503, { error: '学期日期格式错误' })
+    return e.json(503, { error: '学期日期格式错误' })
   }
 
   // 3. 查该用户所有课表（ical_token 是用户自己的凭证，不受 visibility 限制）
   var timetables
   try {
-    timetables = $app.dao().findRecordsByFilter(
+    timetables = $app.findRecordsByFilter(
       'timetables',
       'user = "' + userId + '"',
       '-created', 0, 0
     )
-  } catch (e) { timetables = [] }
+  } catch (err) { timetables = [] }
 
   // 4. 查所有课程
   var allCourses = []
@@ -231,17 +226,17 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(c) {
     var tt = timetables[i]
     var courses
     try {
-      courses = $app.dao().findRecordsByFilter(
+      courses = $app.findRecordsByFilter(
         'courses', 'timetable = "' + tt.id + '"', '', 0, 0
       )
-    } catch (e) { continue }
+    } catch (err) { continue }
     for (var j = 0; j < courses.length; j++) allCourses.push(courses[j])
   }
 
   // 5. 生成并返回 iCal
   var ics = buildIcs(allCourses, startDate)
 
-  c.response().header().set('Content-Type', 'text/calendar; charset=utf-8')
-  c.response().header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
-  return c.string(200, ics)
+  e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
+  e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+  return e.string(200, ics)
 })

@@ -1,18 +1,21 @@
-// ── 邀请码系统（PocketBase 0.22，e.httpContext.get() API）────────────────
+// ── 邀请码系统（PocketBase 0.23+）────────────────────────────────────────
 //
-// PB 0.22 中 e.requestInfo 已废弃，改用：
-//   e.httpContext.get('authRecord') — 当前登录用户
-//   e.httpContext.get('admin')      — 当前登录管理员
+// v0.23+ 变更：
+//   - onRecordBeforeCreateRequest → onRecordCreateRequest（需调用 e.next()）
+//   - e.httpContext.get('requestInfo').data → e.requestInfo().body
+//   - e.httpContext.get('admin') → 检查 auth 是否属于 _superusers 集合
+//   - e.httpContext.get('authRecord') → e.requestInfo().auth
+//   - $app.dao().* → $app.*
 //
-// 1. onRecordBeforeCreateRequest (users)        — 注册时验证邀请码并 +1 计数
-// 2. onRecordBeforeCreateRequest (invite_codes) — 用户创建邀请码时检查权限
+// 1. onRecordCreateRequest (users)        — 注册时验证邀请码并 +1 计数
+// 2. onRecordCreateRequest (invite_codes) — 用户创建邀请码时检查权限
 
 // ── 注册：验证邀请码 ───────────────────────────────────────────────────────
-onRecordBeforeCreateRequest(function(e) {
+onRecordCreateRequest(function(e) {
   // ── 全局注册配置检查 ──────────────────────────────────────────────────
   var configs
   try {
-    configs = $app.dao().findRecordsByFilter('site_config', 'id != ""', '', 1, 0)
+    configs = $app.findRecordsByFilter('site_config', 'id != ""', '', 1, 0)
   } catch(_) { configs = [] }
 
   if (configs.length > 0) {
@@ -26,9 +29,8 @@ onRecordBeforeCreateRequest(function(e) {
     // 邮箱后缀白名单
     var suffixes = cfg.getString('allowed_email_suffixes').trim()
     if (suffixes) {
-      var ri0  = e.httpContext.get('requestInfo')
-      var dat0 = (ri0 && ri0.data) ? ri0.data : {}
-      var email = (dat0['email'] || '').toLowerCase()
+      var body0 = e.requestInfo().body || {}
+      var email = (body0['email'] || '').toLowerCase()
       var allowed = suffixes.split(',').map(function(s) { return s.trim().replace(/^@/, '').toLowerCase() })
       var ok = allowed.some(function(s) { return email.endsWith('@' + s) })
       if (!ok) {
@@ -39,11 +41,13 @@ onRecordBeforeCreateRequest(function(e) {
 
   // 是否需要邀请码
   var requireInvite = configs.length === 0 || configs[0].getBool('require_invite')
-  if (!requireInvite) return
+  if (!requireInvite) {
+    e.next()
+    return
+  }
 
-  var ri   = e.httpContext.get('requestInfo')
-  var data = (ri && ri.data) ? ri.data : {}
-  var code = (data['invite_code'] || '').trim()
+  var body = e.requestInfo().body || {}
+  var code = (body['invite_code'] || '').trim()
 
   if (!code) {
     throw new BadRequestError('请填写邀请码')
@@ -53,7 +57,7 @@ onRecordBeforeCreateRequest(function(e) {
 
   var invites
   try {
-    invites = $app.dao().findRecordsByFilter(
+    invites = $app.findRecordsByFilter(
       'invite_codes',
       'code = "' + safeCode + '"',
       '-created', 1, 0
@@ -90,21 +94,28 @@ onRecordBeforeCreateRequest(function(e) {
     invite.set('is_active', false)
   }
   try {
-    $app.dao().saveRecord(invite)
+    $app.save(invite)
   } catch (err) {
     console.error('invite_hook: failed to update invite uses:', err)
   }
+
+  e.next()
 }, 'users')
 
 // ── 用户创建邀请码：权限 & 配额检查 ──────────────────────────────────────
-onRecordBeforeCreateRequest(function(e) {
-  var isAdmin  = !!e.httpContext.get('admin')
-  var authUser = e.httpContext.get('authRecord')
+onRecordCreateRequest(function(e) {
+  var authRecord = e.requestInfo().auth
+  var isAdmin = false
+  try {
+    isAdmin = authRecord && authRecord.collection().name === '_superusers'
+  } catch(_) {}
+  var authUser = (authRecord && !isAdmin) ? authRecord : null
 
   // 管理员直接放行
   if (isAdmin) {
     e.record.set('uses', 0)
     e.record.set('is_active', true)
+    e.next()
     return
   }
 
@@ -122,7 +133,7 @@ onRecordBeforeCreateRequest(function(e) {
     var userId = authUser.id
     var existing
     try {
-      existing = $app.dao().findRecordsByFilter(
+      existing = $app.findRecordsByFilter(
         'invite_codes',
         'created_by = "' + userId + '"',
         '', 500, 0
@@ -151,4 +162,6 @@ onRecordBeforeCreateRequest(function(e) {
   e.record.set('created_by', authUser.id)
   e.record.set('uses', 0)
   e.record.set('is_active', true)
+
+  e.next()
 }, 'invite_codes')

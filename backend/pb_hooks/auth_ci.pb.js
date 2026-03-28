@@ -11,7 +11,7 @@ routerAdd('GET', '/api/custom/users/resolve-email', function(e) {
   // PocketBase filter 语言不支持 LOWER()，改用 arrayOf+DynamicModel 接收原始 SQL 结果
   var rows = arrayOf(new DynamicModel({ email: '' }))
   try {
-    $app.dao().db()
+    $app.db()
       .newQuery('SELECT email FROM users WHERE LOWER(email) = {:email} LIMIT 1')
       .bind({ email: email.toLowerCase() })
       .all(rows)
