@@ -119,7 +119,7 @@
             <div v-else class="logs-grouped">
               <div v-for="g in groupedLogs" :key="g.ip" class="log-row">
                 <span class="log-ip-chip">{{ g.ip }}</span>
-                <span class="log-country-name">{{ fmtCountry(g.country) }}</span>
+                <span class="log-country-name">{{ g.city ? g.city + ', ' + fmtCountry(g.country) : fmtCountry(g.country) }}</span>
                 <span class="log-count-badge">{{ g.count }} 次</span>
                 <span class="log-latest">{{ fmtLogDate(g.latest) }}</span>
               </div>
@@ -470,10 +470,14 @@ const groupedLogs = computed(() => {
   for (const log of accessLogs.value) {
     const key = log.ip_prefix || '未知'
     if (!map[key]) {
-      map[key] = { ip: key, country: log.country, count: 0, latest: log.created }
+      map[key] = { ip: key, country: log.country, city: log.city || '', count: 0, latest: log.created }
     }
     map[key].count++
-    if (log.created > map[key].latest) map[key].latest = log.created
+    if (log.created > map[key].latest) {
+      map[key].latest  = log.created
+      map[key].country = log.country
+      map[key].city    = log.city || ''
+    }
   }
   return Object.values(map).sort((a, b) => b.latest.localeCompare(a.latest))
 })

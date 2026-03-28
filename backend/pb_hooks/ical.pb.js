@@ -181,6 +181,7 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(e) {
                e.request.header.get('X-Real-IP') ||
                e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
   var logCountry = e.request.header.get('CF-IPCountry') || ''
+  var logCity    = e.request.header.get('CF-IPCity')    || ''
   var logPrefix = logIp
   var v4m = logIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
   if (v4m) { logPrefix = v4m[1] + '.x' }
@@ -193,6 +194,7 @@ routerAdd('GET', '/ical/:token/timetable.ics', function(e) {
     logRec.set('ip_full', logIp)
     logRec.set('ip_prefix', logPrefix)
     logRec.set('country', logCountry)
+    logRec.set('city', logCity)
     $app.save(logRec)
   } catch (_) {}
 
