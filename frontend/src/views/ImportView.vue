@@ -141,8 +141,8 @@
       <strong>关于 HASH 的安全说明</strong><br>
       HASH 是由学校服务器签发的课表只读访问凭证，任何持有该凭证的人无需登录即可读取你的完整课表内容。
       请妥善保管，避免公开分享至不受信任的渠道。<br><br>
-      本服务仅在你主动粘贴并提交 HASH 时，向学校服务器发送一次请求以拉取课表数据；
-      <strong>HASH 本身不会被存储在我们的服务器上</strong>，仅用于本次课表数据转换，不用于任何其他用途。
+      本服务在导入课表时，会将 HASH 关联保存到你的账号，以便日后在课表有变动时手动触发更新。
+      HASH 仅用于从学校服务器拉取你的课表数据，不用于任何其他用途，且仅你本人可访问。<br><br>
       HASH 的有效期由学校服务端控制，通常在每学期选课结束后失效，届时需重新运行书签获取新凭证。
     </div>
 
@@ -163,17 +163,12 @@ function acceptTerms() {
   termsAccepted.value = true
 }
 import pb from '../lib/pocketbase'
+import { normalizeActivities } from '../utils/timetableSync'
 
 const router = useRouter()
 
 // ── 书签代码 ─────────────────────────────────────────────────────────────────
 const BOOKMARKLET = `javascript:(function(){var f=document.getElementById('myFrame');var src=f&&(f.src||f.getAttribute('src'));if(!src){var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){if((frames[i].src||'').includes('timetableplus')){src=frames[i].src;break;}}}if(!src){alert('未找到课表框架\\n请确保：\\n1. 已登录 e-Bridge\\n2. 当前页面已展示课表（非空白）');return;}var m=src.match(/[#\\/]([0-9A-Fa-f]{40,})/);if(!m){alert('找到框架但无法提取 HASH，src: '+src.slice(0,80));return;}navigator.clipboard.writeText(m[1].toUpperCase()).then(function(){alert('✓ HASH 已复制到剪贴板\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制以下 HASH：',m[1].toUpperCase());});})();`
-
-// ── 常量 ─────────────────────────────────────────────────────────────────────
-const SCHEDULED_DAY_MAP = {
-  '0': 'MON', '1': 'TUE', '2': 'WED', '3': 'THU',
-  '4': 'FRI', '5': 'SAT', '6': 'SUN',
-}
 
 // ── 状态 ─────────────────────────────────────────────────────────────────────
 const hashInput     = ref('')
@@ -200,62 +195,6 @@ function extractHash(input) {
   if (m) return m[1].toUpperCase()
   if (/^[0-9A-Fa-f]{40,}$/.test(s)) return s.toUpperCase()
   return null
-}
-
-function isoToCST(iso, subtractMinutes = 0) {
-  if (!iso) return null
-  let hh, mm
-  if (iso.includes('T')) {
-    const d = new Date(iso)
-    hh = d.getUTCHours()
-    mm = d.getUTCMinutes()
-  } else {
-    const part = iso.includes(' ') ? iso.split(' ')[1] : iso
-    ;[hh, mm] = (part || '00:00').split(':').map(Number)
-  }
-  const totalMin = hh * 60 + mm + 480 - subtractMinutes
-  const ch = Math.floor(totalMin / 60) % 24
-  const cm = totalMin % 60
-  return `${String(ch).padStart(2, '0')}:${String(cm).padStart(2, '0')}`
-}
-
-function normalizeActivities(raw) {
-  if (!Array.isArray(raw)) return []
-  return raw
-    .map((a) => {
-      if (!a) return null
-      const startRaw    = a.startTime || a.start || ''
-      const endRaw      = a.endTime   || a.end   || ''
-      const nameRaw     = a.name      || ''
-      const activityType = a.activityType || ''
-
-      const day =
-        SCHEDULED_DAY_MAP[String(a.scheduledDay)] ||
-        (startRaw
-          ? ['SUN','MON','TUE','WED','THU','FRI','SAT'][new Date(startRaw).getDay()]
-          : 'MON')
-
-      const startTime = isoToCST(startRaw, 0)
-      const endTime   = isoToCST(endRaw, 10)
-
-      const m = nameRaw.match(/^([A-Z]+\d+)[-–]([^-–]+)[-–](.+)$/)
-      const code    = m ? m[1] : (a.moduleId || nameRaw.split(/[-–]/)[0] || nameRaw)
-      const section = m ? m[3].trim() : ''
-
-      return {
-        identity:      a.identity || a.id || '',
-        code:          code.trim(),
-        activity_type: activityType || (m ? m[2].trim() : ''),
-        section,
-        day,
-        start_time:    startTime || '--:--',
-        end_time:      endTime   || '--:--',
-        location:      (a.location || '').trim(),
-        staff:         (a.staff    || '').trim(),
-        weeks:         a.weekPattern || a.week || '',
-      }
-    })
-    .filter(Boolean)
 }
 
 async function copyBookmarklet() {

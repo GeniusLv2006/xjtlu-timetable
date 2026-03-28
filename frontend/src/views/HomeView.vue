@@ -38,6 +38,12 @@
           </Transition>
         </div>
         <button
+          v-if="selectedTimetable?.hash && !confirmDeleteId"
+          class="btn btn-secondary btn-xs"
+          :disabled="syncing"
+          @click="syncSelected"
+        >{{ syncing ? '同步中…' : '同步' }}</button>
+        <button
           v-if="timetables.length > 0 && !confirmDeleteId"
           class="btn btn-danger btn-xs"
           @click="confirmDeleteId = selectedId"
@@ -56,6 +62,14 @@
           {{ deleting ? '删除中…' : '确认删除' }}
         </button>
         <button class="btn btn-secondary btn-xs" @click="confirmDeleteId = null">取消</button>
+      </div>
+    </Transition>
+
+    <!-- Sync result bar -->
+    <Transition name="confirm-bar">
+      <div v-if="syncMsg" class="confirm-bar" :class="syncError ? 'bar-error' : 'bar-success'">
+        <span>{{ syncMsg }}</span>
+        <button class="btn btn-secondary btn-xs" @click="syncMsg = ''">×</button>
       </div>
     </Transition>
 
@@ -85,6 +99,7 @@ import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import pb from '../lib/pocketbase'
 import TimetableGrid from '../components/TimetableGrid.vue'
 import { useAuthStore } from '../stores/auth'
+import { syncTimetable } from '../utils/timetableSync'
 
 defineOptions({ name: 'Home' })
 
@@ -142,6 +157,9 @@ const visUpdating  = ref(false)
 const visSaved     = ref(false)
 const confirmDeleteId = ref(null)
 const deleting     = ref(false)
+const syncing      = ref(false)
+const syncMsg      = ref('')
+const syncError    = ref(false)
 
 const visLabel = computed(() => {
   const map = { private: '仅自己可见', friends: '好友可见', public: '所有人可见' }
@@ -224,6 +242,32 @@ async function updateVisibility() {
     error.value = e.message
   } finally {
     visUpdating.value = false
+  }
+}
+
+async function syncSelected() {
+  const tt = selectedTimetable.value
+  if (!tt?.hash || syncing.value) return
+  syncing.value = true
+  syncMsg.value = ''
+  syncError.value = false
+  try {
+    const { total, saved, skipped } = await syncTimetable(pb, tt.id, tt.hash)
+    if (saved > 0) {
+      // 刷新课程列表
+      courses.value = await pb.collection('courses').getFullList({
+        filter: `timetable = "${tt.id}"`,
+        requestKey: null,
+      })
+    }
+    syncMsg.value = saved > 0
+      ? `同步完成：新增 ${saved} 门课，跳过 ${skipped} 门（共 ${total} 门）`
+      : `已是最新，无新课程（共 ${total} 门）`
+  } catch (e) {
+    syncError.value = true
+    syncMsg.value = e.message || '同步失败，请稍后重试'
+  } finally {
+    syncing.value = false
   }
 }
 
@@ -403,6 +447,21 @@ async function deleteTimetable() {
 .confirm-text {
   font-size: var(--text-sm);
   color: var(--red);
+  flex: 1;
+  min-width: 0;
+}
+.bar-success {
+  background: #1A2E1A;
+  border-color: #4A8A4A;
+  color: #7EC87E;
+}
+.bar-error {
+  background: var(--red-bg);
+  border-color: #E5B4AF;
+  color: var(--red);
+}
+.bar-success span, .bar-error span {
+  font-size: var(--text-sm);
   flex: 1;
   min-width: 0;
 }
