@@ -121,14 +121,14 @@ async function handleSubmit() {
 
 <style scoped>
 .login-wrap {
-  height: 100vh;
-  height: 100dvh; /* mobile: excludes browser chrome */
-  overflow: hidden;
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg);
   padding: var(--sp-4);
+  overflow: hidden;
 }
 
 .login-card {
