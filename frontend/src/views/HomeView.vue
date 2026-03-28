@@ -296,7 +296,10 @@ async function deleteTimetable() {
 /* ── Greeting overlay ────────────────────────────────────────────────────── */
 .greeting-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100dvh;
   z-index: 500;
   background: #18181A;
   display: flex;
