@@ -72,7 +72,7 @@ html {
   line-height: 1.5;
 }
 
-body { min-height: 100vh; }
+body { min-height: 100dvh; }
 
 a {
   color: var(--accent);
