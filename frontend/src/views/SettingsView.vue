@@ -444,7 +444,7 @@ const icalUrl = computed(() => {
   const base = import.meta.env.DEV
     ? `http://localhost:8091`
     : PROD_BASE
-  return `${base}/ical/${icalToken.value.token}/timetable.ics`
+  return `${base}/api/ical/${icalToken.value.token}/timetable.ics`
 })
 
 const isProduction = !import.meta.env.DEV

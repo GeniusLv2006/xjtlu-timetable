@@ -7,14 +7,19 @@ onRecordAuthWithPasswordRequest(function(e) {
     throw new BadRequestError('Account suspended. Please contact the administrator')
   }
 
+  // Capture request headers before e.next() — request object may be unavailable after.
+  var rawIp = '', country = ''
+  try {
+    rawIp = (e.request.header.get('CF-Connecting-IP') ||
+             e.request.header.get('X-Real-IP') ||
+             e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
+    country = e.request.header.get('CF-IPCountry') || ''
+  } catch (_) {}
+
   e.next()
 
   // Record a login log entry on every successful password auth.
   if (!e.record) return
-  var rawIp = (e.request.header.get('CF-Connecting-IP') ||
-               e.request.header.get('X-Real-IP') ||
-               e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
-  var country = e.request.header.get('CF-IPCountry') || ''
   var prefix = rawIp
   var v4m = rawIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
   if (v4m) { prefix = v4m[1] + '.x' }

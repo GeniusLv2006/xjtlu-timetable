@@ -3,7 +3,7 @@
 // 根据用户输入的邮箱（任意大小写），返回数据库中存储的原始大小写邮箱。
 
 routerAdd('GET', '/api/custom/users/resolve-email', function(e) {
-  var email = (e.queryParam('email') || '').trim()
+  var email = (e.request.url.query().get('email') || '').trim()
   if (!email) {
     return e.json(200, { email: null })
   }
