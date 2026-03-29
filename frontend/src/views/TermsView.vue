@@ -6,7 +6,7 @@
     </div>
 
     <div class="terms-body">
-      <p class="terms-meta">生效日期：2026 年 3 月 16 日</p>
+      <p class="terms-meta">生效日期：2026 年 3 月 29 日</p>
       <p class="terms-intro">
         请在使用 XJTLU 课表系统（以下简称"本服务"或"本网站"）前仔细阅读本协议。
         <strong>注册账号或继续使用本服务，即表示你已阅读、理解并同意受本协议全部条款的约束。如不同意，请立即停止使用并注销账号。</strong>
