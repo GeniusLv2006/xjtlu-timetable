@@ -53,8 +53,12 @@ onRecordAuthWithPasswordRequest(function(e) {
     rec.set('ip_full', rawIp)
     rec.set('ip_prefix', prefix)
     rec.set('country', country)
-    rec.set('city', city)
     $app.save(rec)
+    // city 字段不在 PB schema 中，需通过原始 SQL 写入
+    $app.db()
+      .newQuery("UPDATE login_logs SET city = {:city} WHERE id = {:id}")
+      .bind({ city: city, id: rec.id })
+      .execute()
   } catch (_) {}
 }, 'users')
 

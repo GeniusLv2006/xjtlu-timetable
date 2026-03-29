@@ -215,8 +215,12 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     logRec.set('ip_full', logIp)
     logRec.set('ip_prefix', logPrefix)
     logRec.set('country', logCountry)
-    logRec.set('city', logCity)
     $app.save(logRec)
+    // city 字段不在 PB schema 中，需通过原始 SQL 写入
+    $app.db()
+      .newQuery("UPDATE ical_access_logs SET city = {:city} WHERE id = {:id}")
+      .bind({ city: logCity, id: logRec.id })
+      .execute()
   } catch (_) {}
 
   // 2. 查当前学期
