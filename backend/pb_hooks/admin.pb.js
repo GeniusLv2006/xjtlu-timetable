@@ -35,9 +35,9 @@ onRecordAuthWithPasswordRequest(function(e) {
         method: 'GET',
         timeout: 3,
       })
-      if (geoRes.statusCode === 200) {
-        var geoData = JSON.parse(toString(geoRes.body))
-        if (geoData && geoData.status === 'success') {
+      if (geoRes.statusCode === 200 && geoRes.raw) {
+        var geoData = JSON.parse(geoRes.raw)
+        if (geoData.status === 'success') {
           city = geoData.city || ''
           if (!country && geoData.countryCode) country = geoData.countryCode
         }
