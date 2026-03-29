@@ -35,9 +35,12 @@ onRecordAuthWithPasswordRequest(function(e) {
         method: 'GET',
         timeout: 3,
       })
-      if (geoRes.statusCode === 200 && geoRes.json && geoRes.json.status === 'success') {
-        city = geoRes.json.city || ''
-        if (!country && geoRes.json.countryCode) country = geoRes.json.countryCode
+      if (geoRes.statusCode === 200) {
+        var geoData = JSON.parse(toString(geoRes.body))
+        if (geoData && geoData.status === 'success') {
+          city = geoData.city || ''
+          if (!country && geoData.countryCode) country = geoData.countryCode
+        }
       }
     } catch (_) {}
   }

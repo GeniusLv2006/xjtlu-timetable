@@ -196,9 +196,12 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
         method: 'GET',
         timeout: 3,
       })
-      if (geoRes.statusCode === 200 && geoRes.json && geoRes.json.status === 'success') {
-        logCity = geoRes.json.city || ''
-        if (!logCountry && geoRes.json.countryCode) logCountry = geoRes.json.countryCode
+      if (geoRes.statusCode === 200) {
+        var geoData = JSON.parse(toString(geoRes.body))
+        if (geoData && geoData.status === 'success') {
+          logCity = geoData.city || ''
+          if (!logCountry && geoData.countryCode) logCountry = geoData.countryCode
+        }
       }
     } catch (_) {}
   }
