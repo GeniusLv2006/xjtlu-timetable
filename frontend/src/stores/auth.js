@@ -4,9 +4,9 @@ import pb from '../lib/pocketbase'
 import router from '../router'
 
 export const useAuthStore = defineStore('auth', () => {
-  // If the stored token is an admin token (e.g. leftover from a previous bug where
+  // If the stored token belongs to _superusers (leftover from a previous bug where
   // adminPb shared the same localStorage key), clear it — it's not a user session.
-  if (pb.authStore.isAdmin) {
+  if (pb.authStore.isValid && pb.authStore.model?.collectionName === '_superusers') {
     pb.authStore.clear()
   }
 
@@ -15,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
   // isLoggedIn must depend on model (a Vue ref) so that computed() re-evaluates
   // after login. pb.authStore.isValid is a plain JS property — Vue cannot track it,
   // so computed(() => pb.authStore.isValid) would return a stale cached value.
-  const isLoggedIn = computed(() => model.value !== null && pb.authStore.isValid && !pb.authStore.isAdmin)
+  const isLoggedIn = computed(() => model.value !== null && pb.authStore.isValid && pb.authStore.model?.collectionName !== '_superusers')
 
   pb.authStore.onChange(() => {
     // Spread to create a new object reference so Vue detects the change

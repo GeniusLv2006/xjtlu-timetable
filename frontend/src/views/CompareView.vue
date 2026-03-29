@@ -106,7 +106,7 @@ import TimetableGrid from '../components/TimetableGrid.vue'
 import { findCommonCourses, findFreeSlots } from '../utils/compareSchedules'
 
 // Use adminPb when accessed from admin panel (bypasses visibility rules)
-const isAdmin = adminPb.authStore.isValid && adminPb.authStore.isAdmin
+const isAdmin = adminPb.authStore.isValid
 const client = isAdmin ? adminPb : pb
 
 const route  = useRoute()
