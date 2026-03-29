@@ -1,4 +1,4 @@
-routerAdd('GET', '/api/ical/:token/timetable.ics', function(e) {
+routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
   // ── 辅助函数 ──────────────────────────────────────────────────────────────
 
