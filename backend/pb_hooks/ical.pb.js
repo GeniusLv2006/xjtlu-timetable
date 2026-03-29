@@ -181,11 +181,28 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
                e.request.header.get('X-Real-IP') ||
                e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
   var logCountry = e.request.header.get('CF-IPCountry') || ''
-  var logCity    = e.request.header.get('CF-IPCity')    || ''
   var logPrefix = logIp
   var v4m = logIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
   if (v4m) { logPrefix = v4m[1] + '.x' }
   else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
+
+  // 用 ip-api.com 查询城市（CF 免费计划不提供 CF-IPCity）
+  var logCity = ''
+  var isPrivateIp = !logIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(logIp)
+  if (!isPrivateIp) {
+    try {
+      var geoRes = $http.send({
+        url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city',
+        method: 'GET',
+        timeout: 3,
+      })
+      if (geoRes.statusCode === 200 && geoRes.json && geoRes.json.status === 'success') {
+        logCity = geoRes.json.city || ''
+        if (!logCountry && geoRes.json.countryCode) logCountry = geoRes.json.countryCode
+      }
+    } catch (_) {}
+  }
+
   try {
     var logCol = $app.findCollectionByNameOrId('ical_access_logs')
     var logRec = new Record(logCol)

@@ -24,6 +24,24 @@ onRecordAuthWithPasswordRequest(function(e) {
   var v4m = rawIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
   if (v4m) { prefix = v4m[1] + '.x' }
   else if (rawIp.indexOf(':') !== -1) { prefix = rawIp.split(':').slice(0, 4).join(':') + ':...' }
+
+  // 用 ip-api.com 查询城市（CF 免费计划不提供 CF-IPCity）
+  var city = ''
+  var isPrivate = !rawIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(rawIp)
+  if (!isPrivate) {
+    try {
+      var geoRes = $http.send({
+        url: 'http://ip-api.com/json/' + rawIp + '?fields=status,countryCode,city',
+        method: 'GET',
+        timeout: 3,
+      })
+      if (geoRes.statusCode === 200 && geoRes.json && geoRes.json.status === 'success') {
+        city = geoRes.json.city || ''
+        if (!country && geoRes.json.countryCode) country = geoRes.json.countryCode
+      }
+    } catch (_) {}
+  }
+
   try {
     var col = $app.findCollectionByNameOrId('login_logs')
     var rec = new Record(col)
@@ -32,6 +50,7 @@ onRecordAuthWithPasswordRequest(function(e) {
     rec.set('ip_full', rawIp)
     rec.set('ip_prefix', prefix)
     rec.set('country', country)
+    rec.set('city', city)
     $app.save(rec)
   } catch (_) {}
 }, 'users')
