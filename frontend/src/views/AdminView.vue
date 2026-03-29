@@ -632,13 +632,13 @@ const loginEmail    = ref('')
 const loginPassword = ref('')
 const loginLoading  = ref(false)
 const loginError    = ref('')
-const isAdminAuthed = ref(adminPb.authStore.isValid && adminPb.authStore.isAdmin)
+const isAdminAuthed = ref(adminPb.authStore.isValid)
 
 async function adminLogin() {
   loginError.value = ''
   loginLoading.value = true
   try {
-    await adminPb.admins.authWithPassword(loginEmail.value, loginPassword.value)
+    await adminPb.collection('_superusers').authWithPassword(loginEmail.value, loginPassword.value)
     isAdminAuthed.value = true
     loadAll()
   } catch (e) {
