@@ -487,7 +487,7 @@ const logStats = computed(() => ({
   sources: new Set(accessLogs.value.map(l => l.ip_prefix || '未知')).size,
 }))
 
-const countryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
+const countryNames = new Intl.DisplayNames(['en'], { type: 'region' })
 function fmtCountry(code) {
   if (!code) return '—'
   try { return countryNames.of(code) || code } catch { return code }
