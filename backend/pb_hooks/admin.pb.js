@@ -15,6 +15,19 @@ onRecordAuthWithPasswordRequest(function(e) {
              e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
     country = e.request.header.get('CF-IPCountry') || ''
   } catch (_) {}
+  // e.request.header.get() 在某些 hook 上下文可能失败，用 requestInfo().headers 兜底
+  if (!rawIp) {
+    try {
+      var hi = e.requestInfo().headers
+      rawIp = (hi['cf-connecting-ip'] || hi['x-real-ip'] ||
+               (hi['x-forwarded-for'] || '').split(',')[0] || '').trim()
+      if (!country) country = (hi['cf-ipcountry'] || '').trim()
+    } catch (_) {}
+  }
+  // 最终兜底：直连 IP（代理情况下为反代容器 IP，聊胜于无）
+  if (!rawIp) {
+    try { rawIp = e.remoteIP() } catch (_) {}
+  }
 
   e.next()
 
