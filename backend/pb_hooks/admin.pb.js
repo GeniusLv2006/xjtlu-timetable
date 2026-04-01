@@ -7,30 +7,38 @@ onRecordAuthWithPasswordRequest(function(e) {
     throw new BadRequestError('Account suspended. Please contact the administrator')
   }
 
-  // 读取请求头：e.request.header 在 hook 上下文中因多层 Go struct embedding
-  // 导致 goja 的 .get() 方法调用失败，改用直接 map key 访问（返回 []string）。
+  // 调试日志：输出所有可用方式的结果，用于诊断 header 读取失败原因
   var rawIp = '', country = ''
   try {
     var h = e.request.header
+    var cfMap = h['Cf-Connecting-Ip']
+    var xrMap = h['X-Real-Ip']
+    var xffMap = h['X-Forwarded-For']
+    $app.logger().info('[login-debug] map access',
+      'cf', JSON.stringify(cfMap),
+      'xr', JSON.stringify(xrMap),
+      'xff', JSON.stringify(xffMap))
     rawIp = (
-      ((h['Cf-Connecting-Ip'] || [])[0]) ||
-      ((h['X-Real-Ip'] || [])[0]) ||
-      (((h['X-Forwarded-For'] || [])[0]) || '').split(',')[0]
+      ((cfMap || [])[0]) || ((xrMap || [])[0]) ||
+      (((xffMap || [])[0]) || '').split(',')[0]
     ).trim()
     country = ((h['Cf-Ipcountry'] || [])[0] || '').trim()
-  } catch (_) {}
+  } catch (err) {
+    $app.logger().error('[login-debug] map access error', 'err', String(err))
+  }
 
-  // 兜底：requestInfo().headers（key 为小写）
   if (!rawIp) {
     try {
       var hi = e.requestInfo().headers
-      rawIp = (
-        hi['cf-connecting-ip'] || hi['x-real-ip'] ||
-        (hi['x-forwarded-for'] || '').split(',')[0]
-      ).trim()
+      $app.logger().info('[login-debug] requestInfo headers', 'keys', JSON.stringify(Object.keys(hi)), 'cf', hi['cf-connecting-ip'], 'xr', hi['x-real-ip'])
+      rawIp = (hi['cf-connecting-ip'] || hi['x-real-ip'] || (hi['x-forwarded-for'] || '').split(',')[0]).trim()
       if (!country) country = (hi['cf-ipcountry'] || '').trim()
-    } catch (_) {}
+    } catch (err) {
+      $app.logger().error('[login-debug] requestInfo error', 'err', String(err))
+    }
   }
+
+  $app.logger().info('[login-debug] final', 'rawIp', rawIp, 'country', country)
 
   e.next()
 
