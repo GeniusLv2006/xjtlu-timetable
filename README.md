@@ -81,4 +81,4 @@ pnpm dev
 
 ## 协议
 
-MIT License — 详见 [LICENSE](LICENSE)。
+GNU AGPLv3 — 详见 [LICENSE](LICENSE)。
