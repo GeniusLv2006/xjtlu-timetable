@@ -50,6 +50,10 @@ bash backend/setup-site-config.sh <admin_email> <admin_password>
 bash backend/setup-invite-codes.sh <admin_email> <admin_password>
 ```
 
+### 用户协议与隐私政策
+
+`frontend/src/views/TermsView.vue` 中的条款内容是针对原部署（timetable.xjtlu.uk）编写的，含原作者联系邮箱。自行部署时请替换为你自己的条款与联系方式。
+
 ### 邮箱白名单
 
 在 PocketBase Admin UI → `site_config` → `allowed_email_suffixes` 中填写允许注册的邮箱后缀，例如 `@student.xjtlu.edu.cn`。

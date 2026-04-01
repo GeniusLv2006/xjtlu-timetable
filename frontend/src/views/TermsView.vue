@@ -1,3 +1,8 @@
+<!--
+  NOTE FOR DEPLOYERS: This file contains terms specific to the original deployment
+  (timetable.xjtlu.uk). If you're running your own instance, replace this file
+  with your own terms of service and privacy policy, including your contact email.
+-->
 <template>
   <div class="terms-page">
     <div class="page-toolbar">
