@@ -14,31 +14,28 @@ onRecordAuthWithPasswordRequest(function(e) {
     var cfMap = h['Cf-Connecting-Ip']
     var xrMap = h['X-Real-Ip']
     var xffMap = h['X-Forwarded-For']
-    $app.logger().info('[login-debug] map access',
-      'cf', JSON.stringify(cfMap),
-      'xr', JSON.stringify(xrMap),
-      'xff', JSON.stringify(xffMap))
+    console.log('[login-debug] map cf=' + JSON.stringify(cfMap) + ' xr=' + JSON.stringify(xrMap) + ' xff=' + JSON.stringify(xffMap))
     rawIp = (
       ((cfMap || [])[0]) || ((xrMap || [])[0]) ||
       (((xffMap || [])[0]) || '').split(',')[0]
     ).trim()
     country = ((h['Cf-Ipcountry'] || [])[0] || '').trim()
   } catch (err) {
-    $app.logger().error('[login-debug] map access error', 'err', String(err))
+    console.log('[login-debug] map error: ' + String(err))
   }
 
   if (!rawIp) {
     try {
       var hi = e.requestInfo().headers
-      $app.logger().info('[login-debug] requestInfo headers', 'keys', JSON.stringify(Object.keys(hi)), 'cf', hi['cf-connecting-ip'], 'xr', hi['x-real-ip'])
+      console.log('[login-debug] requestInfo keys=' + JSON.stringify(Object.keys(hi)) + ' cf=' + hi['cf-connecting-ip'] + ' xr=' + hi['x-real-ip'])
       rawIp = (hi['cf-connecting-ip'] || hi['x-real-ip'] || (hi['x-forwarded-for'] || '').split(',')[0]).trim()
       if (!country) country = (hi['cf-ipcountry'] || '').trim()
     } catch (err) {
-      $app.logger().error('[login-debug] requestInfo error', 'err', String(err))
+      console.log('[login-debug] requestInfo error: ' + String(err))
     }
   }
 
-  $app.logger().info('[login-debug] final', 'rawIp', rawIp, 'country', country)
+  console.log('[login-debug] final rawIp=' + rawIp + ' country=' + country)
 
   e.next()
 
