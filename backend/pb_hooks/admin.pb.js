@@ -7,35 +7,18 @@ onRecordAuthWithPasswordRequest(function(e) {
     throw new BadRequestError('Account suspended. Please contact the administrator')
   }
 
-  // 调试日志：输出所有可用方式的结果，用于诊断 header 读取失败原因
+  // 在 hook 上下文中 e.request 为 undefined，必须用 e.requestInfo().headers。
+  // PocketBase 将 header key 转为小写下划线格式（CF-Connecting-IP → cf_connecting_ip）。
   var rawIp = '', country = ''
   try {
-    var h = e.request.header
-    var cfMap = h['Cf-Connecting-Ip']
-    var xrMap = h['X-Real-Ip']
-    var xffMap = h['X-Forwarded-For']
-    console.log('[login-debug] map cf=' + JSON.stringify(cfMap) + ' xr=' + JSON.stringify(xrMap) + ' xff=' + JSON.stringify(xffMap))
+    var hi = e.requestInfo().headers
     rawIp = (
-      ((cfMap || [])[0]) || ((xrMap || [])[0]) ||
-      (((xffMap || [])[0]) || '').split(',')[0]
+      hi['cf_connecting_ip'] ||
+      hi['x_real_ip'] ||
+      (hi['x_forwarded_for'] || '').split(',')[0]
     ).trim()
-    country = ((h['Cf-Ipcountry'] || [])[0] || '').trim()
-  } catch (err) {
-    console.log('[login-debug] map error: ' + String(err))
-  }
-
-  if (!rawIp) {
-    try {
-      var hi = e.requestInfo().headers
-      console.log('[login-debug] requestInfo keys=' + JSON.stringify(Object.keys(hi)) + ' cf=' + hi['cf-connecting-ip'] + ' xr=' + hi['x-real-ip'])
-      rawIp = (hi['cf-connecting-ip'] || hi['x-real-ip'] || (hi['x-forwarded-for'] || '').split(',')[0]).trim()
-      if (!country) country = (hi['cf-ipcountry'] || '').trim()
-    } catch (err) {
-      console.log('[login-debug] requestInfo error: ' + String(err))
-    }
-  }
-
-  console.log('[login-debug] final rawIp=' + rawIp + ' country=' + country)
+    country = (hi['cf_ipcountry'] || '').trim()
+  } catch (_) {}
 
   e.next()
 
