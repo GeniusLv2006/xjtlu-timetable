@@ -222,6 +222,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
                e.request.header.get('X-Real-IP') ||
                e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
   var logCountry = e.request.header.get('CF-IPCountry') || ''
+  var logUserAgent = (e.request.header.get('User-Agent') || '').trim()
   var logPrefix = logIp
   var v4m = logIp.match(/^(\d+\.\d+\.\d+)\.\d+$/)
   if (v4m) { logPrefix = v4m[1] + '.x' }
@@ -256,6 +257,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     logRec.set('ip_full', logIp)
     logRec.set('ip_prefix', logPrefix)
     logRec.set('country', logCountry)
+    logRec.set('user_agent', logUserAgent)
     $app.save(logRec)
     // city 字段不在 PB schema 中，需通过原始 SQL 写入
     $app.db()

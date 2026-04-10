@@ -9,7 +9,7 @@ onRecordAuthWithPasswordRequest(function(e) {
 
   // 在 hook 上下文中 e.request 为 undefined，必须用 e.requestInfo().headers。
   // PocketBase 将 header key 转为小写下划线格式（CF-Connecting-IP → cf_connecting_ip）。
-  var rawIp = '', country = ''
+  var rawIp = '', country = '', userAgent = ''
   try {
     var hi = e.requestInfo().headers
     rawIp = (
@@ -18,6 +18,7 @@ onRecordAuthWithPasswordRequest(function(e) {
       (hi['x_forwarded_for'] || '').split(',')[0]
     ).trim()
     country = (hi['cf_ipcountry'] || '').trim()
+    userAgent = (hi['user_agent'] || '').trim()
   } catch (_) {}
 
   e.next()
@@ -57,6 +58,7 @@ onRecordAuthWithPasswordRequest(function(e) {
     rec.set('ip_full', rawIp)
     rec.set('ip_prefix', prefix)
     rec.set('country', country)
+    rec.set('user_agent', userAgent)
     $app.save(rec)
     $app.db()
       .newQuery("UPDATE login_logs SET city = {:city} WHERE id = {:id}")

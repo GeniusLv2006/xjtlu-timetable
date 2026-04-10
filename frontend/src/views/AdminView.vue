@@ -358,17 +358,19 @@
                   <th>用户邮箱</th>
                   <th>完整 IP</th>
                   <th>地区</th>
+                  <th>设备</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="currentPageLogs.length === 0">
-                  <td colspan="4" class="empty-cell">暂无日志</td>
+                  <td colspan="5" class="empty-cell">暂无日志</td>
                 </tr>
                 <tr v-for="log in currentPageLogs" :key="log.id">
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
                   <td>{{ log.email || '—' }}</td>
                   <td class="mono-cell">{{ log.ip_full || '—' }}</td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
+                  <td :title="log.user_agent || ''">{{ parseDevice(log.user_agent, logsSubTab) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -1302,6 +1304,40 @@ function fmtLogCountry(code) {
   if (!code) return '—'
   try { return logCountryNames.of(code) || code } catch { return code }
 }
+function parseDevice(ua, ctx) {
+  if (!ua) return '—'
+  if (ctx === 'ical') {
+    if (/iPhone|iPad/.test(ua))                            return 'Apple Calendar · iOS'
+    if (/Mac OS X/.test(ua))                               return 'Apple Calendar · macOS'
+    if (/GoogleCalendarSyncAdapter/.test(ua))              return 'Google Calendar'
+    if (/Microsoft Outlook/i.test(ua))                     return 'Outlook'
+    if (/Thunderbird/i.test(ua))                           return 'Thunderbird'
+    if (/DAVdroid|DAVx5/i.test(ua))                        return 'DAVx5 · Android'
+    if (/Fantastical/i.test(ua))                           return 'Fantastical'
+    if (/BusyCal/i.test(ua))                               return 'BusyCal'
+    return ua.length > 40 ? ua.slice(0, 40) + '…' : ua
+  }
+  // login context
+  let os = ''
+  if (/iPhone|iPad/.test(ua))        os = 'iOS'
+  else if (/Android/.test(ua))       { const m = ua.match(/Android ([\d.]+)/); os = 'Android' + (m ? ' ' + m[1] : '') }
+  else if (/Windows/.test(ua))       os = 'Windows'
+  else if (/Mac OS X/.test(ua))      os = 'macOS'
+  else if (/Linux/.test(ua))         os = 'Linux'
+
+  let browser = ''
+  if (/Edg\//.test(ua))              browser = 'Edge'
+  else if (/OPR\/|Opera/.test(ua))   browser = 'Opera'
+  else if (/Chrome\//.test(ua))      browser = 'Chrome'
+  else if (/Firefox\//.test(ua))     browser = 'Firefox'
+  else if (/Safari\//.test(ua))      browser = 'Safari'
+
+  if (browser && os) return browser + ' · ' + os
+  if (browser)       return browser
+  if (os)            return os
+  return ua.length > 30 ? ua.slice(0, 30) + '…' : ua
+}
+
 function fmtLogTime(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('zh-CN', {
