@@ -116,7 +116,7 @@ const displayName = computed(() => {
 })
 
 const greetingWord = computed(() => {
-  const h = new Date().getHours()
+  const h = +new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', hour: 'numeric', hour12: false }).format(new Date())
   if (h >= 6  && h < 12) return '早上好'
   if (h >= 12 && h < 18) return '下午好'
   return '晚上好'

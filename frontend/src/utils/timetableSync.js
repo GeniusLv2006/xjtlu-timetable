@@ -157,7 +157,7 @@ export async function syncTimetable(pb, timetableId, hash) {
 
   // 5. 更新同步时间
   await pb.collection('timetables').update(timetableId, {
-    last_synced: new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z',
+    last_synced: new Date().toISOString(),
   })
 
   return { total: activities.length, added, updated, removed }

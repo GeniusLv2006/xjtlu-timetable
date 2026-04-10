@@ -261,7 +261,7 @@ async function handleImport() {
       timetable = existing.items[0]
       isReimport.value = true
       await pb.collection('timetables').update(timetable.id, {
-        last_synced: new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z',
+        last_synced: new Date().toISOString(),
       })
     } else {
       const label = `${userId.slice(0, 8)}-${Math.floor(Date.now() / 1000)}`
@@ -270,7 +270,7 @@ async function handleImport() {
         hash,
         label,
         visibility:  'private',
-        last_synced: new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z',
+        last_synced: new Date().toISOString(),
       })
     }
 

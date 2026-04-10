@@ -672,7 +672,7 @@
               <tr v-for="tt in syncTimetables" :key="tt.id">
                 <td>{{ tt.label || '（未命名）' }}</td>
                 <td class="mono-cell">{{ tt.courseCount ?? '—' }}</td>
-                <td class="mono-cell dimmed">{{ tt.last_synced ? tt.last_synced.slice(0, 16) : '从未' }}</td>
+                <td class="mono-cell dimmed">{{ fmtDateTime(tt.last_synced) }}</td>
                 <td class="sync-action-cell">
                   <span v-if="!tt.hash" class="dimmed" style="font-size:var(--text-xs)">无 HASH</span>
                   <template v-else>
@@ -1313,6 +1313,15 @@ async function saveNotice() {
 function fmtDate(iso) {
   if (!iso) return '—'
   return iso.slice(0, 10)
+}
+function fmtDateTime(iso) {
+  if (!iso) return '从未'
+  return new Date(iso).toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  })
 }
 
 // ── Logs ───────────────────────────────────────────────────────────────────

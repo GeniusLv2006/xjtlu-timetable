@@ -495,9 +495,12 @@ function fmtCountry(code) {
 
 function fmtLogDate(str) {
   if (!str) return '—'
-  const d = new Date(str)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return new Date(str).toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  })
 }
 
 onMounted(async () => {
