@@ -79,7 +79,7 @@ onRecordUpdateRequest(function(e) {
   if (e.record && !e.record.getBool('is_banned')) {
     try {
       $app.db()
-        .newQuery('UPDATE ical_tokens SET ban_empty_served = 0 WHERE "user" = {:userId}')
+        .newQuery("UPDATE ical_tokens SET ban_empty_served = 0, ban_empty_served_at = '' WHERE \"user\" = {:userId}")
         .bind({ userId: e.record.id })
         .execute()
     } catch (_) {}

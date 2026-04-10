@@ -174,27 +174,34 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   }
 
   if (userRecord.getBool('is_banned')) {
-    // 查询是否已向该 token 发送过空日历
-    var bRows = arrayOf(new DynamicModel({ ban_empty_served: 0 }))
+    // 查询首次返回空日历的时间戳（48 小时窗口内持续返回空日历，覆盖多设备同步）
+    var bRows = arrayOf(new DynamicModel({ ban_empty_served_at: '' }))
     try {
       $app.db()
-        .newQuery('SELECT ban_empty_served FROM ical_tokens WHERE id = {:id}')
+        .newQuery('SELECT ban_empty_served_at FROM ical_tokens WHERE id = {:id}')
         .bind({ id: tokenRecord.id })
         .all(bRows)
     } catch (_) {}
 
-    if (bRows.length > 0 && bRows[0].ban_empty_served) {
-      // 空日历已发送，客户端应已清除缓存，此后直接拒绝
-      return e.json(403, { error: 'Account suspended' })
-    }
+    var servedAt = bRows.length > 0 ? bRows[0].ban_empty_served_at : ''
+    var BAN_WINDOW_MS = 48 * 60 * 60 * 1000  // 48 小时，覆盖所有设备的同步周期
 
-    // 首次请求：标记后返回空日历，让客户端在下次同步时清除本地事件
-    try {
-      $app.db()
-        .newQuery('UPDATE ical_tokens SET ban_empty_served = 1 WHERE id = {:id}')
-        .bind({ id: tokenRecord.id })
-        .execute()
-    } catch (_) {}
+    if (servedAt) {
+      var elapsed = Date.now() - new Date(servedAt).getTime()
+      if (elapsed > BAN_WINDOW_MS) {
+        // 窗口已过期，所有设备应已完成同步，切换为 403
+        return e.json(403, { error: 'Account suspended' })
+      }
+      // 仍在窗口内：继续返回空日历（供其他设备同步）
+    } else {
+      // 首次请求：记录时间戳，开启 48 小时窗口
+      try {
+        $app.db()
+          .newQuery("UPDATE ical_tokens SET ban_empty_served_at = {:ts} WHERE id = {:id}")
+          .bind({ ts: new Date().toISOString(), id: tokenRecord.id })
+          .execute()
+      } catch (_) {}
+    }
 
     var emptyIcs =
       'BEGIN:VCALENDAR\r\n' +
