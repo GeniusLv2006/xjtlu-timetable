@@ -118,17 +118,22 @@
                     <router-link :to="`/compare/${u.id}`" class="btn btn-secondary btn-xs" target="_blank">
                       查看课表
                     </router-link>
-                    <button class="btn btn-secondary btn-xs" @click="openSyncTimetables(u)">同步课表</button>
-                    <button class="btn btn-secondary btn-xs" @click="openChangeEmail(u)">改邮箱</button>
-                    <button class="btn btn-secondary btn-xs" @click="openResetPwd(u)">重置密码</button>
-                    <button class="btn btn-secondary btn-xs" @click="openInvitePerms(u)">邀请权限</button>
+                    <div class="action-more-wrap" @click.stop>
+                      <button class="btn btn-secondary btn-xs" @click="openActionMenu = openActionMenu === u.id ? null : u.id">
+                        更多 ▾
+                      </button>
+                      <div v-if="openActionMenu === u.id" class="action-dropdown">
+                        <button @click="openSyncTimetables(u); openActionMenu = null">同步课表</button>
+                        <button @click="openChangeEmail(u); openActionMenu = null">改邮箱</button>
+                        <button @click="openResetPwd(u); openActionMenu = null">重置密码</button>
+                        <button @click="openInvitePerms(u); openActionMenu = null">邀请权限</button>
+                      </div>
+                    </div>
                     <button
                       class="btn btn-xs"
                       :class="u.is_banned ? 'btn-primary' : 'btn-danger'"
                       @click="toggleBan(u)"
-                    >
-                      {{ u.is_banned ? '恢复' : '停用' }}
-                    </button>
+                    >{{ u.is_banned ? '恢复' : '停用' }}</button>
                     <button class="btn btn-danger btn-xs" @click="deleteUser(u)">删除</button>
                   </div>
                 </td>
@@ -620,12 +625,13 @@
       </div>
 
       <!-- ── Sync timetables modal ──────────────────────────────────────── -->
-      <div v-if="syncModal" class="modal-backdrop" @click.self="syncModal = false">
-        <div class="modal-card">
-          <div class="modal-title">同步课表 — {{ syncTargetUser?.email }}</div>
+      <div v-if="syncModal" class="modal-overlay" @click.self="syncModal = false">
+        <div class="modal-card modal-card-sync">
+          <h3 class="modal-title">同步课表</h3>
+          <div class="sync-modal-user">{{ syncTargetUser?.email }}</div>
           <div v-if="syncTimetablesLoading" class="state-msg">加载课表列表…</div>
           <div v-else-if="syncTimetables.length === 0" class="state-msg">该用户没有课表</div>
-          <table v-else class="admin-table" style="margin-bottom:0">
+          <table v-else class="admin-table sync-modal-table">
             <thead>
               <tr>
                 <th>课表名称</th>
@@ -636,25 +642,21 @@
             </thead>
             <tbody>
               <tr v-for="tt in syncTimetables" :key="tt.id">
-                <td>{{ tt.label || tt.id }}</td>
+                <td>{{ tt.label || '（未命名）' }}</td>
                 <td class="mono-cell">{{ tt.courseCount ?? '—' }}</td>
                 <td class="mono-cell dimmed">{{ tt.last_synced ? tt.last_synced.slice(0, 16) : '从未' }}</td>
-                <td>
-                  <div class="action-cell">
-                    <template v-if="!tt.hash">
-                      <span class="dimmed" style="font-size:var(--text-xs)">无 HASH，无法同步</span>
-                    </template>
-                    <template v-else>
-                      <button
-                        class="btn btn-primary btn-xs"
-                        :disabled="tt._syncing"
-                        @click="adminSyncTimetable(tt)"
-                      >{{ tt._syncing ? '同步中…' : '同步' }}</button>
-                      <span v-if="tt._syncMsg" class="sync-result" :class="tt._syncError ? 'sync-error' : 'sync-ok'">
-                        {{ tt._syncMsg }}
-                      </span>
-                    </template>
-                  </div>
+                <td class="sync-action-cell">
+                  <span v-if="!tt.hash" class="dimmed" style="font-size:var(--text-xs)">无 HASH</span>
+                  <template v-else>
+                    <button
+                      class="btn btn-primary btn-xs"
+                      :disabled="tt._syncing"
+                      @click="adminSyncTimetable(tt)"
+                    >{{ tt._syncing ? '同步中…' : '同步' }}</button>
+                    <div v-if="tt._syncMsg" class="sync-result" :class="tt._syncError ? 'sync-error' : 'sync-ok'">
+                      {{ tt._syncMsg }}
+                    </div>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -670,7 +672,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive, onMounted } from 'vue'
+import { ref, computed, watch, reactive, onMounted, onUnmounted } from 'vue'
 import adminPb from '../lib/adminPb'
 import RichTextEditor from '../components/RichTextEditor.vue'
 import { syncTimetable } from '../utils/timetableSync'
@@ -696,8 +698,15 @@ async function adminLogin() {
   }
 }
 
+// ── Action dropdown (more menu) ───────────────────────────────────────────
+const openActionMenu = ref(null)
+function closeAllMenus() { openActionMenu.value = null }
 onMounted(() => {
   if (isAdminAuthed.value) loadAll()
+  document.addEventListener('click', closeAllMenus)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', closeAllMenus)
 })
 
 function adminLogout() {
@@ -1848,9 +1857,59 @@ tr:hover .icon-btn { opacity: 1; }
   color: var(--text-2);
   font-family: var(--font-mono);
 }
+/* ── Action more dropdown ────────────────────────────────────────────────── */
+.action-more-wrap {
+  position: relative;
+}
+.action-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.action-dropdown button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 7px 14px;
+  font-size: var(--text-xs);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.action-dropdown button:hover {
+  background: var(--surface-2, var(--border));
+}
+
+/* ── Sync modal ──────────────────────────────────────────────────────────── */
+.modal-card-sync {
+  max-width: 600px;
+}
+.sync-modal-user {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  margin-top: -8px;
+}
+.sync-modal-table {
+  margin-bottom: 0;
+}
+.sync-action-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
 .sync-result {
   font-size: var(--text-xs);
-  white-space: nowrap;
 }
 .sync-ok    { color: var(--green); }
 .sync-error { color: var(--red);   }
