@@ -63,8 +63,11 @@ export function normalizeActivities(raw) {
 }
 
 /**
- * 使用已保存的 HASH 从学校服务器拉取最新课表数据，追加新增课程。
- * @returns {{ total: number, saved: number, skipped: number }}
+ * 使用已保存的 HASH 从学校服务器拉取最新课表数据。
+ * - 新增课程：写入
+ * - 已有课程信息变更：更新
+ * - 旧课表中有但新数据中已消失的课程：删除
+ * @returns {{ total: number, added: number, updated: number, removed: number }}
  */
 export async function syncTimetable(pb, timetableId, hash) {
   // 1. 拉取学校服务器数据
@@ -87,37 +90,75 @@ export async function syncTimetable(pb, timetableId, hash) {
 
   const activities = normalizeActivities(rawList)
 
-  // 2. 获取已有课程的 identity，跳过重复
+  // 2. 获取已有课程（含完整字段，用于比对）
   const existingCourses = await pb.collection('courses').getFullList({
     filter: `timetable = "${timetableId}"`,
-    fields: 'identity',
+    fields: 'id,identity,code,activity_type,section,day,start_time,end_time,location,staff,weeks',
   })
-  const existingIdentities = new Set(existingCourses.map((c) => c.identity))
+  // identity → { id, ...fields } 映射（无 identity 的课程单独保留，不删除）
+  const existingMap = new Map(
+    existingCourses.filter((c) => c.identity).map((c) => [c.identity, c])
+  )
 
-  // 3. 追加新课程
-  let saved = 0
+  // 新数据的 identity 集合
+  const newIdentities = new Set(activities.filter((a) => a.identity).map((a) => a.identity))
+
+  const FIELDS = ['code', 'activity_type', 'section', 'day', 'start_time', 'end_time', 'location', 'staff', 'weeks']
+
+  let added = 0, updated = 0, removed = 0
+
+  // 3. 新增 / 更新
   for (const act of activities) {
-    if (act.identity && existingIdentities.has(act.identity)) continue
-    await pb.collection('courses').create({
-      timetable:     timetableId,
-      code:          act.code,
-      activity_type: act.activity_type,
-      section:       act.section,
-      day:           act.day,
-      start_time:    act.start_time,
-      end_time:      act.end_time,
-      location:      act.location,
-      staff:         act.staff,
-      weeks:         act.weeks,
-      identity:      act.identity,
-    })
-    saved++
+    const existing = act.identity ? existingMap.get(act.identity) : null
+
+    if (!existing) {
+      // 新课程
+      await pb.collection('courses').create({
+        timetable:     timetableId,
+        code:          act.code,
+        activity_type: act.activity_type,
+        section:       act.section,
+        day:           act.day,
+        start_time:    act.start_time,
+        end_time:      act.end_time,
+        location:      act.location,
+        staff:         act.staff,
+        weeks:         act.weeks,
+        identity:      act.identity,
+      })
+      added++
+    } else {
+      // 检查是否有字段变更
+      const changed = FIELDS.some((f) => act[f] !== existing[f])
+      if (changed) {
+        await pb.collection('courses').update(existing.id, {
+          code:          act.code,
+          activity_type: act.activity_type,
+          section:       act.section,
+          day:           act.day,
+          start_time:    act.start_time,
+          end_time:      act.end_time,
+          location:      act.location,
+          staff:         act.staff,
+          weeks:         act.weeks,
+        })
+        updated++
+      }
+    }
   }
 
-  // 4. 更新同步时间
+  // 4. 删除新数据中已消失的课程（仅针对有 identity 的记录）
+  for (const [identity, existing] of existingMap) {
+    if (!newIdentities.has(identity)) {
+      await pb.collection('courses').delete(existing.id)
+      removed++
+    }
+  }
+
+  // 5. 更新同步时间
   await pb.collection('timetables').update(timetableId, {
     last_synced: new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z',
   })
 
-  return { total: activities.length, saved, skipped: activities.length - saved }
+  return { total: activities.length, added, updated, removed }
 }

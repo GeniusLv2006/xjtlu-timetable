@@ -252,17 +252,23 @@ async function syncSelected() {
   syncMsg.value = ''
   syncError.value = false
   try {
-    const { total, saved, skipped } = await syncTimetable(pb, tt.id, tt.hash)
-    if (saved > 0) {
+    const { total, added, updated, removed } = await syncTimetable(pb, tt.id, tt.hash)
+    if (added > 0 || updated > 0 || removed > 0) {
       // 刷新课程列表
       courses.value = await pb.collection('courses').getFullList({
         filter: `timetable = "${tt.id}"`,
         requestKey: null,
       })
     }
-    syncMsg.value = saved > 0
-      ? `同步完成：新增 ${saved} 门课，跳过 ${skipped} 门（共 ${total} 门）`
-      : `已是最新，无新课程（共 ${total} 门）`
+    if (added === 0 && updated === 0 && removed === 0) {
+      syncMsg.value = `已是最新，无变更（共 ${total} 门）`
+    } else {
+      const parts = []
+      if (added   > 0) parts.push(`新增 ${added} 门`)
+      if (updated > 0) parts.push(`更新 ${updated} 门`)
+      if (removed > 0) parts.push(`删除 ${removed} 门`)
+      syncMsg.value = `同步完成：${parts.join('，')}（共 ${total} 门）`
+    }
   } catch (e) {
     syncError.value = true
     syncMsg.value = e.message || '同步失败，请稍后重试'
