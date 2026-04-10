@@ -150,8 +150,9 @@
 
 .page-toolbar {
   display: flex;
-  align-items: center;
-  gap: var(--sp-4);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
   margin-bottom: var(--sp-6);
   padding-bottom: var(--sp-4);
   border-bottom: 1px solid var(--border);
@@ -160,7 +161,6 @@
   font-size: var(--text-sm);
   color: var(--text-3);
   text-decoration: none;
-  white-space: nowrap;
   transition: color 0.12s;
 }
 .back-link:hover { color: var(--accent); }
@@ -168,6 +168,7 @@
   font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
+  margin: 0;
 }
 
 .terms-meta {
