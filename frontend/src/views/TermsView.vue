@@ -143,6 +143,7 @@
 
 <style scoped>
 .terms-page {
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
   padding: var(--sp-5) var(--sp-4) var(--sp-10);
