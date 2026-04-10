@@ -118,6 +118,7 @@
                     <router-link :to="`/compare/${u.id}`" class="btn btn-secondary btn-xs" target="_blank">
                       查看课表
                     </router-link>
+                    <button class="btn btn-secondary btn-xs" @click="openSyncTimetables(u)">同步课表</button>
                     <button class="btn btn-secondary btn-xs" @click="openChangeEmail(u)">改邮箱</button>
                     <button class="btn btn-secondary btn-xs" @click="openResetPwd(u)">重置密码</button>
                     <button class="btn btn-secondary btn-xs" @click="openInvitePerms(u)">邀请权限</button>
@@ -618,6 +619,52 @@
         </div>
       </div>
 
+      <!-- ── Sync timetables modal ──────────────────────────────────────── -->
+      <div v-if="syncModal" class="modal-backdrop" @click.self="syncModal = false">
+        <div class="modal-card">
+          <div class="modal-title">同步课表 — {{ syncTargetUser?.email }}</div>
+          <div v-if="syncTimetablesLoading" class="state-msg">加载课表列表…</div>
+          <div v-else-if="syncTimetables.length === 0" class="state-msg">该用户没有课表</div>
+          <table v-else class="admin-table" style="margin-bottom:0">
+            <thead>
+              <tr>
+                <th>课表名称</th>
+                <th>课程数</th>
+                <th>最后同步</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="tt in syncTimetables" :key="tt.id">
+                <td>{{ tt.label || tt.id }}</td>
+                <td class="mono-cell">{{ tt.courseCount ?? '—' }}</td>
+                <td class="mono-cell dimmed">{{ tt.last_synced ? tt.last_synced.slice(0, 16) : '从未' }}</td>
+                <td>
+                  <div class="action-cell">
+                    <template v-if="!tt.hash">
+                      <span class="dimmed" style="font-size:var(--text-xs)">无 HASH，无法同步</span>
+                    </template>
+                    <template v-else>
+                      <button
+                        class="btn btn-primary btn-xs"
+                        :disabled="tt._syncing"
+                        @click="adminSyncTimetable(tt)"
+                      >{{ tt._syncing ? '同步中…' : '同步' }}</button>
+                      <span v-if="tt._syncMsg" class="sync-result" :class="tt._syncError ? 'sync-error' : 'sync-ok'">
+                        {{ tt._syncMsg }}
+                      </span>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="syncModal = false">关闭</button>
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -626,6 +673,7 @@
 import { ref, computed, watch, reactive, onMounted } from 'vue'
 import adminPb from '../lib/adminPb'
 import RichTextEditor from '../components/RichTextEditor.vue'
+import { syncTimetable } from '../utils/timetableSync'
 
 // ── Admin auth ────────────────────────────────────────────────────────────
 const loginEmail    = ref('')
@@ -752,6 +800,67 @@ async function deleteUser(u) {
     users.value = users.value.filter(x => x.id !== u.id)
   } catch (e) {
     usersError.value = e.message
+  }
+}
+
+// ── Sync timetables modal ─────────────────────────────────────────────────
+const syncModal              = ref(false)
+const syncTargetUser         = ref(null)
+const syncTimetables         = ref([])
+const syncTimetablesLoading  = ref(false)
+
+async function openSyncTimetables(u) {
+  syncTargetUser.value = u
+  syncTimetables.value = []
+  syncModal.value = true
+  syncTimetablesLoading.value = true
+  try {
+    const tts = await adminPb.collection('timetables').getFullList({
+      filter: `user = "${u.id}"`,
+      sort: '-created',
+      requestKey: null,
+    })
+    // 获取每个课表的课程数
+    for (const tt of tts) {
+      try {
+        const res = await adminPb.collection('courses').getList(1, 1, {
+          filter: `timetable = "${tt.id}"`,
+          requestKey: null,
+        })
+        tt.courseCount = res.totalItems
+      } catch { tt.courseCount = '?' }
+      tt._syncing  = false
+      tt._syncMsg  = ''
+      tt._syncError = false
+    }
+    syncTimetables.value = tts
+  } catch (e) {
+    usersError.value = e.message
+    syncModal.value = false
+  } finally {
+    syncTimetablesLoading.value = false
+  }
+}
+
+async function adminSyncTimetable(tt) {
+  tt._syncing  = true
+  tt._syncMsg  = ''
+  tt._syncError = false
+  try {
+    const { total, added, updated, removed } = await syncTimetable(adminPb, tt.id, tt.hash)
+    const parts = []
+    if (added   > 0) parts.push(`新增 ${added} 门`)
+    if (updated > 0) parts.push(`更新 ${updated} 门`)
+    if (removed > 0) parts.push(`删除 ${removed} 门`)
+    tt._syncMsg = parts.length ? `${parts.join('，')}（共 ${total} 门）` : `无变更（共 ${total} 门）`
+    // 刷新课程数和同步时间
+    tt.courseCount = total - removed + added
+    tt.last_synced = new Date().toISOString()
+  } catch (e) {
+    tt._syncError = true
+    tt._syncMsg   = e.message || '同步失败'
+  } finally {
+    tt._syncing = false
   }
 }
 
@@ -1739,4 +1848,10 @@ tr:hover .icon-btn { opacity: 1; }
   color: var(--text-2);
   font-family: var(--font-mono);
 }
+.sync-result {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.sync-ok    { color: var(--green); }
+.sync-error { color: var(--red);   }
 </style>
