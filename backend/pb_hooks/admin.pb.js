@@ -72,3 +72,16 @@ onRecordAuthRefreshRequest(function(e) {
   }
   e.next()
 }, 'users')
+
+// 解封用户时重置 ban_empty_served，确保下次重新封禁仍能走空日历清缓存流程。
+onRecordUpdateRequest(function(e) {
+  e.next()
+  if (e.record && !e.record.getBool('is_banned')) {
+    try {
+      $app.db()
+        .newQuery('UPDATE ical_tokens SET ban_empty_served = 0 WHERE "user" = {:userId}')
+        .bind({ userId: e.record.id })
+        .execute()
+    } catch (_) {}
+  }
+}, 'users')

@@ -169,11 +169,45 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   var userRecord
   try {
     userRecord = $app.findRecordById('users', userId)
-    if (userRecord.getBool('is_banned')) {
-      return e.json(403, { error: 'Account suspended' })
-    }
   } catch (err) {
     return e.json(404, { error: 'User not found' })
+  }
+
+  if (userRecord.getBool('is_banned')) {
+    // 查询是否已向该 token 发送过空日历
+    var bRows = arrayOf(new DynamicModel({ ban_empty_served: 0 }))
+    try {
+      $app.db()
+        .newQuery('SELECT ban_empty_served FROM ical_tokens WHERE id = {:id}')
+        .bind({ id: tokenRecord.id })
+        .all(bRows)
+    } catch (_) {}
+
+    if (bRows.length > 0 && bRows[0].ban_empty_served) {
+      // 空日历已发送，客户端应已清除缓存，此后直接拒绝
+      return e.json(403, { error: 'Account suspended' })
+    }
+
+    // 首次请求：标记后返回空日历，让客户端在下次同步时清除本地事件
+    try {
+      $app.db()
+        .newQuery('UPDATE ical_tokens SET ban_empty_served = 1 WHERE id = {:id}')
+        .bind({ id: tokenRecord.id })
+        .execute()
+    } catch (_) {}
+
+    var emptyIcs =
+      'BEGIN:VCALENDAR\r\n' +
+      'VERSION:2.0\r\n' +
+      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
+      'CALSCALE:GREGORIAN\r\n' +
+      'METHOD:PUBLISH\r\n' +
+      'X-WR-CALNAME:XJTLU Timetable\r\n' +
+      'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
+      'END:VCALENDAR\r\n'
+    e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
+    e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+    return e.string(200, emptyIcs)
   }
 
   // 1c. 记录 iCal 访问日志
