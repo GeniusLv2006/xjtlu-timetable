@@ -30,25 +30,9 @@ onRecordAuthWithPasswordRequest(function(e) {
   if (v4m) { prefix = v4m[1] + '.x' }
   else if (rawIp.indexOf(':') !== -1) { prefix = rawIp.split(':').slice(0, 4).join(':') + ':...' }
 
-  // 用 ip-api.com 查询城市（CF 免费计划不提供 CF-IPCity）
+  // 城市信息来源已移除（ip-api.com 同步调用会阻塞登录响应）
+  // 国家信息已由 Cloudflare CF-IPCountry 头部提供，城市留空
   var city = ''
-  var isPrivate = !rawIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(rawIp)
-  if (!isPrivate) {
-    try {
-      var geoRes = $http.send({
-        url: 'http://ip-api.com/json/' + rawIp + '?fields=status,countryCode,city',
-        method: 'GET',
-        timeout: 3,
-      })
-      if (geoRes.statusCode === 200 && geoRes.raw) {
-        var geoData = JSON.parse(geoRes.raw)
-        if (geoData.status === 'success') {
-          city = geoData.city || ''
-          if (!country && geoData.countryCode) country = geoData.countryCode
-        }
-      }
-    } catch (_) {}
-  }
 
   try {
     var col = $app.findCollectionByNameOrId('login_logs')

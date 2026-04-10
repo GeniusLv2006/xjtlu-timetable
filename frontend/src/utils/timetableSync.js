@@ -107,13 +107,15 @@ export async function syncTimetable(pb, timetableId, hash) {
 
   let added = 0, updated = 0, removed = 0
 
-  // 3. 新增 / 更新
+  // 3. 新增 / 更新 / 删除：用 batch 打包成一次请求
+  const batch = pb.createBatch()
+
   for (const act of activities) {
     const existing = act.identity ? existingMap.get(act.identity) : null
 
     if (!existing) {
       // 新课程
-      await pb.collection('courses').create({
+      batch.collection('courses').create({
         timetable:     timetableId,
         code:          act.code,
         activity_type: act.activity_type,
@@ -131,7 +133,7 @@ export async function syncTimetable(pb, timetableId, hash) {
       // 检查是否有字段变更
       const changed = FIELDS.some((f) => act[f] !== existing[f])
       if (changed) {
-        await pb.collection('courses').update(existing.id, {
+        batch.collection('courses').update(existing.id, {
           code:          act.code,
           activity_type: act.activity_type,
           section:       act.section,
@@ -150,9 +152,13 @@ export async function syncTimetable(pb, timetableId, hash) {
   // 4. 删除新数据中已消失的课程（仅针对有 identity 的记录）
   for (const [identity, existing] of existingMap) {
     if (!newIdentities.has(identity)) {
-      await pb.collection('courses').delete(existing.id)
+      batch.collection('courses').delete(existing.id)
       removed++
     }
+  }
+
+  if (added + updated + removed > 0) {
+    await batch.send()
   }
 
   // 5. 更新同步时间

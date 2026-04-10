@@ -280,12 +280,13 @@ async function handleImport() {
     })
     const existingIdentities = new Set(existingCourses.map((c) => c.identity))
 
+    const batch = pb.createBatch()
     for (const act of activities) {
       if (act.identity && existingIdentities.has(act.identity)) {
         skippedCount.value++
         continue
       }
-      await pb.collection('courses').create({
+      batch.collection('courses').create({
         timetable:     timetable.id,
         code:          act.code,
         activity_type: act.activity_type,
@@ -299,6 +300,9 @@ async function handleImport() {
         identity:      act.identity,
       })
       savedCount.value++
+    }
+    if (savedCount.value > 0) {
+      await batch.send()
     }
 
     phase.value = 'done'

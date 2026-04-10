@@ -308,5 +308,6 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
   e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
   e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+  e.response.header().set('Cache-Control', 'private, max-age=300')
   return e.string(200, ics)
 })

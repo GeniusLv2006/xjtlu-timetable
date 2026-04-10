@@ -94,9 +94,15 @@ async function validateSession() {
 }
 
 // Re-validate when the tab becomes visible (catches delete/ban while tab was in background)
+// Throttled to once per 5 minutes to avoid excessive requests on frequent tab switches.
+let lastValidated = 0
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && authStore.isLoggedIn) {
-    validateSession()
+    const now = Date.now()
+    if (now - lastValidated > 5 * 60 * 1000) {
+      lastValidated = now
+      validateSession()
+    }
   }
 })
 

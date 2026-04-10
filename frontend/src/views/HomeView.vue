@@ -201,7 +201,6 @@ async function loadTimetables() {
   }
 }
 
-onMounted(loadTimetables)
 onActivated(loadTimetables)
 
 watch(selectedId, async (id) => {
