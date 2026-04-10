@@ -342,9 +342,19 @@
               :class="logsSubTab === 'ical' ? 'btn-primary' : 'btn-secondary'"
               @click="switchLogsTab('ical')"
             >iCal 访问日志</button>
-            <span class="tab-toolbar-hint" v-if="!logsLoading && logsTotalItems > 0">
-              共 {{ logsTotalItems }} 条
-            </span>
+          </div>
+
+          <!-- Filter bar -->
+          <div class="logs-filter-bar">
+            <input v-model="logsFilter.email"   class="field-input filter-input" placeholder="邮箱搜索" @keyup.enter="applyLogsFilter" />
+            <input v-model="logsFilter.ip"      class="field-input filter-input" placeholder="IP 前缀" @keyup.enter="applyLogsFilter" />
+            <input v-model="logsFilter.country" class="field-input filter-input filter-input--xs" placeholder="国家(CN)" maxlength="2" @keyup.enter="applyLogsFilter" />
+            <input v-model="logsFilter.dateFrom" type="date" class="field-input filter-input filter-input--date" title="开始日期（上海时区）" />
+            <span class="filter-to">至</span>
+            <input v-model="logsFilter.dateTo"  type="date" class="field-input filter-input filter-input--date" title="结束日期（上海时区）" />
+            <button class="btn btn-primary btn-sm" @click="applyLogsFilter">筛选</button>
+            <button v-if="hasLogsFilter" class="btn btn-secondary btn-sm" @click="clearLogsFilter">× 清除</button>
+            <span v-if="!logsLoading && logsTotalItems > 0" class="tab-toolbar-hint">共 {{ logsTotalItems }} 条</span>
           </div>
 
           <div v-if="logsLoading" class="state-msg">加载中…</div>
@@ -368,8 +378,14 @@
                 </tr>
                 <tr v-for="log in currentPageLogs" :key="log.id">
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
-                  <td>{{ log.email || '—' }}</td>
-                  <td class="mono-cell">{{ log.ip_full || '—' }}</td>
+                  <td>
+                    <a v-if="log.email" href="#" class="log-filter-link" @click.prevent="quickFilterEmail(log.email)">{{ log.email }}</a>
+                    <span v-else>—</span>
+                  </td>
+                  <td class="mono-cell">
+                    <a v-if="log.ip_prefix" href="#" class="log-filter-link" @click.prevent="quickFilterIp(log.ip_prefix)">{{ log.ip_full || '—' }}</a>
+                    <span v-else>—</span>
+                  </td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
                   <td>{{ log.city || '—' }}</td>
                   <td :title="log.user_agent || ''">{{ parseDevice(log.user_agent, logsSubTab) }}</td>
@@ -378,10 +394,18 @@
             </table>
 
             <!-- Pagination -->
-            <div v-if="logsTotalPages > 1" class="logs-pagination">
-              <button class="btn btn-secondary btn-xs" :disabled="logsPage === 1" @click="setLogsPage(logsPage - 1)">‹ 上一页</button>
-              <span class="logs-page-info">第 {{ logsPage }} / {{ logsTotalPages }} 页</span>
-              <button class="btn btn-secondary btn-xs" :disabled="logsPage === logsTotalPages" @click="setLogsPage(logsPage + 1)">下一页 ›</button>
+            <div v-if="logsTotalItems > 0" class="logs-pagination">
+              <button class="btn btn-secondary btn-xs" :disabled="logsPage === 1" @click="loadLogs(1)" title="首页">«</button>
+              <button class="btn btn-secondary btn-xs" :disabled="logsPage === 1" @click="loadLogs(logsPage - 1)">‹ 上一页</button>
+              <span class="logs-page-info">
+                {{ (logsPage - 1) * LOGS_PER_PAGE + 1 }}–{{ Math.min(logsPage * LOGS_PER_PAGE, logsTotalItems) }} / {{ logsTotalItems }} 条
+              </span>
+              <button class="btn btn-secondary btn-xs" :disabled="logsPage === logsTotalPages" @click="loadLogs(logsPage + 1)">下一页 ›</button>
+              <button class="btn btn-secondary btn-xs" :disabled="logsPage === logsTotalPages" @click="loadLogs(logsTotalPages)" title="末页">»</button>
+              <span v-if="logsTotalPages > 1" class="logs-jump">
+                <input v-model.number="logsJumpInput" class="page-jump-input" type="number" placeholder="页" :min="1" :max="logsTotalPages" @keyup.enter="jumpToLogsPage" />
+                <button class="btn btn-secondary btn-xs" @click="jumpToLogsPage">Go</button>
+              </span>
             </div>
           </template>
 
@@ -1300,6 +1324,60 @@ const logsTotalItems  = ref(0)
 const logsTotalPages  = ref(1)
 const logsLoading     = ref(false)
 const logsError       = ref('')
+const logsFilter      = reactive({ email: '', ip: '', country: '', dateFrom: '', dateTo: '' })
+const logsJumpInput   = ref(null)
+
+const hasLogsFilter = computed(() =>
+  !!(logsFilter.email || logsFilter.ip || logsFilter.country || logsFilter.dateFrom || logsFilter.dateTo)
+)
+
+function buildLogsFilter() {
+  const parts = []
+  const esc = v => v.replace(/"/g, '')
+  if (logsFilter.email)    parts.push(`email ~ "${esc(logsFilter.email)}"`)
+  if (logsFilter.ip)       parts.push(`ip_prefix ~ "${esc(logsFilter.ip)}"`)
+  if (logsFilter.country)  parts.push(`country = "${esc(logsFilter.country).toUpperCase()}"`)
+  if (logsFilter.dateFrom) {
+    const d = new Date(logsFilter.dateFrom + 'T00:00:00+08:00')
+    parts.push(`created >= "${d.toISOString().slice(0, 19).replace('T', ' ')}"`)
+  }
+  if (logsFilter.dateTo) {
+    const d = new Date(logsFilter.dateTo + 'T23:59:59+08:00')
+    parts.push(`created <= "${d.toISOString().slice(0, 19).replace('T', ' ')}"`)
+  }
+  return parts.join(' && ')
+}
+
+function applyLogsFilter() { loadLogs(1) }
+
+function clearLogsFilter() {
+  logsFilter.email = ''
+  logsFilter.ip = ''
+  logsFilter.country = ''
+  logsFilter.dateFrom = ''
+  logsFilter.dateTo = ''
+  loadLogs(1)
+}
+
+function jumpToLogsPage() {
+  const p = logsJumpInput.value
+  if (p && p >= 1 && p <= logsTotalPages.value) {
+    loadLogs(p)
+    logsJumpInput.value = null
+  }
+}
+
+function quickFilterEmail(email) {
+  logsFilter.email = email
+  logsFilter.ip = ''
+  loadLogs(1)
+}
+
+function quickFilterIp(ipPrefix) {
+  logsFilter.ip = ipPrefix
+  logsFilter.email = ''
+  loadLogs(1)
+}
 
 const logCountryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
 function fmtLogCountry(code) {
@@ -1355,8 +1433,10 @@ async function loadLogs(page = 1) {
   logsError.value = ''
   try {
     const collection = logsSubTab.value === 'login' ? 'login_logs' : 'ical_access_logs'
+    const filter = buildLogsFilter()
     const res = await adminPb.collection(collection).getList(page, LOGS_PER_PAGE, {
       sort: '-created',
+      ...(filter ? { filter } : {}),
       requestKey: null,
     })
     currentPageLogs.value = res.items
@@ -1372,11 +1452,12 @@ async function loadLogs(page = 1) {
 
 function switchLogsTab(tab) {
   logsSubTab.value = tab
+  logsFilter.email = ''
+  logsFilter.ip = ''
+  logsFilter.country = ''
+  logsFilter.dateFrom = ''
+  logsFilter.dateTo = ''
   loadLogs(1)
-}
-
-function setLogsPage(page) {
-  loadLogs(page)
 }
 
 // ── Changelogs ─────────────────────────────────────────────────────────────
@@ -1877,24 +1958,71 @@ tr:hover .icon-btn { opacity: 1; }
 }
 .text-faded { color: var(--text-3); }
 
-/* Logs pagination */
+/* Logs filter & pagination */
 .tab-toolbar-hint {
   font-size: var(--text-xs);
   color: var(--text-3);
   margin-left: auto;
 }
+.logs-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.filter-input {
+  height: 32px;
+  font-size: var(--text-sm);
+  padding: 0 var(--sp-3);
+  width: 160px;
+}
+.filter-input--xs   { width: 72px; }
+.filter-input--date { width: 140px; }
+.filter-to {
+  font-size: var(--text-sm);
+  color: var(--text-3);
+}
+.log-filter-link {
+  color: inherit;
+  text-decoration: none;
+}
+.log-filter-link:hover { text-decoration: underline; color: var(--accent); }
+
 .logs-pagination {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   padding: var(--sp-4) 0 var(--sp-2);
+  flex-wrap: wrap;
 }
 .logs-page-info {
   font-size: var(--text-sm);
   color: var(--text-2);
   font-family: var(--font-mono);
+  min-width: 160px;
+  text-align: center;
 }
+.logs-jump {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-left: var(--sp-2);
+}
+.page-jump-input {
+  width: 56px;
+  height: 28px;
+  font-size: var(--text-sm);
+  padding: 0 var(--sp-2);
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-1);
+}
+.page-jump-input::-webkit-inner-spin-button,
+.page-jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.page-jump-input[type=number] { -moz-appearance: textfield; }
 /* ── Action more dropdown ────────────────────────────────────────────────── */
 .action-more-wrap {
   position: relative;
