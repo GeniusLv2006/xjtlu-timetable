@@ -30,9 +30,38 @@ onRecordAuthWithPasswordRequest(function(e) {
   if (v4m) { prefix = v4m[1] + '.x' }
   else if (rawIp.indexOf(':') !== -1) { prefix = rawIp.split(':').slice(0, 4).join(':') + ':...' }
 
-  // 城市信息来源已移除（ip-api.com 同步调用会阻塞登录响应）
-  // 国家信息已由 Cloudflare CF-IPCountry 头部提供，城市留空
+  // 用 ip.sb 查询城市/ISP（优先），ip-api.com 作为备用
   var city = ''
+  var isp  = ''
+  var isPrivateIp = !rawIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(rawIp)
+  if (!isPrivateIp) {
+    try {
+      var gr = $http.send({ url: 'https://api.ip.sb/geoip/' + rawIp, method: 'GET', timeout: 3 })
+      if (gr.statusCode === 200 && gr.raw) {
+        var gd = JSON.parse(gr.raw)
+        city = gd.city || ''
+        isp  = gd.isp  || ''
+        if (!country && gd.country_code) country = gd.country_code
+      }
+    } catch (_) {}
+    if (!city) {
+      try {
+        var gr2 = $http.send({
+          url: 'http://ip-api.com/json/' + rawIp + '?fields=status,countryCode,city,isp',
+          method: 'GET',
+          timeout: 3,
+        })
+        if (gr2.statusCode === 200 && gr2.raw) {
+          var gd2 = JSON.parse(gr2.raw)
+          if (gd2.status === 'success') {
+            city = gd2.city || ''
+            if (!isp && gd2.isp) isp = gd2.isp
+            if (!country && gd2.countryCode) country = gd2.countryCode
+          }
+        }
+      } catch (_) {}
+    }
+  }
 
   try {
     var col = $app.findCollectionByNameOrId('login_logs')
@@ -45,8 +74,8 @@ onRecordAuthWithPasswordRequest(function(e) {
     rec.set('user_agent', userAgent)
     $app.save(rec)
     $app.db()
-      .newQuery("UPDATE login_logs SET city = {:city} WHERE id = {:id}")
-      .bind({ city: city, id: rec.id })
+      .newQuery("UPDATE login_logs SET city = {:city}, isp = {:isp} WHERE id = {:id}")
+      .bind({ city: city, isp: isp, id: rec.id })
       .execute()
   } catch (_) {}
 }, 'users')

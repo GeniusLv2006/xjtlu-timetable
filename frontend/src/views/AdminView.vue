@@ -369,12 +369,13 @@
                   <th>完整 IP</th>
                   <th>地区</th>
                   <th>城市</th>
+                  <th>ISP</th>
                   <th>设备</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="currentPageLogs.length === 0">
-                  <td colspan="6" class="empty-cell">暂无日志</td>
+                  <td colspan="7" class="empty-cell">暂无日志</td>
                 </tr>
                 <tr v-for="log in currentPageLogs" :key="log.id">
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
@@ -388,6 +389,7 @@
                   </td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
                   <td>{{ log.city || '—' }}</td>
+                  <td>{{ log.isp || '—' }}</td>
                   <td :title="log.user_agent || ''">{{ parseDevice(log.user_agent, logsSubTab) }}</td>
                 </tr>
               </tbody>

@@ -228,25 +228,44 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   if (v4m) { logPrefix = v4m[1] + '.x' }
   else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
 
-  // 用 ip-api.com 查询城市（CF 免费计划不提供 CF-IPCity）
+  // 用 ip.sb 查询城市/ISP（优先），ip-api.com 作为备用（CF 免费计划不提供 CF-IPCity）
   var logCity = ''
+  var logIsp = ''
   var isPrivateIp = !logIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(logIp)
   if (!isPrivateIp) {
+    // 主：ip.sb
     try {
       var geoRes = $http.send({
-        url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city',
+        url: 'https://api.ip.sb/geoip/' + logIp,
         method: 'GET',
         timeout: 3,
       })
       if (geoRes.statusCode === 200 && geoRes.raw) {
         var geoData = JSON.parse(geoRes.raw)
-        if (geoData.status === 'success') {
-          logCity = geoData.city || ''
-          if (!logCountry && geoData.countryCode) logCountry = geoData.countryCode
-        }
+        logCity = geoData.city || ''
+        logIsp  = geoData.isp  || ''
+        if (!logCountry && geoData.country_code) logCountry = geoData.country_code
       }
     } catch (_) {}
 
+    // 备用：ip-api.com（仅当主 API 未取到城市时）
+    if (!logCity) {
+      try {
+        var geoRes2 = $http.send({
+          url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,isp',
+          method: 'GET',
+          timeout: 3,
+        })
+        if (geoRes2.statusCode === 200 && geoRes2.raw) {
+          var geoData2 = JSON.parse(geoRes2.raw)
+          if (geoData2.status === 'success') {
+            logCity = geoData2.city || ''
+            if (!logIsp && geoData2.isp) logIsp = geoData2.isp
+            if (!logCountry && geoData2.countryCode) logCountry = geoData2.countryCode
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   try {
@@ -259,10 +278,10 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     logRec.set('country', logCountry)
     logRec.set('user_agent', logUserAgent)
     $app.save(logRec)
-    // city 字段不在 PB schema 中，需通过原始 SQL 写入
+    // city/isp 字段不在 PB schema 中，需通过原始 SQL 写入
     $app.db()
-      .newQuery("UPDATE ical_access_logs SET city = {:city} WHERE id = {:id}")
-      .bind({ city: logCity, id: logRec.id })
+      .newQuery("UPDATE ical_access_logs SET city = {:city}, isp = {:isp} WHERE id = {:id}")
+      .bind({ city: logCity, isp: logIsp, id: logRec.id })
       .execute()
   } catch (_) {}
 
