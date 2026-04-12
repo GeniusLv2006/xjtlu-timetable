@@ -217,6 +217,30 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     return e.string(200, emptyIcs)
   }
 
+  // 1d. token 已被自动吊销（风控触发）—— 与账户暂停策略相同：48h 空日历 → 403
+  if (tokenRecord.getBool('is_revoked')) {
+    var revokedAt = tokenRecord.getString('revoked_at')
+    var REVOKE_WINDOW_MS = 48 * 60 * 60 * 1000
+
+    if (revokedAt && (Date.now() - new Date(revokedAt).getTime()) > REVOKE_WINDOW_MS) {
+      return e.json(403, { error: 'Token revoked. Please generate a new subscription link.' })
+    }
+
+    // 仍在 48h 窗口内：返回空日历供各设备清缓存
+    var emptyRevoked =
+      'BEGIN:VCALENDAR\r\n' +
+      'VERSION:2.0\r\n' +
+      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
+      'CALSCALE:GREGORIAN\r\n' +
+      'METHOD:PUBLISH\r\n' +
+      'X-WR-CALNAME:XJTLU Timetable\r\n' +
+      'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
+      'END:VCALENDAR\r\n'
+    e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
+    e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+    return e.string(200, emptyRevoked)
+  }
+
   // 1c. 记录 iCal 访问日志
   var logIp = (e.request.header.get('CF-Connecting-IP') ||
                e.request.header.get('X-Real-IP') ||
@@ -283,6 +307,71 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       .newQuery("UPDATE ical_access_logs SET city = {:city}, isp = {:isp} WHERE id = {:id}")
       .bind({ city: logCity, isp: logIsp, id: logRec.id })
       .execute()
+  } catch (_) {}
+
+  // ── 速率门控：10 分钟内同一 token 超过 5 次请求 → 429 ─────────────────────
+  var rateRows = arrayOf(new DynamicModel({ cnt: 0 }))
+  try {
+    $app.db()
+      .newQuery("SELECT count(*) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= datetime('now', '-10 minutes')")
+      .bind({ uid: userId })
+      .all(rateRows)
+  } catch (_) {}
+  if (rateRows.length > 0 && parseInt(rateRows[0].cnt) >= 5) {
+    e.response.header().set('Retry-After', '600')
+    return e.json(429, { error: 'Too many requests. Please retry after 10 minutes.' })
+  }
+
+  // ── 异常检测：24 小时内不同 IP 前缀数量 ───────────────────────────────────
+  // 阈值：≥3 个不同 IP 前缀 → 标记可疑；≥6 个 → 立即吊销；
+  //       已标记可疑 >48h 且仍 ≥3 个 → 吊销（持续未处理）
+  // 吊销不删除 record，走 48h 空日历过渡（与账户暂停策略一致）
+  try {
+    var ipRows = arrayOf(new DynamicModel({ cnt: 0 }))
+    $app.db()
+      .newQuery("SELECT count(DISTINCT ip_prefix) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= datetime('now', '-24 hours')")
+      .bind({ uid: userId })
+      .all(ipRows)
+    var distinctIps = ipRows.length > 0 ? parseInt(ipRows[0].cnt) : 0
+
+    var isSuspicious = tokenRecord.getBool('is_suspicious')
+    var suspiciousAt = tokenRecord.getString('suspicious_at')
+    var nowIso       = new Date().toISOString()
+
+    var doRevoke = function(reason) {
+      try {
+        var rec = $app.findRecordById('ical_tokens', tokenRecord.id)
+        rec.set('is_revoked',    true)
+        rec.set('is_suspicious', true)
+        if (!rec.getString('suspicious_at')) rec.set('suspicious_at', nowIso)
+        rec.set('revoked_at', nowIso)
+        $app.save(rec)
+        console.warn('[iCal] Auto-revoked (' + reason + '): user=' + userId +
+          ' email=' + userRecord.email() + ' distinct_ips_24h=' + distinctIps)
+      } catch (_) {}
+    }
+
+    if (distinctIps > 5) {
+      // 高危：立即吊销（≥6 个不同 IP 前缀，明显泄露）
+      doRevoke('high-risk')
+    } else if (distinctIps > 2) {
+      // 可疑：≥3 个不同 IP 前缀
+      if (!isSuspicious) {
+        // 首次标记可疑
+        try {
+          var rec2 = $app.findRecordById('ical_tokens', tokenRecord.id)
+          rec2.set('is_suspicious', true)
+          rec2.set('suspicious_at', nowIso)
+          $app.save(rec2)
+        } catch (_) {}
+      } else if (suspiciousAt) {
+        // 已标记且持续超过 48h → 吊销（用户已看到横幅却未重置）
+        var suspAge = Date.now() - new Date(suspiciousAt).getTime()
+        if (suspAge > 48 * 60 * 60 * 1000) {
+          doRevoke('persistent')
+        }
+      }
+    }
   } catch (_) {}
 
   // 2. 查当前学期

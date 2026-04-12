@@ -70,6 +70,13 @@
       <template v-else>
         <!-- 已有 token -->
         <template v-if="icalUrl">
+          <!-- Token 泄露警告横幅 -->
+          <div v-if="icalToken?.is_suspicious" class="ical-alert-banner">
+            <strong>⚠️ 安全提醒：</strong>
+            你的订阅链接近期被多个不同来源访问，可能已泄露给他人。建议立即重置链接。
+            <button class="btn btn-danger btn-sm" @click="resetToken" style="margin-left:8px">立即重置</button>
+          </div>
+
           <div class="url-row">
             <input :value="icalUrl" readonly class="field-input url-input" @click="copyUrl" title="点击复制" />
             <button class="btn btn-secondary url-copy-btn" @click="copyUrl">
@@ -828,6 +835,22 @@ async function copyUrl() {
   font-size: var(--text-xs);
   color: #D97706;
   margin: 0;
+  line-height: 1.5;
+}
+
+/* iCal security alert banner */
+.ical-alert-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 8px;
+  font-size: var(--text-sm);
+  color: #92400E;
   line-height: 1.5;
 }
 

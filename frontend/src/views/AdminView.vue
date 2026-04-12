@@ -361,6 +361,34 @@
           <div v-else-if="logsError" class="state-msg state-error">{{ logsError }}</div>
 
           <template v-else>
+            <!-- 可疑 / 已吊销 Token 汇总（仅 iCal 子 tab） -->
+            <div v-if="logsSubTab === 'ical' && suspiciousTokens.length" class="suspicious-tokens-section">
+              <h4 class="suspicious-tokens-title">⚠️ 可疑 / 已吊销 Token（{{ suspiciousTokens.length }}）</h4>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>用户邮箱</th>
+                    <th>首次标记时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="t in suspiciousTokens" :key="t.id">
+                    <td>{{ t.expand?.user?.email || t.user }}</td>
+                    <td class="mono-cell">{{ t.suspicious_at ? fmtLogTime(t.suspicious_at) : '—' }}</td>
+                    <td>
+                      <span v-if="t.is_revoked" class="badge badge-danger">已吊销</span>
+                      <span v-else class="badge badge-warn">可疑</span>
+                    </td>
+                    <td>
+                      <button class="btn btn-secondary btn-sm" @click="clearTokenRevocation(t.id)">清除标记</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
             <table class="admin-table">
               <thead>
                 <tr>
@@ -1469,6 +1497,32 @@ function switchLogsTab(tab) {
   logsFilter.dateFrom = ''
   logsFilter.dateTo = ''
   loadLogs(1)
+  if (tab === 'ical') loadSuspiciousTokens()
+}
+
+// ── 可疑 / 已吊销 iCal Token ──────────────────────────────────────────────
+const suspiciousTokens = ref([])
+
+async function loadSuspiciousTokens() {
+  try {
+    suspiciousTokens.value = await adminPb.collection('ical_tokens').getFullList({
+      filter:     'is_suspicious = true',
+      expand:     'user',
+      requestKey: null,
+    })
+  } catch (_) {}
+}
+
+async function clearTokenRevocation(tokenId) {
+  try {
+    await adminPb.collection('ical_tokens').update(tokenId, {
+      is_suspicious: false, suspicious_at: '',
+      is_revoked:    false, revoked_at:    '',
+    }, { requestKey: null })
+    await loadSuspiciousTokens()
+  } catch (e) {
+    alert('清除失败：' + e.message)
+  }
 }
 
 // ── Changelogs ─────────────────────────────────────────────────────────────
@@ -1710,6 +1764,30 @@ async function deleteChangelog(cl) {
 
 .row-banned td { opacity: 0.55; }
 .row-current td { background: var(--accent-tint); }
+
+/* suspicious tokens section */
+.suspicious-tokens-section {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: #FFFBEB;
+  border: 1px solid #F59E0B;
+  border-radius: 8px;
+}
+.suspicious-tokens-title {
+  margin: 0 0 10px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #92400E;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.badge-danger { background: #FEE2E2; color: #991B1B; }
+.badge-warn   { background: #FEF3C7; color: #92400E; }
 
 .mono-cell {
   font-family: var(--font-mono);
