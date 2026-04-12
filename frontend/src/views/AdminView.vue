@@ -369,7 +369,7 @@
                   <th>完整 IP</th>
                   <th>地区</th>
                   <th>城市</th>
-                  <th>ISP</th>
+                  <th>Organization</th>
                   <th>设备</th>
                 </tr>
               </thead>
