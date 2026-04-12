@@ -354,8 +354,8 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     if (distinctIps > 5) {
       // 高危：立即吊销（≥6 个不同 IP 前缀，明显泄露）
       doRevoke('high-risk')
-    } else if (distinctIps > 2) {
-      // 可疑：≥3 个不同 IP 前缀
+    } else if (distinctIps > 3) {
+      // 可疑：≥4 个不同 IP 前缀
       if (!isSuspicious) {
         // 首次标记可疑
         try {
