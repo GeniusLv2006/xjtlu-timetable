@@ -11,7 +11,7 @@
     </div>
 
     <div class="terms-body">
-      <p class="terms-meta">生效日期：2026 年 4 月 10 日</p>
+      <p class="terms-meta">生效日期：2026 年 4 月 12 日</p>
       <p class="terms-intro">
         请在使用 XJTLU 课表系统（以下简称"本服务"）前仔细阅读本协议。
         <strong>注册账号或继续使用本服务，即视为您已阅读、理解并同意受本协议全部条款约束。如您不同意，请立即停止使用并注销账号。</strong>
@@ -80,7 +80,7 @@
           <tr>
             <td>访问日志（登录记录及 iCal 拉取记录）</td>
             <td>安全审计，供您在"设置"页面核查是否存在异常访问</td>
-            <td>服务器数据库；每条记录含访问时间、脱敏 IP 段、完整 IP（仅管理员可查）、国家/地区、城市，以及设备信息（浏览器及操作系统，或 iCal 日历客户端名称，来自请求头 User-Agent；仅管理员可查）；自动于 30 天后清除</td>
+            <td>服务器数据库；每条记录含访问时间、来源国家/地区、大致城市、网络运营商/机构；用户侧展示脱敏 IP 段，完整 IP 及设备标识（User-Agent）仅管理员可查；自动于 30 天后清除</td>
           </tr>
         </tbody>
       </table>
@@ -89,7 +89,7 @@
       <h3>3.2 Cloudflare 自动收集的数据</h3>
       <p>本站通过 <strong>Cloudflare</strong> 提供网络安全防护（含 DDoS 防御及 Web 应用防火墙），并启用了 <strong>Cloudflare Web Analytics</strong> 进行匿名访问统计。Cloudflare 作为独立第三方服务商，可能在其基础设施层面自动收集以下信息：</p>
       <ul>
-        <li>IP 地址：Cloudflare 通过请求头将客户端真实 IP 传递给本服务器。本服务在记录登录及 iCal 访问时会存储该 IP（完整 IP 仅管理员可查；用户侧展示为脱敏 IP 段）及国家/地区信息，30 天后自动清除。此外，本服务会将 IP 地址发送至 <strong>ip-api.com</strong>（第三方地理位置服务）以查询城市信息，查询结果同样仅用于安全审计并于 30 天后自动清除；ip-api.com 隐私政策详见 ip-api.com/docs/legal；</li>
+        <li>IP 地址：Cloudflare 通过请求头将客户端真实 IP 传递给本服务器。本服务在记录登录及 iCal 访问时会存储该 IP（完整 IP 仅管理员可查；用户侧展示为脱敏 IP 段）及国家/地区信息，30 天后自动清除。为补充大致城市及网络运营商信息，本服务会向第三方地理位置服务（优先 <strong>ip.sb</strong>，备用 <strong>ip-api.com</strong>）发起查询——仅传递 IP 地址，查询结果仅用于安全审计并于 30 天后自动清除；相关隐私政策分别见 ip.sb 及 ip-api.com/docs/legal；</li>
         <li>页面访问路径、访问时间及来源页面；</li>
         <li>大致地理位置（国家/地区级别）。</li>
       </ul>
