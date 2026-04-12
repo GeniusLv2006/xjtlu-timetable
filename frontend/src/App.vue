@@ -36,6 +36,19 @@
         <button class="notice-close" @click="noticeDismissed = true">×</button>
       </div>
 
+      <!-- iCal security alert banner (global, all pages) -->
+      <div v-if="icalRevoked" class="ical-security-banner ical-security-revoked">
+        <span>🔴 <strong>iCal 订阅链接已被自动吊销</strong>，日历已停止同步。请立即重置以恢复订阅。</span>
+        <router-link to="/settings" class="ical-security-link">前往设置重置</router-link>
+      </div>
+      <div v-else-if="icalSuspicious && !icalAlertDismissed" class="ical-security-banner">
+        <span>⚠️ <strong>安全提醒：</strong>iCal 订阅链接疑似被多方访问，若不及时重置将被自动吊销。</span>
+        <div class="ical-security-right">
+          <router-link to="/settings" class="ical-security-link">前往重置</router-link>
+          <button class="notice-close" @click="icalAlertDismissed = true">×</button>
+        </div>
+      </div>
+
       <!-- Changelog banner -->
       <div v-if="changelogEntry && !changelogDismissed" class="changelog-banner">
         <span>
@@ -80,6 +93,23 @@ const siteNotice      = ref('')
 const noticeDismissed = ref(false)
 const changelogEntry    = ref(null)
 const changelogDismissed = ref(false)
+const icalSuspicious   = ref(false)
+const icalRevoked      = ref(false)
+const icalAlertDismissed = ref(false)
+
+async function fetchIcalStatus() {
+  if (!authStore.isLoggedIn) return
+  try {
+    const records = await pb.collection('ical_tokens').getFullList({ requestKey: null })
+    if (records.length > 0) {
+      icalSuspicious.value = !!records[0].is_suspicious
+      icalRevoked.value    = !!records[0].is_revoked
+    } else {
+      icalSuspicious.value = false
+      icalRevoked.value    = false
+    }
+  } catch { /* ignore */ }
+}
 
 // Validate the session against the server.
 // If the user was deleted (401) or suspended (400), clear local auth and redirect to login.
@@ -140,20 +170,26 @@ onMounted(() => {
     fetchNotice()
     fetchChangelog()
     validateSession()
+    fetchIcalStatus()
   }
 })
 
 watch(() => authStore.isLoggedIn, (v) => {
-  if (v) { fetchNotice(); fetchChangelog() }
+  if (v) { fetchNotice(); fetchChangelog(); fetchIcalStatus() }
 })
 
 // Auto-dismiss when user navigates to /changelog;
 // re-check for new changelogs on every other navigation (catches entries published after page load)
-watch(() => route.name, (name) => {
+watch(() => route.name, (name, oldName) => {
   if (name === 'Changelog') {
     dismissChangelog()
   } else if (authStore.isLoggedIn && !changelogDismissed.value) {
     fetchChangelog()
+  }
+  // Re-check ical status when leaving settings (user may have reset token)
+  if (oldName === 'Settings' && authStore.isLoggedIn) {
+    icalAlertDismissed.value = false
+    fetchIcalStatus()
   }
 })
 </script>
@@ -371,6 +407,42 @@ watch(() => route.name, (name) => {
 }
 .changelog-link:hover { opacity: 0.8; }
 .changelog-banner .notice-close { color: #7BC47B; }
+
+/* ── iCal security alert banner ──────────────────────────────────────── */
+.ical-security-banner {
+  background: #FEF3C7;
+  border-bottom: 2px solid #F59E0B;
+  padding: 9px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-sm);
+  color: #92400E;
+  flex-shrink: 0;
+}
+.ical-security-revoked {
+  background: #FEF2F2;
+  border-bottom-color: #F87171;
+  color: #991B1B;
+}
+.ical-security-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ical-security-link {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  transition: opacity 0.12s;
+}
+.ical-security-link:hover { opacity: 0.7; text-decoration: underline; }
+.ical-security-banner .notice-close { color: #92400E; }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

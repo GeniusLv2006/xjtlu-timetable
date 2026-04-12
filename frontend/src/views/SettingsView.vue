@@ -70,11 +70,14 @@
       <template v-else>
         <!-- 已有 token -->
         <template v-if="icalUrl">
-          <!-- Token 泄露警告横幅 -->
-          <div v-if="icalToken?.is_suspicious" class="ical-alert-banner">
-            <strong>⚠️ 安全提醒：</strong>
-            你的订阅链接近期被多个不同来源访问，可能已泄露给他人。建议立即重置链接。
-            <button class="btn btn-danger btn-sm" @click="resetToken" style="margin-left:8px">立即重置</button>
+          <!-- Token 吊销 / 泄露警告横幅 -->
+          <div v-if="icalToken?.is_revoked" class="ical-alert-banner ical-alert-revoked">
+            <span>🔴 <strong>订阅链接已被自动吊销：</strong>由于安全风险，日历已停止同步。请立即重置以恢复。</span>
+            <button class="btn btn-danger btn-sm" @click="resetToken">立即重置</button>
+          </div>
+          <div v-else-if="icalToken?.is_suspicious" class="ical-alert-banner">
+            <span>⚠️ <strong>安全提醒：</strong>订阅链接近期被多个来源访问，疑似已泄露。若不及时重置，系统将自动吊销该链接。</span>
+            <button class="btn btn-danger btn-sm" @click="resetToken">立即重置</button>
           </div>
 
           <div class="url-row">
@@ -842,16 +845,22 @@ async function copyUrl() {
 .ical-alert-banner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   padding: 10px 14px;
   margin-bottom: 12px;
   background: #FEF3C7;
   border: 1px solid #F59E0B;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: var(--text-sm);
   color: #92400E;
   line-height: 1.5;
+}
+.ical-alert-revoked {
+  background: #FEF2F2;
+  border-color: #F87171;
+  color: #991B1B;
 }
 
 /* iCal access logs */
