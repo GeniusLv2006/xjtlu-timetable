@@ -40,14 +40,14 @@ onRecordAuthWithPasswordRequest(function(e) {
       if (gr.statusCode === 200 && gr.raw) {
         var gd = JSON.parse(gr.raw)
         city = gd.city || ''
-        isp  = gd.isp  || ''
+        isp  = gd.organization || ''
         if (!country && gd.country_code) country = gd.country_code
       }
     } catch (_) {}
     if (!city) {
       try {
         var gr2 = $http.send({
-          url: 'http://ip-api.com/json/' + rawIp + '?fields=status,countryCode,city,isp',
+          url: 'http://ip-api.com/json/' + rawIp + '?fields=status,countryCode,city,org',
           method: 'GET',
           timeout: 3,
         })
@@ -55,7 +55,7 @@ onRecordAuthWithPasswordRequest(function(e) {
           var gd2 = JSON.parse(gr2.raw)
           if (gd2.status === 'success') {
             city = gd2.city || ''
-            if (!isp && gd2.isp) isp = gd2.isp
+            if (!isp && gd2.org) isp = gd2.org
             if (!country && gd2.countryCode) country = gd2.countryCode
           }
         }

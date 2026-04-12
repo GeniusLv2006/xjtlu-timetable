@@ -243,7 +243,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       if (geoRes.statusCode === 200 && geoRes.raw) {
         var geoData = JSON.parse(geoRes.raw)
         logCity = geoData.city || ''
-        logIsp  = geoData.isp  || ''
+        logIsp  = geoData.organization || ''
         if (!logCountry && geoData.country_code) logCountry = geoData.country_code
       }
     } catch (_) {}
@@ -252,7 +252,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     if (!logCity) {
       try {
         var geoRes2 = $http.send({
-          url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,isp',
+          url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,org',
           method: 'GET',
           timeout: 3,
         })
@@ -260,7 +260,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
           var geoData2 = JSON.parse(geoRes2.raw)
           if (geoData2.status === 'success') {
             logCity = geoData2.city || ''
-            if (!logIsp && geoData2.isp) logIsp = geoData2.isp
+            if (!logIsp && geoData2.org) logIsp = geoData2.org
             if (!logCountry && geoData2.countryCode) logCountry = geoData2.countryCode
           }
         }
