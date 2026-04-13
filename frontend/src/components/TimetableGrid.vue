@@ -625,6 +625,7 @@ function blockStyle(c) {
   line-height: 1.5;
   pointer-events: auto;
   box-sizing: border-box;
+  max-width: calc(100vw - 24px);
 }
 
 .course-popover .pop-title {

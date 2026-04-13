@@ -88,7 +88,7 @@
                 :key="u.id"
                 :class="{ 'row-banned': u.is_banned }"
               >
-                <td>
+                <td data-label="用户名">
                   <span v-if="editingName[u.id] === undefined" class="name-cell">
                     <span class="name-primary">{{ u.name || '—' }}</span>
                     <span v-if="u.nickname" class="name-nickname">{{ u.nickname }}</span>
@@ -105,15 +105,15 @@
                     <button class="btn btn-secondary btn-xs" @click="cancelEditName(u.id)">取消</button>
                   </span>
                 </td>
-                <td class="mono-cell">{{ u.email }}</td>
-                <td class="mono-cell dimmed">{{ u.id }}</td>
-                <td>
+                <td class="mono-cell" data-label="邮箱">{{ u.email }}</td>
+                <td class="mono-cell dimmed" data-label="ID">{{ u.id }}</td>
+                <td data-label="状态">
                   <span class="status-badge" :class="u.is_banned ? 'banned' : 'active'">
                     {{ u.is_banned ? '已停用' : '正常' }}
                   </span>
                 </td>
-                <td class="dimmed">{{ fmtDate(u.created) }}</td>
-                <td>
+                <td class="dimmed" data-label="注册时间">{{ fmtDate(u.created) }}</td>
+                <td data-label="操作">
                   <div class="action-cell">
                     <router-link :to="`/compare/${u.id}`" class="btn btn-secondary btn-xs" target="_blank">
                       查看课表
@@ -171,16 +171,16 @@
                 :key="s.id"
                 :class="{ 'row-current': s.is_current }"
               >
-                <td class="sem-name">{{ s.name }}</td>
-                <td class="mono-cell">{{ s.start_date?.slice(0, 10) }}</td>
-                <td class="mono-cell">{{ s.weeks_total }}</td>
-                <td>
+                <td class="sem-name" data-label="学期">{{ s.name }}</td>
+                <td class="mono-cell" data-label="开始">{{ s.start_date?.slice(0, 10) }}</td>
+                <td class="mono-cell" data-label="周数">{{ s.weeks_total }}</td>
+                <td data-label="状态">
                   <span v-if="s.is_current" class="status-badge active">当前</span>
                   <button v-else class="btn btn-secondary btn-xs" @click="setCurrentSemester(s)">
                     设为当前
                   </button>
                 </td>
-                <td>
+                <td data-label="操作">
                   <div class="action-cell">
                     <button class="btn btn-danger btn-xs" @click="deleteSemester(s)">删除</button>
                   </div>
@@ -294,26 +294,26 @@
                 <td colspan="7" class="empty-cell">暂无邀请码</td>
               </tr>
               <tr v-for="inv in invites" :key="inv.id" :class="{ 'row-banned': !inv.is_active }">
-                <td class="mono-cell">
+                <td class="mono-cell" data-label="邀请码">
                   <span class="invite-code-cell">
                     {{ inv.code }}
                     <button class="icon-btn" title="复制" @click="copyInviteCode(inv.code)">⎘</button>
                   </span>
                 </td>
-                <td class="dimmed">{{ inv.expand?.created_by?.name || inv.expand?.created_by?.email || '管理员' }}</td>
-                <td class="dimmed">{{ inv.note || '—' }}</td>
-                <td class="mono-cell">
+                <td class="dimmed" data-label="创建者">{{ inv.expand?.created_by?.name || inv.expand?.created_by?.email || '管理员' }}</td>
+                <td class="dimmed" data-label="备注">{{ inv.note || '—' }}</td>
+                <td class="mono-cell" data-label="使用">
                   {{ inv.uses }}
                   <span v-if="inv.max_uses > 0" class="text-faded"> / {{ inv.max_uses }}</span>
                   <span v-else class="text-faded"> / ∞</span>
                 </td>
-                <td class="mono-cell dimmed">{{ inv.expires_at ? inv.expires_at.slice(0, 10) : '永不过期' }}</td>
-                <td>
+                <td class="mono-cell dimmed" data-label="到期">{{ inv.expires_at ? inv.expires_at.slice(0, 10) : '永不过期' }}</td>
+                <td data-label="状态">
                   <span class="status-badge" :class="inv.is_active ? 'active' : 'banned'">
                     {{ inv.is_active ? '有效' : '停用' }}
                   </span>
                 </td>
-                <td>
+                <td data-label="操作">
                   <div class="action-cell">
                     <button
                       class="btn btn-xs"
@@ -389,7 +389,7 @@
               </table>
             </div>
 
-            <table class="admin-table">
+            <table class="admin-table logs-table">
               <thead>
                 <tr>
                   <th>时间</th>
@@ -465,10 +465,10 @@
                 <td colspan="4" class="empty-cell">暂无公告</td>
               </tr>
               <tr v-for="cl in changelogs" :key="cl.id">
-                <td><span class="version-badge">{{ cl.version }}</span></td>
-                <td>{{ cl.title }}</td>
-                <td class="mono-cell dimmed">{{ fmtDate(cl.published_at) }}</td>
-                <td>
+                <td data-label="版本"><span class="version-badge">{{ cl.version }}</span></td>
+                <td data-label="标题">{{ cl.title }}</td>
+                <td class="mono-cell dimmed" data-label="发布">{{ fmtDate(cl.published_at) }}</td>
+                <td data-label="操作">
                   <div class="action-cell">
                     <button class="btn btn-secondary btn-xs" @click="openChangelogModal(cl)">编辑</button>
                     <button class="btn btn-danger btn-xs" @click="deleteChangelog(cl)">删除</button>
@@ -2168,4 +2168,200 @@ tr:hover .icon-btn { opacity: 1; }
 }
 .sync-ok    { color: var(--green); }
 .sync-error { color: var(--red);   }
+
+/* ═══════════════════════════════════════════════════════════
+   移动端响应式 — 所有改动均在此媒体查询内
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Admin body 边距 ──────────────────────────────────── */
+  .admin-body {
+    padding: var(--sp-4) var(--sp-3) var(--sp-8);
+  }
+
+  /* ── 标签栏：横向滚动 ─────────────────────────────────── */
+  .admin-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .admin-tabs::-webkit-scrollbar { display: none; }
+  .admin-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--text-xs);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── 工具栏换行 + 搜索框撑满 ─────────────────────────── */
+  .tab-toolbar {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+  .search-input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  /* ── 统计网格自适应 ───────────────────────────────────── */
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  .stat-value {
+    font-size: var(--text-lg);
+    word-break: break-word;
+  }
+
+  /* ── 日志筛选栏输入框宽度 ─────────────────────────────── */
+  .filter-input {
+    width: 100%;
+    flex: 1 1 calc(50% - var(--sp-1));
+    min-width: 100px;
+    height: 36px;
+  }
+  .filter-input--xs {
+    flex: 0 0 72px;
+    width: 72px;
+  }
+  .filter-input--date {
+    flex: 1 1 calc(50% - var(--sp-1));
+    width: auto;
+    min-width: 120px;
+  }
+
+  /* ── 弹窗高度限制 ────────────────────────────────────── */
+  .modal-card {
+    padding: var(--sp-4);
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  .modal-card-lg,
+  .modal-card-sync {
+    max-width: 100%;
+  }
+
+  /* ── 表格通用 Card 布局（Users/Semesters/Invites/Changelogs） ── */
+  .admin-table thead {
+    display: none;
+  }
+  .admin-table tbody tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3);
+  }
+  .admin-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+  .admin-table tbody tr:hover td {
+    background: transparent;
+  }
+  .admin-table td {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: 5px 0;
+    border-bottom: none;
+    font-size: var(--text-sm);
+    white-space: normal;
+  }
+  .admin-table td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    width: 60px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .admin-table td.empty-cell {
+    display: block;
+    text-align: center;
+  }
+  .admin-table td.empty-cell::before {
+    display: none;
+  }
+  /* 当前行 Card 模式适配 */
+  .row-current {
+    background: var(--accent-tint);
+  }
+  .row-current td {
+    background: transparent;
+  }
+
+  /* ── 日志表 opt-out：改为横向滚动 ──────────────────── */
+  .logs-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    font-size: var(--text-xs);
+  }
+  .logs-table thead {
+    display: table-header-group;
+  }
+  .logs-table tbody tr {
+    display: table-row;
+    border: none;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .logs-table td {
+    display: table-cell;
+    padding: 8px var(--sp-2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .logs-table td::before {
+    display: none;
+  }
+
+  /* ── 操作列按钮换行 ──────────────────────────────────── */
+  .action-cell {
+    flex-wrap: wrap;
+    gap: var(--sp-1);
+  }
+
+  /* ── 内联编辑宽度 ────────────────────────────────────── */
+  .name-input {
+    width: 100%;
+    flex: 1;
+  }
+  .name-edit {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  /* ── 铅笔图标在移动端始终可见（无 hover 状态）────────── */
+  .admin-table tbody tr .icon-btn {
+    opacity: 1;
+  }
+
+  /* ── 触控最小点击区域 ─────────────────────────────────── */
+  .btn-xs {
+    min-height: 32px;
+    padding: 5px 10px;
+  }
+  .btn-sm {
+    min-height: 36px;
+  }
+
+  /* ── 分页条在窄屏上收紧 ──────────────────────────────── */
+  .logs-page-info {
+    min-width: 100px;
+    font-size: var(--text-xs);
+  }
+
+}
+/* end @media (max-width: 768px) */
 </style>

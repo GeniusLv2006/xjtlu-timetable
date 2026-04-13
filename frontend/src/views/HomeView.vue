@@ -370,6 +370,22 @@ async function deleteTimetable() {
   .home-page { padding: 20px 16px 32px; }
 }
 
+@media (max-width: 480px) {
+  .page-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+  .toolbar-right {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .tt-select,
+  .vis-select {
+    flex: 1;
+  }
+}
+
 .page-toolbar {
   display: flex;
   align-items: center;
