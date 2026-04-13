@@ -174,17 +174,9 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   }
 
   if (userRecord.getBool('is_banned')) {
-    // 查询首次返回空日历的时间戳（48 小时窗口内持续返回空日历，覆盖多设备同步）
-    var bRows = arrayOf(new DynamicModel({ ban_empty_served_at: '' }))
-    try {
-      $app.db()
-        .newQuery('SELECT ban_empty_served_at FROM ical_tokens WHERE id = {:id}')
-        .bind({ id: tokenRecord.id })
-        .all(bRows)
-    } catch (_) {}
-
-    var servedAt = bRows.length > 0 ? bRows[0].ban_empty_served_at : ''
-    var BAN_WINDOW_MS = 48 * 60 * 60 * 1000  // 48 小时，覆盖所有设备的同步周期
+    // ban_empty_served_at 懒加载：首次请求时开启 48h 窗口，覆盖所有设备的同步周期
+    var servedAt = tokenRecord.getString('ban_empty_served_at')
+    var BAN_WINDOW_MS = 48 * 60 * 60 * 1000
 
     if (servedAt) {
       var elapsed = Date.now() - new Date(servedAt).getTime()
@@ -194,7 +186,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       }
       // 仍在窗口内：继续返回空日历（供其他设备同步）
     } else {
-      // 首次请求：记录时间戳，开启 48 小时窗口
+      // 首次请求：记录时间戳，开启 48h 窗口
       try {
         $app.db()
           .newQuery("UPDATE ical_tokens SET ban_empty_served_at = {:ts} WHERE id = {:id}")
@@ -217,16 +209,29 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     return e.string(200, emptyIcs)
   }
 
-  // 1d. token 已被自动吊销（风控触发）—— 与账户暂停策略相同：48h 空日历 → 403
+  // 1d. token 已被自动吊销（风控触发）—— 懒加载 48h 空日历窗口 → 403
+  //     revoke_empty_served_at：首次请求时记录，48h 内返回空日历，之后 403
+  //     revoked_at 保留作审计字段（记录何时触发吊销），不参与窗口计算
   if (tokenRecord.getBool('is_revoked')) {
-    var revokedAt = tokenRecord.getString('revoked_at')
+    var revokeServedAt = tokenRecord.getString('revoke_empty_served_at')
     var REVOKE_WINDOW_MS = 48 * 60 * 60 * 1000
 
-    if (revokedAt && (Date.now() - new Date(revokedAt).getTime()) > REVOKE_WINDOW_MS) {
-      return e.json(403, { error: 'Token revoked. Please generate a new subscription link.' })
+    if (revokeServedAt) {
+      if (Date.now() - new Date(revokeServedAt).getTime() > REVOKE_WINDOW_MS) {
+        return e.json(403, { error: 'Token revoked. Please generate a new subscription link.' })
+      }
+      // 仍在窗口内：继续返回空日历
+    } else {
+      // 首次请求：记录时间戳，开启 48h 窗口
+      try {
+        $app.db()
+          .newQuery("UPDATE ical_tokens SET revoke_empty_served_at = {:ts} WHERE id = {:id}")
+          .bind({ ts: new Date().toISOString(), id: tokenRecord.id })
+          .execute()
+      } catch (_) {}
     }
 
-    // 仍在 48h 窗口内：返回空日历供各设备清缓存
+    // 返回空日历供各设备清缓存
     var emptyRevoked =
       'BEGIN:VCALENDAR\r\n' +
       'VERSION:2.0\r\n' +
