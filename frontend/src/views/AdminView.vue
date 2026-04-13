@@ -399,6 +399,18 @@
               <button class="btn btn-secondary btn-sm" @click="selectedLogIds = new Set()">取消选择</button>
             </div>
 
+            <!-- 全量删除筛选结果 -->
+            <div v-if="hasLogsFilter && logsTotalItems > 0" class="bulk-delete-bar">
+              <span class="bulk-delete-hint">
+                <template v-if="logsFilter.email && !logsFilter.ip">用户 <strong>{{ logsFilter.email }}</strong> 共 {{ logsTotalItems }} 条日志</template>
+                <template v-else-if="logsFilter.ip && !logsFilter.email">IP <strong>{{ logsFilter.ip }}</strong> 共 {{ logsTotalItems }} 条日志</template>
+                <template v-else>当前筛选共 {{ logsTotalItems }} 条日志</template>
+              </span>
+              <button class="btn btn-danger btn-sm" :disabled="logsDeleting" @click="deleteAllFilteredLogs">
+                {{ logsDeleting ? '删除中…' : `全部删除 (${logsTotalItems})` }}
+              </button>
+            </div>
+
             <div class="logs-table-wrap">
             <table class="admin-table logs-table">
               <thead>
@@ -1645,6 +1657,44 @@ async function deleteSelectedLogs() {
   }
 }
 
+async function deleteAllFilteredLogs() {
+  if (!hasLogsFilter.value || logsTotalItems.value === 0) return
+
+  const parts = []
+  if (logsFilter.email) parts.push(`邮箱「${logsFilter.email}」`)
+  if (logsFilter.ip)    parts.push(`IP「${logsFilter.ip}」`)
+  if (logsFilter.isp)   parts.push(`ISP「${logsFilter.isp}」`)
+  if (logsFilter.country) parts.push(`国家「${logsFilter.country}」`)
+  if (logsFilter.dateFrom || logsFilter.dateTo) parts.push('时间范围')
+  const desc = parts.join(' + ') || '当前筛选条件'
+
+  if (!confirm(`确定删除 ${desc} 的全部 ${logsTotalItems.value} 条日志？\n此操作不可撤回。`)) return
+
+  const collection = logsSubTab.value === 'login' ? 'login_logs' : 'ical_access_logs'
+  const filter = buildLogsFilter()
+  logsDeleting.value = true
+  try {
+    // 拉取所有匹配记录的 ID
+    const allRecords = await adminPb.collection(collection).getFullList({
+      filter,
+      fields: 'id',
+      requestKey: null,
+    })
+    // 分批并发删除（每批 20 条）
+    const CHUNK = 20
+    for (let i = 0; i < allRecords.length; i += CHUNK) {
+      const chunk = allRecords.slice(i, i + CHUNK)
+      await Promise.all(chunk.map(r => adminPb.collection(collection).delete(r.id, { requestKey: null })))
+    }
+    selectedLogIds.value = new Set()
+    await loadLogs(1)
+  } catch (e) {
+    alert('删除失败：' + e.message)
+  } finally {
+    logsDeleting.value = false
+  }
+}
+
 // ── 可疑 / 已吊销 iCal Token ──────────────────────────────────────────────
 const suspiciousTokens = ref([])
 
@@ -1987,6 +2037,28 @@ async function deleteChangelog(cl) {
   font-weight: 500;
   color: var(--text);
   margin-right: var(--sp-1);
+}
+
+/* ── 全量删除筛选结果栏 ──────────────────────────────────────────────────── */
+.bulk-delete-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--danger, #ef4444);
+  border-left: 3px solid var(--danger, #ef4444);
+  border-radius: 6px;
+  animation: batch-bar-in 0.15s ease;
+}
+.bulk-delete-hint {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  flex: 1;
+}
+.bulk-delete-hint strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .sem-name { font-weight: 500; }
