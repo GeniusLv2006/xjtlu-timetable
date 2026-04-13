@@ -420,23 +420,21 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     if (distinctIps > 5) {
       // 高危：立即吊销（≥6 个不同 IP 前缀，明显泄露）
       doRevoke('high-risk')
-    } else if (distinctIps >= 3) {
-      // 可疑：≥3 个不同 IP 前缀
-      if (!isSuspicious) {
-        // 首次标记可疑
-        try {
-          var rec2 = $app.findRecordById('ical_tokens', tokenRecord.id)
-          rec2.set('is_suspicious', true)
-          rec2.set('suspicious_at', nowIso)
-          $app.save(rec2)
-        } catch (_) {}
-      } else if (suspiciousAt) {
-        // 已标记且持续超过 48h → 吊销（用户已看到横幅却未重置）
-        var suspAge = Date.now() - new Date(suspiciousAt).getTime()
-        if (suspAge > 48 * 60 * 60 * 1000) {
-          doRevoke('persistent')
-        }
+    } else if (isSuspicious && suspiciousAt) {
+      // 已标记可疑：与当前 IP 数无关，持续 48h 未重置 → 吊销
+      // （即使此刻 IP 数已降回正常，说明用户看到横幅却未处理）
+      var suspAge = Date.now() - new Date(suspiciousAt).getTime()
+      if (suspAge > 48 * 60 * 60 * 1000) {
+        doRevoke('persistent')
       }
+    } else if (distinctIps >= 3) {
+      // 首次触达可疑阈值：标记 suspicious，用户前端将看到告警横幅
+      try {
+        var rec2 = $app.findRecordById('ical_tokens', tokenRecord.id)
+        rec2.set('is_suspicious', true)
+        rec2.set('suspicious_at', nowIso)
+        $app.save(rec2)
+      } catch (_) {}
     }
   } catch (_) {}
 
