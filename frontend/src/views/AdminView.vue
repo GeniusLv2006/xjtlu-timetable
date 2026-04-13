@@ -399,6 +399,7 @@
               <button class="btn btn-secondary btn-sm" @click="selectedLogIds = new Set()">取消选择</button>
             </div>
 
+            <div class="logs-table-wrap">
             <table class="admin-table logs-table">
               <thead>
                 <tr>
@@ -439,31 +440,28 @@
                     />
                   </td>
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
-                  <td class="col-email">
-                    <a v-if="log.email" href="#" class="log-filter-link cell-truncate" :title="log.email" @click.prevent="quickFilterEmail(log.email)">{{ log.email }}</a>
+                  <td>
+                    <a v-if="log.email" href="#" class="log-filter-link" @click.prevent="quickFilterEmail(log.email)">{{ log.email }}</a>
                     <span v-else>—</span>
                   </td>
-                  <td class="mono-cell col-ip" :title="log.ip_full || ''">
+                  <td class="mono-cell">
                     <a v-if="log.ip_prefix" href="#" class="log-filter-link" @click.prevent="quickFilterIp(log.ip_prefix)">{{ log.ip_full || '—' }}</a>
                     <span v-else>—</span>
                   </td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
                   <td>{{ log.city || '—' }}</td>
-                  <td class="col-isp">
-                    <span class="cell-truncate" :title="log.isp || ''">{{ log.isp || '—' }}</span>
-                  </td>
+                  <td>{{ log.isp || '—' }}</td>
                   <td>
                     <template v-if="log.geo_source">
                       <span v-for="s in log.geo_source.split('+')" :key="s" class="badge badge-geo">{{ { ip2location: 'IP2Loc', ipsb: 'ip.sb', ipapi: 'ip-api' }[s] || s }}</span>
                     </template>
                     <span v-else>—</span>
                   </td>
-                  <td class="col-device" :title="log.user_agent || ''">
-                    <span class="cell-truncate">{{ parseDevice(log.user_agent, logsSubTab) }}</span>
-                  </td>
+                  <td>{{ parseDevice(log.user_agent, logsSubTab) }}</td>
                 </tr>
               </tbody>
             </table>
+            </div><!-- /logs-table-wrap -->
 
             <!-- Pagination -->
             <div v-if="logsTotalItems > 0" class="logs-pagination">
@@ -1941,17 +1939,14 @@ async function deleteChangelog(cl) {
 .dimmed { color: var(--text-3); }
 .empty-cell { text-align: center; color: var(--text-3); padding: var(--sp-8) 0; }
 
-/* ── 日志表格列宽截断 ─────────────────────────────────────────────────────── */
-.logs-table .col-email  { max-width: 180px; }
-.logs-table .col-ip     { max-width: 130px; }
-.logs-table .col-isp    { max-width: 160px; }
-.logs-table .col-device { max-width: 140px; }
-.cell-truncate {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* ── 日志表格横向滚动容器 ────────────────────────────────────────────────── */
+.logs-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.logs-table th,
+.logs-table td {
   white-space: nowrap;
-  max-width: inherit;
 }
 
 /* ── 复选框列 ────────────────────────────────────────────────────────────── */
@@ -2492,12 +2487,8 @@ tr:hover .icon-btn { opacity: 1; }
     background: transparent;
   }
 
-  /* ── 日志表 opt-out：改为横向滚动 ──────────────────── */
+  /* ── 日志表 opt-out：保持标准表格布局（滚动由 .logs-table-wrap 承担） ── */
   .logs-table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    white-space: nowrap;
     font-size: var(--text-xs);
   }
   .logs-table thead {
