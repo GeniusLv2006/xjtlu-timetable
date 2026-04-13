@@ -348,6 +348,7 @@
           <div class="logs-filter-bar">
             <input v-model="logsFilter.email"   class="field-input filter-input" placeholder="邮箱搜索" @keyup.enter="applyLogsFilter" />
             <input v-model="logsFilter.ip"      class="field-input filter-input" placeholder="IP 前缀" @keyup.enter="applyLogsFilter" />
+            <input v-model="logsFilter.isp"     class="field-input filter-input" placeholder="ISP/组织" @keyup.enter="applyLogsFilter" />
             <input v-model="logsFilter.country" class="field-input filter-input filter-input--xs" placeholder="国家(CN)" maxlength="2" @keyup.enter="applyLogsFilter" />
             <input v-model="logsFilter.dateFrom" type="date" class="field-input filter-input filter-input--date" title="开始日期（上海时区）" />
             <span class="filter-to">至</span>
@@ -400,32 +401,40 @@
                   <th>Organization</th>
                   <th>数据源</th>
                   <th>设备</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="currentPageLogs.length === 0">
-                  <td colspan="8" class="empty-cell">暂无日志</td>
+                  <td colspan="9" class="empty-cell">暂无日志</td>
                 </tr>
                 <tr v-for="log in currentPageLogs" :key="log.id">
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
-                  <td>
-                    <a v-if="log.email" href="#" class="log-filter-link" @click.prevent="quickFilterEmail(log.email)">{{ log.email }}</a>
+                  <td class="col-email">
+                    <a v-if="log.email" href="#" class="log-filter-link cell-truncate" :title="log.email" @click.prevent="quickFilterEmail(log.email)">{{ log.email }}</a>
                     <span v-else>—</span>
                   </td>
-                  <td class="mono-cell">
+                  <td class="mono-cell col-ip" :title="log.ip_full || ''">
                     <a v-if="log.ip_prefix" href="#" class="log-filter-link" @click.prevent="quickFilterIp(log.ip_prefix)">{{ log.ip_full || '—' }}</a>
                     <span v-else>—</span>
                   </td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
                   <td>{{ log.city || '—' }}</td>
-                  <td>{{ log.isp || '—' }}</td>
+                  <td class="col-isp">
+                    <span class="cell-truncate" :title="log.isp || ''">{{ log.isp || '—' }}</span>
+                  </td>
                   <td>
                     <template v-if="log.geo_source">
                       <span v-for="s in log.geo_source.split('+')" :key="s" class="badge badge-geo">{{ { ip2location: 'IP2Loc', ipsb: 'ip.sb', ipapi: 'ip-api' }[s] || s }}</span>
                     </template>
                     <span v-else>—</span>
                   </td>
-                  <td :title="log.user_agent || ''">{{ parseDevice(log.user_agent, logsSubTab) }}</td>
+                  <td class="col-device" :title="log.user_agent || ''">
+                    <span class="cell-truncate">{{ parseDevice(log.user_agent, logsSubTab) }}</span>
+                  </td>
+                  <td>
+                    <button class="btn btn-danger btn-xs" @click="deleteLog(log.id)" title="删除此条记录">删</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -738,9 +747,13 @@
 
 <script setup>
 import { ref, computed, watch, reactive, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import adminPb from '../lib/adminPb'
 import RichTextEditor from '../components/RichTextEditor.vue'
 import { syncTimetable } from '../utils/timetableSync'
+
+const route  = useRoute()
+const router = useRouter()
 
 // ── Admin auth ────────────────────────────────────────────────────────────
 const loginEmail    = ref('')
@@ -767,7 +780,28 @@ async function adminLogin() {
 const openActionMenu = ref(null)
 function closeAllMenus() { openActionMenu.value = null }
 onMounted(() => {
-  if (isAdminAuthed.value) loadAll()
+  // Restore state from URL query params
+  const q = route.query
+  if (q.sub) logsSubTab.value = q.sub
+  if (q.email)   logsFilter.email    = q.email
+  if (q.ip)      logsFilter.ip       = q.ip
+  if (q.isp)     logsFilter.isp      = q.isp
+  if (q.country) logsFilter.country  = q.country
+  if (q.from)    logsFilter.dateFrom = q.from
+  if (q.to)      logsFilter.dateTo   = q.to
+  const initPage = parseInt(q.page) || 1
+
+  if (q.tab && q.tab !== activeTab.value) {
+    _skipNextTabWatch = true
+    activeTab.value = q.tab
+  }
+
+  if (isAdminAuthed.value) {
+    loadAll()
+    if (activeTab.value === 'logs') loadLogs(initPage)
+    else if (activeTab.value === 'siteConfig') { loadSiteConfig(); loadStats() }
+    else if (activeTab.value === 'changelogs') loadChangelogs()
+  }
   document.addEventListener('click', closeAllMenus)
 })
 onUnmounted(() => {
@@ -789,8 +823,11 @@ const tabs = [
   { key: 'changelogs', label: '公告' },
 ]
 const activeTab = ref('users')
+let _skipNextTabWatch = false
 
 watch(activeTab, (tab) => {
+  if (_skipNextTabWatch) { _skipNextTabWatch = false; return }
+  syncUrlState()
   if (tab === 'users')      loadUsers()
   if (tab === 'semesters')  loadSemesters()
   if (tab === 'invites')    loadInvites()
@@ -1370,11 +1407,11 @@ const logsTotalItems  = ref(0)
 const logsTotalPages  = ref(1)
 const logsLoading     = ref(false)
 const logsError       = ref('')
-const logsFilter      = reactive({ email: '', ip: '', country: '', dateFrom: '', dateTo: '' })
+const logsFilter      = reactive({ email: '', ip: '', isp: '', country: '', dateFrom: '', dateTo: '' })
 const logsJumpInput   = ref(null)
 
 const hasLogsFilter = computed(() =>
-  !!(logsFilter.email || logsFilter.ip || logsFilter.country || logsFilter.dateFrom || logsFilter.dateTo)
+  !!(logsFilter.email || logsFilter.ip || logsFilter.isp || logsFilter.country || logsFilter.dateFrom || logsFilter.dateTo)
 )
 
 function buildLogsFilter() {
@@ -1382,6 +1419,7 @@ function buildLogsFilter() {
   const esc = v => v.replace(/"/g, '')
   if (logsFilter.email)    parts.push(`email ~ "${esc(logsFilter.email)}"`)
   if (logsFilter.ip)       parts.push(`ip_prefix ~ "${esc(logsFilter.ip)}"`)
+  if (logsFilter.isp)      parts.push(`isp ~ "${esc(logsFilter.isp)}"`)
   if (logsFilter.country)  parts.push(`country = "${esc(logsFilter.country).toUpperCase()}"`)
   if (logsFilter.dateFrom) {
     const d = new Date(logsFilter.dateFrom + 'T00:00:00+08:00')
@@ -1399,6 +1437,7 @@ function applyLogsFilter() { loadLogs(1) }
 function clearLogsFilter() {
   logsFilter.email = ''
   logsFilter.ip = ''
+  logsFilter.isp = ''
   logsFilter.country = ''
   logsFilter.dateFrom = ''
   logsFilter.dateTo = ''
@@ -1489,6 +1528,7 @@ async function loadLogs(page = 1) {
     logsTotalItems.value  = res.totalItems
     logsTotalPages.value  = res.totalPages
     logsPage.value        = page
+    syncUrlState()
   } catch (e) {
     logsError.value = e.message
   } finally {
@@ -1500,11 +1540,41 @@ function switchLogsTab(tab) {
   logsSubTab.value = tab
   logsFilter.email = ''
   logsFilter.ip = ''
+  logsFilter.isp = ''
   logsFilter.country = ''
   logsFilter.dateFrom = ''
   logsFilter.dateTo = ''
   loadLogs(1)
   if (tab === 'ical') loadSuspiciousTokens()
+}
+
+// ── URL 状态同步 ──────────────────────────────────────────────────────────
+function syncUrlState() {
+  const q = { tab: activeTab.value }
+  if (activeTab.value === 'logs') {
+    q.sub = logsSubTab.value
+    if (logsPage.value > 1) q.page = logsPage.value
+    if (logsFilter.email)    q.email   = logsFilter.email
+    if (logsFilter.ip)       q.ip      = logsFilter.ip
+    if (logsFilter.isp)      q.isp     = logsFilter.isp
+    if (logsFilter.country)  q.country = logsFilter.country
+    if (logsFilter.dateFrom) q.from    = logsFilter.dateFrom
+    if (logsFilter.dateTo)   q.to      = logsFilter.dateTo
+  }
+  router.replace({ query: q })
+}
+
+// ── 删除日志条目 ──────────────────────────────────────────────────────────
+async function deleteLog(id) {
+  if (!confirm('确定删除这条日志记录？')) return
+  const collection = logsSubTab.value === 'login' ? 'login_logs' : 'ical_access_logs'
+  try {
+    await adminPb.collection(collection).delete(id, { requestKey: null })
+    currentPageLogs.value = currentPageLogs.value.filter(l => l.id !== id)
+    logsTotalItems.value--
+  } catch (e) {
+    alert('删除失败：' + e.message)
+  }
 }
 
 // ── 可疑 / 已吊销 iCal Token ──────────────────────────────────────────────
@@ -1803,6 +1873,19 @@ async function deleteChangelog(cl) {
 }
 .dimmed { color: var(--text-3); }
 .empty-cell { text-align: center; color: var(--text-3); padding: var(--sp-8) 0; }
+
+/* ── 日志表格列宽截断 ─────────────────────────────────────────────────────── */
+.logs-table .col-email  { max-width: 180px; }
+.logs-table .col-ip     { max-width: 130px; }
+.logs-table .col-isp    { max-width: 160px; }
+.logs-table .col-device { max-width: 140px; }
+.cell-truncate {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: inherit;
+}
 
 .sem-name { font-weight: 500; }
 
