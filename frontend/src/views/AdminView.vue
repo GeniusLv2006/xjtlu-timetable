@@ -835,7 +835,10 @@ onMounted(() => {
 
   if (isAdminAuthed.value) {
     loadAll()
-    if (activeTab.value === 'logs') loadLogs(initPage)
+    if (activeTab.value === 'logs') {
+      loadLogs(initPage)
+      if (logsSubTab.value === 'ical') loadSuspiciousTokens()
+    }
     else if (activeTab.value === 'siteConfig') { loadSiteConfig(); loadStats() }
     else if (activeTab.value === 'changelogs') loadChangelogs()
   }
@@ -869,7 +872,7 @@ watch(activeTab, (tab) => {
   if (tab === 'semesters')  loadSemesters()
   if (tab === 'invites')    loadInvites()
   if (tab === 'siteConfig') { loadSiteConfig(); loadStats() }
-  if (tab === 'logs')       loadLogs()
+  if (tab === 'logs')       { loadLogs(); if (logsSubTab.value === 'ical') loadSuspiciousTokens() }
   if (tab === 'changelogs') loadChangelogs()
 })
 
