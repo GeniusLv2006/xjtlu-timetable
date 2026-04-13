@@ -382,7 +382,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       .bind({ uid: userId, token_created: tokenCreated })
       .all(rateRows)
   } catch (_) {}
-  if (rateRows.length > 0 && parseInt(rateRows[0].cnt) >= 5) {
+  if (rateRows.length > 0 && parseInt(rateRows[0].cnt) > 5) {
     e.response.header().set('Retry-After', '600')
     return e.json(429, { error: 'Too many requests. Please retry after 10 minutes.' })
   }
@@ -420,8 +420,8 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     if (distinctIps > 5) {
       // 高危：立即吊销（≥6 个不同 IP 前缀，明显泄露）
       doRevoke('high-risk')
-    } else if (distinctIps > 3) {
-      // 可疑：≥4 个不同 IP 前缀
+    } else if (distinctIps >= 3) {
+      // 可疑：≥3 个不同 IP 前缀
       if (!isSuspicious) {
         // 首次标记可疑
         try {
