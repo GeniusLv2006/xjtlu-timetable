@@ -286,8 +286,8 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
         }
       } catch (_) {}
 
-      // 备用：ip-api.com（仅当主 API 未取到城市时）
-      if (!logCity) {
+      // 备用：ip-api.com（城市或 ISP 任一缺失时补全）
+      if (!logCity || !logIsp) {
         try {
           var geoRes2 = $http.send({
             url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,org,isp',
@@ -297,7 +297,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
           if (geoRes2.statusCode === 200 && geoRes2.raw) {
             var geoData2 = JSON.parse(geoRes2.raw)
             if (geoData2.status === 'success') {
-              logCity = geoData2.city || ''
+              if (!logCity) logCity = geoData2.city || ''
               if (!logIsp) logIsp = geoData2.org || geoData2.isp || ''
               if (!logCountry && geoData2.countryCode) logCountry = geoData2.countryCode
             }
