@@ -15,4 +15,11 @@ cronAdd('cleanup-logs', '0 2 * * *', function() {
   } catch (e) {
     console.error('[cleanup] login_logs:', e)
   }
+  try {
+    $app.db()
+      .newQuery("DELETE FROM ip_geo_cache WHERE expires_at < datetime('now')")
+      .execute()
+  } catch (e) {
+    console.error('[cleanup] ip_geo_cache:', e)
+  }
 })

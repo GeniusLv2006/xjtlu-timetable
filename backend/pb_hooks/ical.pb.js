@@ -1,7 +1,3 @@
-// ── 模块级 IP 地理信息缓存（进程内持久，TTL 30 天） ─────────────────────────
-var _geoCache = {}
-var _geoCacheTTL = 30 * 24 * 60 * 60 * 1000
-
 routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
   // ── 辅助函数 ──────────────────────────────────────────────────────────────
@@ -256,57 +252,107 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   if (v4m) { logPrefix = v4m[1] + '.x' }
   else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
 
-  // 用 ip.sb 查询城市/ISP（优先），ip-api.com 作为备用（CF 免费计划不提供 CF-IPCity）
-  // 同一 IP 命中缓存时跳过外部请求，避免触发第三方限速
+  // GeoIP 查询：IP2Location.io（主）→ ip.sb（备）→ ip-api.com（第三备）
+  // 字段级轮询：city 或 isp 任一缺失即尝试下一供应商
+  // 结果持久化缓存至 SQLite（ip_geo_cache），TTL 30 天，跨重启有效
   var logCity = ''
   var logIsp = ''
+  var logGeoSource = ''
   var isPrivateIp = !logIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(logIp)
   if (!isPrivateIp) {
-    var _now = Date.now()
-    var _cached = _geoCache[logIp]
-    if (_cached && (_now - _cached.ts) < _geoCacheTTL) {
-      // 缓存命中，直接复用
-      logCity = _cached.city
-      logIsp  = _cached.isp
-      if (!logCountry && _cached.country) logCountry = _cached.country
-    } else {
-      // 缓存未命中，查外部 API
-      // 主：ip.sb
+    // ── Step 1：查 SQLite 缓存 ────────────────────────────────────────────────
+    var _cacheHit = false
+    try {
+      var _cacheRows = arrayOf(new DynamicModel({ country: '', city: '', isp: '', source: '' }))
+      $app.db()
+        .newQuery("SELECT country, city, isp, source FROM ip_geo_cache WHERE ip = {:ip} AND expires_at > datetime('now')")
+        .bind({ ip: logIp })
+        .all(_cacheRows)
+      if (_cacheRows.length > 0) {
+        _cacheHit = true
+        if (!logCountry && _cacheRows[0].country) logCountry = _cacheRows[0].country
+        logCity      = _cacheRows[0].city
+        logIsp       = _cacheRows[0].isp
+        logGeoSource = _cacheRows[0].source
+      }
+    } catch (_) {}
+
+    if (!_cacheHit) {
+      // ── Step 2：查外部 API（字段级三级轮询） ─────────────────────────────────
+      var _geoSources = []
+
+      // Provider 1：IP2Location.io（无 Key，1000次/天）
       try {
-        var geoRes = $http.send({
-          url: 'https://api.ip.sb/geoip/' + logIp,
+        var _r1 = $http.send({
+          url: 'https://api.ip2location.io/?ip=' + logIp + '&format=json',
           method: 'GET',
-          timeout: 3,
+          timeout: 5,
         })
-        if (geoRes.statusCode === 200 && geoRes.raw) {
-          var geoData = JSON.parse(geoRes.raw)
-          logCity = geoData.city || ''
-          logIsp  = geoData.organization || ''
-          if (!logCountry && geoData.country_code) logCountry = geoData.country_code
+        if (_r1.statusCode === 200 && _r1.raw) {
+          var _d1 = JSON.parse(_r1.raw)
+          var _got1 = false
+          if (_d1.city_name && _d1.city_name !== '-') { logCity = _d1.city_name; _got1 = true }
+          if (_d1.isp || _d1.as) {
+            logIsp = _d1.isp || _d1.as || ''
+            if (logIsp) _got1 = true
+          }
+          if (!logCountry && _d1.country_code) logCountry = _d1.country_code
+          if (_got1) _geoSources.push('ip2location')
         }
       } catch (_) {}
 
-      // 备用：ip-api.com（城市或 ISP 任一缺失时补全）
+      // Provider 2：ip.sb（city 或 isp 任一缺失时）
       if (!logCity || !logIsp) {
         try {
-          var geoRes2 = $http.send({
+          var _r2 = $http.send({
+            url: 'https://api.ip.sb/geoip/' + logIp,
+            method: 'GET',
+            timeout: 3,
+          })
+          if (_r2.statusCode === 200 && _r2.raw) {
+            var _d2 = JSON.parse(_r2.raw)
+            var _got2 = false
+            if (!logCity && _d2.city) { logCity = _d2.city; _got2 = true }
+            if (!logIsp && _d2.organization) { logIsp = _d2.organization; _got2 = true }
+            if (!logCountry && _d2.country_code) logCountry = _d2.country_code
+            if (_got2) _geoSources.push('ipsb')
+          }
+        } catch (_) {}
+      }
+
+      // Provider 3：ip-api.com（city 或 isp 仍有缺失时）
+      if (!logCity || !logIsp) {
+        try {
+          var _r3 = $http.send({
             url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,org,isp',
             method: 'GET',
             timeout: 3,
           })
-          if (geoRes2.statusCode === 200 && geoRes2.raw) {
-            var geoData2 = JSON.parse(geoRes2.raw)
-            if (geoData2.status === 'success') {
-              if (!logCity) logCity = geoData2.city || ''
-              if (!logIsp) logIsp = geoData2.org || geoData2.isp || ''
-              if (!logCountry && geoData2.countryCode) logCountry = geoData2.countryCode
+          if (_r3.statusCode === 200 && _r3.raw) {
+            var _d3 = JSON.parse(_r3.raw)
+            if (_d3.status === 'success') {
+              var _got3 = false
+              if (!logCity && _d3.city) { logCity = _d3.city; _got3 = true }
+              if (!logIsp) {
+                var _isp3 = _d3.org || _d3.isp || ''
+                if (_isp3) { logIsp = _isp3; _got3 = true }
+              }
+              if (!logCountry && _d3.countryCode) logCountry = _d3.countryCode
+              if (_got3) _geoSources.push('ipapi')
             }
           }
         } catch (_) {}
       }
 
-      // 写入缓存（无论是否查到，都缓存以避免对未知 IP 反复请求）
-      _geoCache[logIp] = { country: logCountry, city: logCity, isp: logIsp, ts: _now }
+      logGeoSource = _geoSources.join('+')
+
+      // ── Step 3：写入 SQLite 缓存（无论是否查到，都写，避免重复请求） ──────────
+      try {
+        $app.db()
+          .newQuery("INSERT OR REPLACE INTO ip_geo_cache (ip, country, city, isp, source, expires_at) VALUES ({:ip}, {:country}, {:city}, {:isp}, {:source}, datetime('now', '+30 days'))")
+          .bind({ ip: logIp, country: logCountry, city: logCity, isp: logIsp, source: logGeoSource })
+          .execute()
+      } catch (_) {}
     }
   }
 
@@ -320,10 +366,10 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     logRec.set('country', logCountry)
     logRec.set('user_agent', logUserAgent)
     $app.save(logRec)
-    // city/isp 字段不在 PB schema 中，需通过原始 SQL 写入
+    // city/isp/geo_source 字段不在 PB schema 中，需通过原始 SQL 写入
     $app.db()
-      .newQuery("UPDATE ical_access_logs SET city = {:city}, isp = {:isp} WHERE id = {:id}")
-      .bind({ city: logCity, isp: logIsp, id: logRec.id })
+      .newQuery("UPDATE ical_access_logs SET city = {:city}, isp = {:isp}, geo_source = {:source} WHERE id = {:id}")
+      .bind({ city: logCity, isp: logIsp, source: logGeoSource, id: logRec.id })
       .execute()
   } catch (_) {}
 

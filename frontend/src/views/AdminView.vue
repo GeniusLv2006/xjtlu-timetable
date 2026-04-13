@@ -398,12 +398,13 @@
                   <th>地区</th>
                   <th>城市</th>
                   <th>Organization</th>
+                  <th>数据源</th>
                   <th>设备</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="currentPageLogs.length === 0">
-                  <td colspan="7" class="empty-cell">暂无日志</td>
+                  <td colspan="8" class="empty-cell">暂无日志</td>
                 </tr>
                 <tr v-for="log in currentPageLogs" :key="log.id">
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
@@ -418,6 +419,12 @@
                   <td>{{ fmtLogCountry(log.country) }}</td>
                   <td>{{ log.city || '—' }}</td>
                   <td>{{ log.isp || '—' }}</td>
+                  <td>
+                    <template v-if="log.geo_source">
+                      <span v-for="s in log.geo_source.split('+')" :key="s" class="badge badge-geo">{{ { ip2location: 'IP2Loc', ipsb: 'ip.sb', ipapi: 'ip-api' }[s] || s }}</span>
+                    </template>
+                    <span v-else>—</span>
+                  </td>
                   <td :title="log.user_agent || ''">{{ parseDevice(log.user_agent, logsSubTab) }}</td>
                 </tr>
               </tbody>
@@ -1788,6 +1795,7 @@ async function deleteChangelog(cl) {
 }
 .badge-danger { background: #FEE2E2; color: #991B1B; }
 .badge-warn   { background: #FEF3C7; color: #92400E; }
+.badge-geo    { background: #DBEAFE; color: #1E40AF; margin-right: 3px; }
 
 .mono-cell {
   font-family: var(--font-mono);
