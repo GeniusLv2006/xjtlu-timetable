@@ -165,7 +165,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
   var userId = tokenRecord.getString('user')
 
-  // 1b. 验证用户未被停用
+  // 1b. 查询用户记录，验证账户存在
   var userRecord
   try {
     userRecord = $app.findRecordById('users', userId)
@@ -173,80 +173,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     return e.json(404, { error: 'User not found' })
   }
 
-  if (userRecord.getBool('is_banned')) {
-    // ban_empty_served_at 懒加载：首次请求时开启 48h 窗口，覆盖所有设备的同步周期
-    var servedAt = tokenRecord.getString('ban_empty_served_at')
-    var BAN_WINDOW_MS = 48 * 60 * 60 * 1000
-
-    if (servedAt) {
-      var elapsed = Date.now() - new Date(servedAt).getTime()
-      if (elapsed > BAN_WINDOW_MS) {
-        // 窗口已过期，所有设备应已完成同步，切换为 403
-        return e.json(403, { error: 'Account suspended' })
-      }
-      // 仍在窗口内：继续返回空日历（供其他设备同步）
-    } else {
-      // 首次请求：记录时间戳，开启 48h 窗口
-      try {
-        $app.db()
-          .newQuery("UPDATE ical_tokens SET ban_empty_served_at = {:ts} WHERE id = {:id}")
-          .bind({ ts: new Date().toISOString(), id: tokenRecord.id })
-          .execute()
-      } catch (_) {}
-    }
-
-    var emptyIcs =
-      'BEGIN:VCALENDAR\r\n' +
-      'VERSION:2.0\r\n' +
-      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
-      'CALSCALE:GREGORIAN\r\n' +
-      'METHOD:PUBLISH\r\n' +
-      'X-WR-CALNAME:XJTLU Timetable\r\n' +
-      'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
-      'END:VCALENDAR\r\n'
-    e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
-    e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
-    return e.string(200, emptyIcs)
-  }
-
-  // 1d. token 已被自动吊销（风控触发）—— 懒加载 48h 空日历窗口 → 403
-  //     revoke_empty_served_at：首次请求时记录，48h 内返回空日历，之后 403
-  //     revoked_at 保留作审计字段（记录何时触发吊销），不参与窗口计算
-  if (tokenRecord.getBool('is_revoked')) {
-    var revokeServedAt = tokenRecord.getString('revoke_empty_served_at')
-    var REVOKE_WINDOW_MS = 48 * 60 * 60 * 1000
-
-    if (revokeServedAt) {
-      if (Date.now() - new Date(revokeServedAt).getTime() > REVOKE_WINDOW_MS) {
-        return e.json(403, { error: 'Token revoked. Please generate a new subscription link.' })
-      }
-      // 仍在窗口内：继续返回空日历
-    } else {
-      // 首次请求：记录时间戳，开启 48h 窗口
-      try {
-        $app.db()
-          .newQuery("UPDATE ical_tokens SET revoke_empty_served_at = {:ts} WHERE id = {:id}")
-          .bind({ ts: new Date().toISOString(), id: tokenRecord.id })
-          .execute()
-      } catch (_) {}
-    }
-
-    // 返回空日历供各设备清缓存
-    var emptyRevoked =
-      'BEGIN:VCALENDAR\r\n' +
-      'VERSION:2.0\r\n' +
-      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
-      'CALSCALE:GREGORIAN\r\n' +
-      'METHOD:PUBLISH\r\n' +
-      'X-WR-CALNAME:XJTLU Timetable\r\n' +
-      'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
-      'END:VCALENDAR\r\n'
-    e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
-    e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
-    return e.string(200, emptyRevoked)
-  }
-
-  // 1c. 记录 iCal 访问日志
+  // 1c. 记录 iCal 访问日志（在所有状态检查之前写入，确保 banned/revoked 请求也留有记录）
   var logIp = (e.request.header.get('CF-Connecting-IP') ||
                e.request.header.get('X-Real-IP') ||
                e.request.header.get('X-Forwarded-For') || '').split(',')[0].trim()
@@ -377,6 +304,73 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       .bind({ city: logCity, isp: logIsp, source: logGeoSource, id: logRec.id })
       .execute()
   } catch (_) {}
+
+  // 1d. 账户封禁检查
+  if (userRecord.getBool('is_banned')) {
+    // ban_empty_served_at 懒加载：首次请求时开启 48h 窗口，覆盖所有设备的同步周期
+    var servedAt = tokenRecord.getString('ban_empty_served_at')
+    var BAN_WINDOW_MS = 48 * 60 * 60 * 1000
+
+    if (servedAt) {
+      var elapsed = Date.now() - new Date(servedAt).getTime()
+      if (elapsed > BAN_WINDOW_MS) {
+        return e.json(403, { error: 'Account suspended' })
+      }
+    } else {
+      try {
+        $app.db()
+          .newQuery("UPDATE ical_tokens SET ban_empty_served_at = {:ts} WHERE id = {:id}")
+          .bind({ ts: new Date().toISOString(), id: tokenRecord.id })
+          .execute()
+      } catch (_) {}
+    }
+
+    var emptyIcs =
+      'BEGIN:VCALENDAR\r\n' +
+      'VERSION:2.0\r\n' +
+      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
+      'CALSCALE:GREGORIAN\r\n' +
+      'METHOD:PUBLISH\r\n' +
+      'X-WR-CALNAME:XJTLU Timetable\r\n' +
+      'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
+      'END:VCALENDAR\r\n'
+    e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
+    e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+    return e.string(200, emptyIcs)
+  }
+
+  // 1e. Token 吊销检查（风控触发）—— 懒加载 48h 空日历窗口 → 403
+  //     revoked_at 保留作审计字段（记录何时触发吊销），不参与窗口计算
+  if (tokenRecord.getBool('is_revoked')) {
+    var revokeServedAt = tokenRecord.getString('revoke_empty_served_at')
+    var REVOKE_WINDOW_MS = 48 * 60 * 60 * 1000
+
+    if (revokeServedAt) {
+      if (Date.now() - new Date(revokeServedAt).getTime() > REVOKE_WINDOW_MS) {
+        return e.json(403, { error: 'Token revoked. Please generate a new subscription link.' })
+      }
+    } else {
+      try {
+        $app.db()
+          .newQuery("UPDATE ical_tokens SET revoke_empty_served_at = {:ts} WHERE id = {:id}")
+          .bind({ ts: new Date().toISOString(), id: tokenRecord.id })
+          .execute()
+      } catch (_) {}
+    }
+
+    var emptyRevoked =
+      'BEGIN:VCALENDAR\r\n' +
+      'VERSION:2.0\r\n' +
+      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
+      'CALSCALE:GREGORIAN\r\n' +
+      'METHOD:PUBLISH\r\n' +
+      'X-WR-CALNAME:XJTLU Timetable\r\n' +
+      'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
+      'END:VCALENDAR\r\n'
+    e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
+    e.response.header().set('Content-Disposition', 'attachment; filename="timetable.ics"')
+    return e.string(200, emptyRevoked)
+  }
 
   // ── 速率门控：10 分钟内同一 token 超过 5 次请求 → 429 ─────────────────────
   var tokenCreated = tokenRecord.getString('created')
