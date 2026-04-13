@@ -771,13 +771,9 @@
 
 <script setup>
 import { ref, computed, watch, watchEffect, reactive, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import adminPb from '../lib/adminPb'
 import RichTextEditor from '../components/RichTextEditor.vue'
 import { syncTimetable } from '../utils/timetableSync'
-
-const route  = useRoute()
-const router = useRouter()
 
 // ── Admin auth ────────────────────────────────────────────────────────────
 const loginEmail    = ref('')
@@ -793,6 +789,10 @@ async function adminLogin() {
     await adminPb.collection('_superusers').authWithPassword(loginEmail.value, loginPassword.value)
     isAdminAuthed.value = true
     loadAll()
+    // Load data for whichever tab was restored from URL
+    if (activeTab.value === 'logs') loadLogs(1)
+    else if (activeTab.value === 'siteConfig') { loadSiteConfig(); loadStats() }
+    else if (activeTab.value === 'changelogs') loadChangelogs()
   } catch (e) {
     loginError.value = e.message || '认证失败'
   } finally {
@@ -804,20 +804,21 @@ async function adminLogin() {
 const openActionMenu = ref(null)
 function closeAllMenus() { openActionMenu.value = null }
 onMounted(() => {
-  // Restore state from URL query params
-  const q = route.query
-  if (q.sub) logsSubTab.value = q.sub
-  if (q.email)   logsFilter.email    = q.email
-  if (q.ip)      logsFilter.ip       = q.ip
-  if (q.isp)     logsFilter.isp      = q.isp
-  if (q.country) logsFilter.country  = q.country
-  if (q.from)    logsFilter.dateFrom = q.from
-  if (q.to)      logsFilter.dateTo   = q.to
-  const initPage = parseInt(q.page) || 1
+  // Restore state from URL — use URLSearchParams directly to bypass Vue Router
+  const params = new URLSearchParams(window.location.search)
+  const urlTab = params.get('tab')
+  if (params.get('sub'))     logsSubTab.value    = params.get('sub')
+  if (params.get('email'))   logsFilter.email    = params.get('email')
+  if (params.get('ip'))      logsFilter.ip       = params.get('ip')
+  if (params.get('isp'))     logsFilter.isp      = params.get('isp')
+  if (params.get('country')) logsFilter.country  = params.get('country')
+  if (params.get('from'))    logsFilter.dateFrom = params.get('from')
+  if (params.get('to'))      logsFilter.dateTo   = params.get('to')
+  const initPage = parseInt(params.get('page')) || 1
 
-  if (q.tab && q.tab !== activeTab.value) {
+  if (urlTab && urlTab !== activeTab.value) {
     _skipNextTabWatch = true
-    activeTab.value = q.tab
+    activeTab.value = urlTab
   }
 
   if (isAdminAuthed.value) {
@@ -1573,20 +1574,22 @@ function switchLogsTab(tab) {
   if (tab === 'ical') loadSuspiciousTokens()
 }
 
-// ── URL 状态同步 ──────────────────────────────────────────────────────────
+// ── URL 状态同步（直接操作 history，绕过 Vue Router 避免导航冲突）────────
 function syncUrlState() {
-  const q = { tab: activeTab.value }
+  const p = new URLSearchParams()
+  p.set('tab', activeTab.value)
   if (activeTab.value === 'logs') {
-    q.sub = logsSubTab.value
-    if (logsPage.value > 1) q.page = logsPage.value
-    if (logsFilter.email)    q.email   = logsFilter.email
-    if (logsFilter.ip)       q.ip      = logsFilter.ip
-    if (logsFilter.isp)      q.isp     = logsFilter.isp
-    if (logsFilter.country)  q.country = logsFilter.country
-    if (logsFilter.dateFrom) q.from    = logsFilter.dateFrom
-    if (logsFilter.dateTo)   q.to      = logsFilter.dateTo
+    p.set('sub', logsSubTab.value)
+    if (logsPage.value > 1)  p.set('page', String(logsPage.value))
+    if (logsFilter.email)    p.set('email',   logsFilter.email)
+    if (logsFilter.ip)       p.set('ip',      logsFilter.ip)
+    if (logsFilter.isp)      p.set('isp',     logsFilter.isp)
+    if (logsFilter.country)  p.set('country', logsFilter.country)
+    if (logsFilter.dateFrom) p.set('from',    logsFilter.dateFrom)
+    if (logsFilter.dateTo)   p.set('to',      logsFilter.dateTo)
   }
-  router.replace({ query: q })
+  const qs = p.toString()
+  history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''))
 }
 
 // ── 批量选择与删除 ────────────────────────────────────────────────────────
