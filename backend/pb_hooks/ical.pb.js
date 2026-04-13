@@ -374,11 +374,12 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   } catch (_) {}
 
   // ── 速率门控：10 分钟内同一 token 超过 5 次请求 → 429 ─────────────────────
+  var tokenCreated = tokenRecord.getString('created')
   var rateRows = arrayOf(new DynamicModel({ cnt: 0 }))
   try {
     $app.db()
-      .newQuery("SELECT count(*) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= datetime('now', '-10 minutes')")
-      .bind({ uid: userId })
+      .newQuery("SELECT count(*) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= {:token_created} AND created >= datetime('now', '-10 minutes')")
+      .bind({ uid: userId, token_created: tokenCreated })
       .all(rateRows)
   } catch (_) {}
   if (rateRows.length > 0 && parseInt(rateRows[0].cnt) >= 5) {
@@ -390,11 +391,12 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   // 阈值：≥3 个不同 IP 前缀 → 标记可疑；≥6 个 → 立即吊销；
   //       已标记可疑 >48h 且仍 ≥3 个 → 吊销（持续未处理）
   // 吊销不删除 record，走 48h 空日历过渡（与账户暂停策略一致）
+  // 注意：只统计当前 token 创建后的日志，避免旧 token 的访问历史污染新 token
   try {
     var ipRows = arrayOf(new DynamicModel({ cnt: 0 }))
     $app.db()
-      .newQuery("SELECT count(DISTINCT ip_prefix) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= datetime('now', '-24 hours')")
-      .bind({ uid: userId })
+      .newQuery("SELECT count(DISTINCT ip_prefix) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= {:token_created} AND created >= datetime('now', '-24 hours')")
+      .bind({ uid: userId, token_created: tokenCreated })
       .all(ipRows)
     var distinctIps = ipRows.length > 0 ? parseInt(ipRows[0].cnt) : 0
 
