@@ -390,9 +390,27 @@
               </table>
             </div>
 
+            <!-- 批量操作栏 -->
+            <div v-if="selectedLogIds.size > 0" class="batch-bar">
+              <span class="batch-count">已选 {{ selectedLogIds.size }} 条</span>
+              <button class="btn btn-danger btn-sm" :disabled="logsDeleting" @click="deleteSelectedLogs">
+                {{ logsDeleting ? '删除中…' : '删除所选' }}
+              </button>
+              <button class="btn btn-secondary btn-sm" @click="selectedLogIds = new Set()">取消选择</button>
+            </div>
+
             <table class="admin-table logs-table">
               <thead>
                 <tr>
+                  <th class="checkbox-cell">
+                    <input
+                      ref="selectAllCheckboxRef"
+                      type="checkbox"
+                      class="log-checkbox"
+                      :checked="allCurrentSelected"
+                      @change="toggleSelectAll"
+                    />
+                  </th>
                   <th>时间</th>
                   <th>用户邮箱</th>
                   <th>完整 IP</th>
@@ -401,14 +419,25 @@
                   <th>Organization</th>
                   <th>数据源</th>
                   <th>设备</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="currentPageLogs.length === 0">
                   <td colspan="9" class="empty-cell">暂无日志</td>
                 </tr>
-                <tr v-for="log in currentPageLogs" :key="log.id">
+                <tr
+                  v-for="log in currentPageLogs"
+                  :key="log.id"
+                  :class="{ 'row-selected': selectedLogIds.has(log.id) }"
+                >
+                  <td class="checkbox-cell">
+                    <input
+                      type="checkbox"
+                      class="log-checkbox"
+                      :checked="selectedLogIds.has(log.id)"
+                      @change="toggleSelectLog(log.id)"
+                    />
+                  </td>
                   <td class="mono-cell">{{ fmtLogTime(log.created) }}</td>
                   <td class="col-email">
                     <a v-if="log.email" href="#" class="log-filter-link cell-truncate" :title="log.email" @click.prevent="quickFilterEmail(log.email)">{{ log.email }}</a>
@@ -431,9 +460,6 @@
                   </td>
                   <td class="col-device" :title="log.user_agent || ''">
                     <span class="cell-truncate">{{ parseDevice(log.user_agent, logsSubTab) }}</span>
-                  </td>
-                  <td>
-                    <button class="btn btn-danger btn-xs" @click="deleteLog(log.id)" title="删除此条记录">删</button>
                   </td>
                 </tr>
               </tbody>
@@ -746,7 +772,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, watchEffect, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import adminPb from '../lib/adminPb'
 import RichTextEditor from '../components/RichTextEditor.vue'
@@ -1528,6 +1554,7 @@ async function loadLogs(page = 1) {
     logsTotalItems.value  = res.totalItems
     logsTotalPages.value  = res.totalPages
     logsPage.value        = page
+    selectedLogIds.value  = new Set()
     syncUrlState()
   } catch (e) {
     logsError.value = e.message
@@ -1564,16 +1591,56 @@ function syncUrlState() {
   router.replace({ query: q })
 }
 
-// ── 删除日志条目 ──────────────────────────────────────────────────────────
-async function deleteLog(id) {
-  if (!confirm('确定删除这条日志记录？')) return
+// ── 批量选择与删除 ────────────────────────────────────────────────────────
+const selectedLogIds      = ref(new Set())
+const selectAllCheckboxRef = ref(null)
+const logsDeleting        = ref(false)
+
+const allCurrentSelected = computed(() =>
+  currentPageLogs.value.length > 0 &&
+  currentPageLogs.value.every(l => selectedLogIds.value.has(l.id))
+)
+const someCurrentSelected = computed(() =>
+  currentPageLogs.value.some(l => selectedLogIds.value.has(l.id)) && !allCurrentSelected.value
+)
+
+watchEffect(() => {
+  if (selectAllCheckboxRef.value) {
+    selectAllCheckboxRef.value.indeterminate = someCurrentSelected.value
+  }
+})
+
+function toggleSelectAll() {
+  if (allCurrentSelected.value) {
+    currentPageLogs.value.forEach(l => selectedLogIds.value.delete(l.id))
+  } else {
+    currentPageLogs.value.forEach(l => selectedLogIds.value.add(l.id))
+  }
+  selectedLogIds.value = new Set(selectedLogIds.value)
+}
+
+function toggleSelectLog(id) {
+  const s = new Set(selectedLogIds.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  selectedLogIds.value = s
+}
+
+async function deleteSelectedLogs() {
+  const ids = [...selectedLogIds.value]
+  if (!ids.length) return
+  if (!confirm(`确定删除已选的 ${ids.length} 条日志记录？`)) return
   const collection = logsSubTab.value === 'login' ? 'login_logs' : 'ical_access_logs'
+  logsDeleting.value = true
   try {
-    await adminPb.collection(collection).delete(id, { requestKey: null })
-    currentPageLogs.value = currentPageLogs.value.filter(l => l.id !== id)
-    logsTotalItems.value--
+    await Promise.all(ids.map(id => adminPb.collection(collection).delete(id, { requestKey: null })))
+    selectedLogIds.value = new Set()
+    currentPageLogs.value = currentPageLogs.value.filter(l => !ids.includes(l.id))
+    logsTotalItems.value = Math.max(0, logsTotalItems.value - ids.length)
   } catch (e) {
     alert('删除失败：' + e.message)
+  } finally {
+    logsDeleting.value = false
   }
 }
 
@@ -1885,6 +1952,43 @@ async function deleteChangelog(cl) {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: inherit;
+}
+
+/* ── 复选框列 ────────────────────────────────────────────────────────────── */
+.checkbox-cell {
+  width: 36px;
+  text-align: center;
+  padding-left: var(--sp-3) !important;
+  padding-right: 0 !important;
+}
+.log-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--text);
+}
+.row-selected td { background: var(--accent-tint) !important; }
+
+/* ── 批量操作栏 ──────────────────────────────────────────────────────────── */
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  animation: batch-bar-in 0.15s ease;
+}
+@keyframes batch-bar-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.batch-count {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+  margin-right: var(--sp-1);
 }
 
 .sem-name { font-weight: 500; }
