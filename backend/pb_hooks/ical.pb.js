@@ -1,3 +1,7 @@
+// ── 模块级 IP 地理信息缓存（进程内持久，TTL 30 天） ─────────────────────────
+var _geoCache = {}
+var _geoCacheTTL = 30 * 24 * 60 * 60 * 1000
+
 routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
   // ── 辅助函数 ──────────────────────────────────────────────────────────────
@@ -253,42 +257,56 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
 
   // 用 ip.sb 查询城市/ISP（优先），ip-api.com 作为备用（CF 免费计划不提供 CF-IPCity）
+  // 同一 IP 命中缓存时跳过外部请求，避免触发第三方限速
   var logCity = ''
   var logIsp = ''
   var isPrivateIp = !logIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(logIp)
   if (!isPrivateIp) {
-    // 主：ip.sb
-    try {
-      var geoRes = $http.send({
-        url: 'https://api.ip.sb/geoip/' + logIp,
-        method: 'GET',
-        timeout: 3,
-      })
-      if (geoRes.statusCode === 200 && geoRes.raw) {
-        var geoData = JSON.parse(geoRes.raw)
-        logCity = geoData.city || ''
-        logIsp  = geoData.organization || ''
-        if (!logCountry && geoData.country_code) logCountry = geoData.country_code
-      }
-    } catch (_) {}
-
-    // 备用：ip-api.com（仅当主 API 未取到城市时）
-    if (!logCity) {
+    var _now = Date.now()
+    var _cached = _geoCache[logIp]
+    if (_cached && (_now - _cached.ts) < _geoCacheTTL) {
+      // 缓存命中，直接复用
+      logCity = _cached.city
+      logIsp  = _cached.isp
+      if (!logCountry && _cached.country) logCountry = _cached.country
+    } else {
+      // 缓存未命中，查外部 API
+      // 主：ip.sb
       try {
-        var geoRes2 = $http.send({
-          url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,org,isp',
+        var geoRes = $http.send({
+          url: 'https://api.ip.sb/geoip/' + logIp,
           method: 'GET',
           timeout: 3,
         })
-        if (geoRes2.statusCode === 200 && geoRes2.raw) {
-          var geoData2 = JSON.parse(geoRes2.raw)
-          if (geoData2.status === 'success') {
-            logCity = geoData2.city || ''
-            if (!logIsp) logIsp = geoData2.org || geoData2.isp || ''
-            if (!logCountry && geoData2.countryCode) logCountry = geoData2.countryCode
-          }
+        if (geoRes.statusCode === 200 && geoRes.raw) {
+          var geoData = JSON.parse(geoRes.raw)
+          logCity = geoData.city || ''
+          logIsp  = geoData.organization || ''
+          if (!logCountry && geoData.country_code) logCountry = geoData.country_code
         }
       } catch (_) {}
+
+      // 备用：ip-api.com（仅当主 API 未取到城市时）
+      if (!logCity) {
+        try {
+          var geoRes2 = $http.send({
+            url: 'http://ip-api.com/json/' + logIp + '?fields=status,countryCode,city,org,isp',
+            method: 'GET',
+            timeout: 3,
+          })
+          if (geoRes2.statusCode === 200 && geoRes2.raw) {
+            var geoData2 = JSON.parse(geoRes2.raw)
+            if (geoData2.status === 'success') {
+              logCity = geoData2.city || ''
+              if (!logIsp) logIsp = geoData2.org || geoData2.isp || ''
+              if (!logCountry && geoData2.countryCode) logCountry = geoData2.countryCode
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 写入缓存（无论是否查到，都缓存以避免对未知 IP 反复请求）
+      _geoCache[logIp] = { country: logCountry, city: logCity, isp: logIsp, ts: _now }
     }
   }
 
