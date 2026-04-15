@@ -387,8 +387,8 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   }
 
   // ── 异常检测：24 小时内不同 IP 前缀数量 ───────────────────────────────────
-  // 阈值：≥3 个不同 IP 前缀 → 标记可疑；≥6 个 → 立即吊销；
-  //       已标记可疑 >48h 且仍 ≥3 个 → 吊销（持续未处理）
+  // 阈值：≥4 个不同 IP 前缀 → 标记可疑；≥6 个 → 立即吊销；
+  //       已标记可疑 >48h 且仍 ≥4 个 → 吊销（持续未处理）
   // 吊销不删除 record，走 48h 空日历过渡（与账户暂停策略一致）
   // 注意：只统计当前 token 创建后的日志，避免旧 token 的访问历史污染新 token
   try {
@@ -426,7 +426,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       if (suspAge > 48 * 60 * 60 * 1000) {
         doRevoke('persistent')
       }
-    } else if (distinctIps >= 3) {
+    } else if (distinctIps >= 4) {
       // 首次触达可疑阈值：标记 suspicious，用户前端将看到告警横幅
       try {
         var rec2 = $app.findRecordById('ical_tokens', tokenRecord.id)
