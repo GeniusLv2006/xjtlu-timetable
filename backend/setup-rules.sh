@@ -98,9 +98,9 @@ TIMETABLES_RULE='@request.auth.is_banned != true && (@request.auth.id = user.id 
 patch_rules "timetables" "$ID_TIMETABLES" "$(jq -n \
   --arg lr "$TIMETABLES_RULE" \
   --arg vr "$TIMETABLES_RULE" \
-  --arg cr '@request.auth.id != ""' \
-  --arg ur '@request.auth.id = user.id' \
-  --arg dr '@request.auth.id = user.id' \
+  --arg cr '@request.auth.is_banned != true && @request.auth.id != ""' \
+  --arg ur '@request.auth.is_banned != true && @request.auth.id = user.id' \
+  --arg dr '@request.auth.is_banned != true && @request.auth.id = user.id' \
   '{listRule:$lr, viewRule:$vr, createRule:$cr, updateRule:$ur, deleteRule:$dr}')"
 
 # ── 5. courses ───────────────────────────────────────────────────────────────

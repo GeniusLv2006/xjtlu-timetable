@@ -250,6 +250,75 @@
             </div>
           </div>
 
+          <!-- iCal 风控 -->
+          <div class="config-section">
+            <div class="config-section-title">iCal 风控</div>
+            <div class="config-row">
+              <div class="config-row-label">
+                <span>启用 iCal 风控</span>
+                <span class="config-row-hint">关闭后跳过自动限流和多 IP 异常检测，封禁和已吊销 token 仍会拦截</span>
+              </div>
+              <label class="toggle-switch">
+                <input v-model="siteConfig.ical_risk_enabled" type="checkbox" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="config-row">
+              <div class="config-row-label">
+                <span>启用请求限流</span>
+                <span class="config-row-hint">超过窗口内请求次数后返回 429</span>
+              </div>
+              <label class="toggle-switch">
+                <input v-model="siteConfig.ical_rate_limit_enabled" type="checkbox" :disabled="!siteConfig.ical_risk_enabled" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="config-grid">
+              <div class="field-group">
+                <label class="field-label">限流窗口（分钟）</label>
+                <input v-model.number="siteConfig.ical_rate_window_minutes" type="number" min="1" class="field-input" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">窗口内请求上限</label>
+                <input v-model.number="siteConfig.ical_rate_max_requests" type="number" min="1" class="field-input" />
+              </div>
+            </div>
+            <div class="config-row">
+              <div class="config-row-label">
+                <span>启用多 IP 检测</span>
+                <span class="config-row-hint">按 24 小时内不同 IP 前缀数标记可疑或自动吊销</span>
+              </div>
+              <label class="toggle-switch">
+                <input v-model="siteConfig.ical_ip_anomaly_enabled" type="checkbox" :disabled="!siteConfig.ical_risk_enabled" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="config-grid">
+              <div class="field-group">
+                <label class="field-label">可疑 IP 前缀数</label>
+                <input v-model.number="siteConfig.ical_suspicious_ip_prefixes" type="number" min="1" class="field-input" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">吊销 IP 前缀数</label>
+                <input v-model.number="siteConfig.ical_revoke_ip_prefixes" type="number" min="1" class="field-input" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">可疑宽限（小时）</label>
+                <input v-model.number="siteConfig.ical_suspicious_grace_hours" type="number" min="1" class="field-input" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">空日历过渡（小时）</label>
+                <input v-model.number="siteConfig.ical_empty_calendar_hours" type="number" min="1" class="field-input" />
+              </div>
+            </div>
+            <div class="config-actions">
+              <button class="btn btn-primary btn-sm" :disabled="configSaving" @click="saveSiteConfig">
+                {{ configSaving ? '保存中…' : '保存 iCal 风控' }}
+              </button>
+              <span v-if="configSaved" class="config-saved-tip">已保存 ✓</span>
+            </div>
+          </div>
+
           <!-- 站点公告 -->
           <div class="config-section">
             <div class="config-section-title">站点公告</div>
@@ -1343,7 +1412,22 @@ async function saveInvitePerms() {
 }
 
 // ── Site Config ────────────────────────────────────────────────────────────
-const siteConfig   = reactive({ registration_open: true, require_invite: true, allowed_email_suffixes: '', site_notice: '' })
+const siteConfigDefaults = {
+  registration_open: true,
+  require_invite: true,
+  allowed_email_suffixes: '',
+  site_notice: '',
+  ical_risk_enabled: true,
+  ical_rate_limit_enabled: true,
+  ical_ip_anomaly_enabled: true,
+  ical_rate_window_minutes: 10,
+  ical_rate_max_requests: 5,
+  ical_suspicious_ip_prefixes: 4,
+  ical_revoke_ip_prefixes: 6,
+  ical_suspicious_grace_hours: 48,
+  ical_empty_calendar_hours: 48,
+}
+const siteConfig   = reactive({ ...siteConfigDefaults })
 const siteConfigId = ref('')
 const configSaving = ref(false)
 const noticeSaving = ref(false)
@@ -1365,14 +1449,40 @@ async function loadSiteConfig() {
       const cfg = list.items[0]
       siteConfigId.value = cfg.id
       Object.assign(siteConfig, {
-        registration_open:      cfg.registration_open,
-        require_invite:         cfg.require_invite,
-        allowed_email_suffixes: cfg.allowed_email_suffixes || '',
-        site_notice:            cfg.site_notice || '',
+        registration_open:              cfg.registration_open,
+        require_invite:                 cfg.require_invite,
+        allowed_email_suffixes:         cfg.allowed_email_suffixes || '',
+        site_notice:                    cfg.site_notice || '',
+        ical_risk_enabled:              cfg.ical_risk_enabled ?? siteConfigDefaults.ical_risk_enabled,
+        ical_rate_limit_enabled:        cfg.ical_rate_limit_enabled ?? siteConfigDefaults.ical_rate_limit_enabled,
+        ical_ip_anomaly_enabled:        cfg.ical_ip_anomaly_enabled ?? siteConfigDefaults.ical_ip_anomaly_enabled,
+        ical_rate_window_minutes:       positiveInt(cfg.ical_rate_window_minutes, siteConfigDefaults.ical_rate_window_minutes),
+        ical_rate_max_requests:         positiveInt(cfg.ical_rate_max_requests, siteConfigDefaults.ical_rate_max_requests),
+        ical_suspicious_ip_prefixes:    positiveInt(cfg.ical_suspicious_ip_prefixes, siteConfigDefaults.ical_suspicious_ip_prefixes),
+        ical_revoke_ip_prefixes:        positiveInt(cfg.ical_revoke_ip_prefixes, siteConfigDefaults.ical_revoke_ip_prefixes),
+        ical_suspicious_grace_hours:    positiveInt(cfg.ical_suspicious_grace_hours, siteConfigDefaults.ical_suspicious_grace_hours),
+        ical_empty_calendar_hours:      positiveInt(cfg.ical_empty_calendar_hours, siteConfigDefaults.ical_empty_calendar_hours),
       })
     }
   } catch (e) {
     configError.value = e.message
+  }
+}
+
+function positiveInt(value, fallback = 1) {
+  const n = Number.parseInt(value, 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+function normalizeIcalRiskConfig() {
+  siteConfig.ical_rate_window_minutes = positiveInt(siteConfig.ical_rate_window_minutes, siteConfigDefaults.ical_rate_window_minutes)
+  siteConfig.ical_rate_max_requests = positiveInt(siteConfig.ical_rate_max_requests, siteConfigDefaults.ical_rate_max_requests)
+  siteConfig.ical_suspicious_ip_prefixes = positiveInt(siteConfig.ical_suspicious_ip_prefixes, siteConfigDefaults.ical_suspicious_ip_prefixes)
+  siteConfig.ical_revoke_ip_prefixes = positiveInt(siteConfig.ical_revoke_ip_prefixes, siteConfigDefaults.ical_revoke_ip_prefixes)
+  siteConfig.ical_suspicious_grace_hours = positiveInt(siteConfig.ical_suspicious_grace_hours, siteConfigDefaults.ical_suspicious_grace_hours)
+  siteConfig.ical_empty_calendar_hours = positiveInt(siteConfig.ical_empty_calendar_hours, siteConfigDefaults.ical_empty_calendar_hours)
+  if (siteConfig.ical_revoke_ip_prefixes <= siteConfig.ical_suspicious_ip_prefixes) {
+    siteConfig.ical_revoke_ip_prefixes = siteConfig.ical_suspicious_ip_prefixes + 1
   }
 }
 
@@ -1392,10 +1502,20 @@ async function saveSiteConfig() {
   configSaving.value = true
   configSaved.value = false
   try {
+    normalizeIcalRiskConfig()
     await adminPb.collection('site_config').update(siteConfigId.value, {
-      registration_open:      siteConfig.registration_open,
-      require_invite:         siteConfig.require_invite,
-      allowed_email_suffixes: siteConfig.allowed_email_suffixes,
+      registration_open:              siteConfig.registration_open,
+      require_invite:                 siteConfig.require_invite,
+      allowed_email_suffixes:         siteConfig.allowed_email_suffixes,
+      ical_risk_enabled:              siteConfig.ical_risk_enabled,
+      ical_rate_limit_enabled:        siteConfig.ical_rate_limit_enabled,
+      ical_ip_anomaly_enabled:        siteConfig.ical_ip_anomaly_enabled,
+      ical_rate_window_minutes:       siteConfig.ical_rate_window_minutes,
+      ical_rate_max_requests:         siteConfig.ical_rate_max_requests,
+      ical_suspicious_ip_prefixes:    siteConfig.ical_suspicious_ip_prefixes,
+      ical_revoke_ip_prefixes:        siteConfig.ical_revoke_ip_prefixes,
+      ical_suspicious_grace_hours:    siteConfig.ical_suspicious_grace_hours,
+      ical_empty_calendar_hours:      siteConfig.ical_empty_calendar_hours,
     }, { requestKey: null })
     configSaved.value = true
     setTimeout(() => { configSaved.value = false }, 2500)
@@ -2243,6 +2363,11 @@ tr:hover .icon-btn { opacity: 1; }
   font-size: var(--text-xs);
   color: var(--green);
 }
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
 
 /* Stats grid */
 .stats-grid {
@@ -2478,6 +2603,9 @@ tr:hover .icon-btn { opacity: 1; }
   /* ── 统计网格自适应 ───────────────────────────────────── */
   .stats-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  .config-grid {
+    grid-template-columns: 1fr;
   }
   .stat-value {
     font-size: var(--text-lg);

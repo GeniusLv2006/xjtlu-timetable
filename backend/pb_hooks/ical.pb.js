@@ -66,6 +66,56 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     return out
   }
 
+  var loadRiskConfig = function() {
+    var cfg = {
+      riskEnabled: true,
+      rateLimitEnabled: true,
+      ipAnomalyEnabled: true,
+      rateWindowMinutes: 10,
+      rateMaxRequests: 5,
+      suspiciousIpPrefixes: 4,
+      revokeIpPrefixes: 6,
+      suspiciousGraceHours: 48,
+      emptyCalendarHours: 48,
+    }
+
+    var boolValue = function(rec, field, fallback) {
+      try {
+        var v = rec.get(field)
+        if (v === null || typeof v === 'undefined' || v === '') return fallback
+        return !!v
+      } catch (_) { return fallback }
+    }
+
+    var intValue = function(rec, field, fallback) {
+      try {
+        var n = parseInt(rec.get(field))
+        return n > 0 ? n : fallback
+      } catch (_) { return fallback }
+    }
+
+    try {
+      var configs = $app.findRecordsByFilter('site_config', 'id != ""', '', 1, 0)
+      if (configs.length > 0) {
+        var rec = configs[0]
+        cfg.riskEnabled = boolValue(rec, 'ical_risk_enabled', cfg.riskEnabled)
+        cfg.rateLimitEnabled = boolValue(rec, 'ical_rate_limit_enabled', cfg.rateLimitEnabled)
+        cfg.ipAnomalyEnabled = boolValue(rec, 'ical_ip_anomaly_enabled', cfg.ipAnomalyEnabled)
+        cfg.rateWindowMinutes = intValue(rec, 'ical_rate_window_minutes', cfg.rateWindowMinutes)
+        cfg.rateMaxRequests = intValue(rec, 'ical_rate_max_requests', cfg.rateMaxRequests)
+        cfg.suspiciousIpPrefixes = intValue(rec, 'ical_suspicious_ip_prefixes', cfg.suspiciousIpPrefixes)
+        cfg.revokeIpPrefixes = intValue(rec, 'ical_revoke_ip_prefixes', cfg.revokeIpPrefixes)
+        cfg.suspiciousGraceHours = intValue(rec, 'ical_suspicious_grace_hours', cfg.suspiciousGraceHours)
+        cfg.emptyCalendarHours = intValue(rec, 'ical_empty_calendar_hours', cfg.emptyCalendarHours)
+      }
+    } catch (_) {}
+
+    if (cfg.revokeIpPrefixes <= cfg.suspiciousIpPrefixes) {
+      cfg.revokeIpPrefixes = cfg.suspiciousIpPrefixes + 1
+    }
+    return cfg
+  }
+
   var buildIcs = function(courses, startDate) {
     var CRLF = '\r\n', out = ''
 
@@ -172,6 +222,8 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   } catch (err) {
     return e.json(404, { error: 'User not found' })
   }
+
+  var riskConfig = loadRiskConfig()
 
   // 1c. 记录 iCal 访问日志（在所有状态检查之前写入，确保 banned/revoked 请求也留有记录）
   var logIp = (e.request.header.get('CF-Connecting-IP') ||
@@ -309,7 +361,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   if (userRecord.getBool('is_banned')) {
     // ban_empty_served_at 懒加载：首次请求时开启 48h 窗口，覆盖所有设备的同步周期
     var servedAt = tokenRecord.getString('ban_empty_served_at')
-    var BAN_WINDOW_MS = 48 * 60 * 60 * 1000
+    var BAN_WINDOW_MS = riskConfig.emptyCalendarHours * 60 * 60 * 1000
 
     if (servedAt) {
       var elapsed = Date.now() - new Date(servedAt).getTime()
@@ -343,7 +395,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   //     revoked_at 保留作审计字段（记录何时触发吊销），不参与窗口计算
   if (tokenRecord.getBool('is_revoked')) {
     var revokeServedAt = tokenRecord.getString('revoke_empty_served_at')
-    var REVOKE_WINDOW_MS = 48 * 60 * 60 * 1000
+    var REVOKE_WINDOW_MS = riskConfig.emptyCalendarHours * 60 * 60 * 1000
 
     if (revokeServedAt) {
       if (Date.now() - new Date(revokeServedAt).getTime() > REVOKE_WINDOW_MS) {
@@ -372,18 +424,20 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     return e.string(200, emptyRevoked)
   }
 
-  // ── 速率门控：10 分钟内同一 token 超过 5 次请求 → 429 ─────────────────────
+  // ── 速率门控：配置窗口内同一 token 超过阈值 → 429 ─────────────────────
   var tokenCreated = tokenRecord.getString('created')
-  var rateRows = arrayOf(new DynamicModel({ cnt: 0 }))
-  try {
-    $app.db()
-      .newQuery("SELECT count(*) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= {:token_created} AND created >= datetime('now', '-10 minutes')")
-      .bind({ uid: userId, token_created: tokenCreated })
-      .all(rateRows)
-  } catch (_) {}
-  if (rateRows.length > 0 && parseInt(rateRows[0].cnt) > 5) {
-    e.response.header().set('Retry-After', '600')
-    return e.json(429, { error: 'Too many requests. Please retry after 10 minutes.' })
+  if (riskConfig.riskEnabled && riskConfig.rateLimitEnabled) {
+    var rateRows = arrayOf(new DynamicModel({ cnt: 0 }))
+    try {
+      $app.db()
+        .newQuery("SELECT count(*) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= {:token_created} AND created >= datetime('now', {:window})")
+        .bind({ uid: userId, token_created: tokenCreated, window: '-' + riskConfig.rateWindowMinutes + ' minutes' })
+        .all(rateRows)
+    } catch (_) {}
+    if (rateRows.length > 0 && parseInt(rateRows[0].cnt) > riskConfig.rateMaxRequests) {
+      e.response.header().set('Retry-After', String(riskConfig.rateWindowMinutes * 60))
+      return e.json(429, { error: 'Too many requests. Please retry after ' + riskConfig.rateWindowMinutes + ' minutes.' })
+    }
   }
 
   // ── 异常检测：24 小时内不同 IP 前缀数量 ───────────────────────────────────
@@ -391,7 +445,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   //       已标记可疑 >48h 且仍 ≥4 个 → 吊销（持续未处理）
   // 吊销不删除 record，走 48h 空日历过渡（与账户暂停策略一致）
   // 注意：只统计当前 token 创建后的日志，避免旧 token 的访问历史污染新 token
-  try {
+  if (riskConfig.riskEnabled && riskConfig.ipAnomalyEnabled) try {
     var ipRows = arrayOf(new DynamicModel({ cnt: 0 }))
     $app.db()
       .newQuery("SELECT count(DISTINCT ip_prefix) as cnt FROM ical_access_logs WHERE user_id = {:uid} AND created >= {:token_created} AND created >= datetime('now', '-24 hours')")
@@ -416,17 +470,17 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
       } catch (_) {}
     }
 
-    if (distinctIps > 5) {
-      // 高危：立即吊销（≥6 个不同 IP 前缀，明显泄露）
+    if (distinctIps >= riskConfig.revokeIpPrefixes) {
+      // 高危：立即吊销（达到配置的不同 IP 前缀数量，明显泄露）
       doRevoke('high-risk')
     } else if (isSuspicious && suspiciousAt) {
       // 已标记可疑：与当前 IP 数无关，持续 48h 未重置 → 吊销
       // （即使此刻 IP 数已降回正常，说明用户看到横幅却未处理）
       var suspAge = Date.now() - new Date(suspiciousAt).getTime()
-      if (suspAge > 48 * 60 * 60 * 1000) {
+      if (suspAge > riskConfig.suspiciousGraceHours * 60 * 60 * 1000) {
         doRevoke('persistent')
       }
-    } else if (distinctIps >= 4) {
+    } else if (distinctIps >= riskConfig.suspiciousIpPrefixes) {
       // 首次触达可疑阈值：标记 suspicious，用户前端将看到告警横幅
       try {
         var rec2 = $app.findRecordById('ical_tokens', tokenRecord.id)

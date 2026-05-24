@@ -45,10 +45,70 @@ curl -sf -X POST "$BASE/api/collections" \
         "options": {"min": null, "max": null, "pattern": ""}
       },
       {
+        "name": "require_invite",
+        "type": "bool",
+        "required": false,
+        "options": {}
+      },
+      {
         "name": "site_notice",
         "type": "text",
         "required": false,
         "options": {"min": null, "max": null, "pattern": ""}
+      },
+      {
+        "name": "ical_risk_enabled",
+        "type": "bool",
+        "required": false,
+        "options": {}
+      },
+      {
+        "name": "ical_rate_limit_enabled",
+        "type": "bool",
+        "required": false,
+        "options": {}
+      },
+      {
+        "name": "ical_ip_anomaly_enabled",
+        "type": "bool",
+        "required": false,
+        "options": {}
+      },
+      {
+        "name": "ical_rate_window_minutes",
+        "type": "number",
+        "required": false,
+        "options": {"min": 1, "max": null, "noDecimal": true}
+      },
+      {
+        "name": "ical_rate_max_requests",
+        "type": "number",
+        "required": false,
+        "options": {"min": 1, "max": null, "noDecimal": true}
+      },
+      {
+        "name": "ical_suspicious_ip_prefixes",
+        "type": "number",
+        "required": false,
+        "options": {"min": 1, "max": null, "noDecimal": true}
+      },
+      {
+        "name": "ical_revoke_ip_prefixes",
+        "type": "number",
+        "required": false,
+        "options": {"min": 1, "max": null, "noDecimal": true}
+      },
+      {
+        "name": "ical_suspicious_grace_hours",
+        "type": "number",
+        "required": false,
+        "options": {"min": 1, "max": null, "noDecimal": true}
+      },
+      {
+        "name": "ical_empty_calendar_hours",
+        "type": "number",
+        "required": false,
+        "options": {"min": 1, "max": null, "noDecimal": true}
       }
     ]
   }' > /dev/null && echo "    collection 创建成功" || echo "    (collection 可能已存在，跳过)"
@@ -58,7 +118,7 @@ echo "==> 插入初始配置记录..."
 curl -sf -X POST "$BASE/api/collections/site_config/records" \
   -H "Authorization: $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"registration_open": true, "allowed_email_suffixes": "", "site_notice": ""}' \
+  -d '{"registration_open": true, "require_invite": true, "allowed_email_suffixes": "", "site_notice": "", "ical_risk_enabled": true, "ical_rate_limit_enabled": true, "ical_ip_anomaly_enabled": true, "ical_rate_window_minutes": 10, "ical_rate_max_requests": 5, "ical_suspicious_ip_prefixes": 4, "ical_revoke_ip_prefixes": 6, "ical_suspicious_grace_hours": 48, "ical_empty_calendar_hours": 48}' \
   > /dev/null && echo "    初始记录创建成功" || echo "    (记录可能已存在，跳过)"
 
 echo "==> 完成！请在管理后台「系统设置」tab 中配置。"

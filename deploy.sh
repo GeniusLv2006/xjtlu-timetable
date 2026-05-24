@@ -11,5 +11,8 @@ git pull
 echo "==> Building and starting container..."
 docker compose up -d --build
 
+echo "==> Applying deployment hardening..."
+bash backend/harden-deployment.sh
+
 echo "==> Done. Container status:"
 docker compose ps
