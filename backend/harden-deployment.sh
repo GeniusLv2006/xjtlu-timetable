@@ -6,6 +6,7 @@ NPM_CONTAINER="${NPM_CONTAINER:-npm}"
 APP_CONTAINER="${APP_CONTAINER:-xjtlu-timetable}"
 SERVER_NAME="${SERVER_NAME:-timetable.xjtlu.uk}"
 APP_PORT="${APP_PORT:-8080}"
+HOST_PORT="${HOST_PORT:-8091}"
 
 echo "==> Applying Nginx security headers for ${SERVER_NAME}..."
 CONF_PATH="$(
@@ -79,6 +80,13 @@ if iptables -C DOCKER-USER ! -s 172.16.0.0/12 -d "$APP_IP" -p tcp --dport "$APP_
 else
   iptables -I DOCKER-USER 1 ! -s 172.16.0.0/12 -d "$APP_IP" -p tcp --dport "$APP_PORT" -j DROP
   echo "    firewall rule inserted"
+fi
+
+if iptables -C INPUT ! -s 172.16.0.0/12 -p tcp --dport "$HOST_PORT" -j DROP 2>/dev/null; then
+  echo "    host port rule already present"
+else
+  iptables -I INPUT 1 ! -s 172.16.0.0/12 -p tcp --dport "$HOST_PORT" -j DROP
+  echo "    host port rule inserted"
 fi
 
 echo "==> Deployment hardening complete."
