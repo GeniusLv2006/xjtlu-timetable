@@ -39,12 +39,10 @@ awk '
   BEGIN {
     inserted = 0
     block = "    # BEGIN XJTLU TIMETABLE SECURITY HEADERS\n" \
-            "    proxy_hide_header Content-Security-Policy;\n" \
             "    proxy_hide_header X-Frame-Options;\n" \
             "    proxy_hide_header X-Content-Type-Options;\n" \
             "    proxy_hide_header Referrer-Policy;\n" \
             "    proxy_hide_header Permissions-Policy;\n" \
-            "    add_header Content-Security-Policy \"default-src '\''self'\''; script-src '\''self'\'' https://challenges.cloudflare.com; style-src '\''self'\''; font-src '\''self'\''; img-src '\''self'\'' data:; connect-src '\''self'\'' https://timetableplus.xjtlu.edu.cn; base-uri '\''self'\''; form-action '\''self'\''; frame-ancestors '\''none'\''; frame-src https://challenges.cloudflare.com;\" always;\n" \
             "    add_header X-Frame-Options \"DENY\" always;\n" \
             "    add_header X-Content-Type-Options \"nosniff\" always;\n" \
             "    add_header Referrer-Policy \"strict-origin-when-cross-origin\" always;\n" \
