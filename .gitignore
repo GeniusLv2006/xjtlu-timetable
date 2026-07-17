@@ -7,6 +7,11 @@ frontend/dist/
 
 # PocketBase data (never commit)
 backend/pb_data/
+backend/pb_data.bak-*/
+
+# Deployment backups and state
+backups/
+.deploy-state/
 
 # PocketBase binary (download on target)
 backend/pocketbase
