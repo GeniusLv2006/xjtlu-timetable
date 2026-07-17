@@ -12,7 +12,7 @@ admin_email = input('Admin email: ')
 admin_pass  = getpass.getpass('Admin password: ')
 
 req = urllib.request.Request(
-    f'{BASE}/api/admins/auth-with-password',
+    f'{BASE}/api/collections/_superusers/auth-with-password',
     data=json.dumps({'identity': admin_email, 'password': admin_pass}).encode(),
     headers={'Content-Type': 'application/json'},
     method='POST',

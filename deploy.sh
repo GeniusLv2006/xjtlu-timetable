@@ -8,8 +8,9 @@ cd "$REPO_DIR"
 echo "==> Pulling latest code..."
 git pull
 
-echo "==> Building and starting container..."
-docker compose up -d --build
+echo "==> Pulling and starting reviewed container image..."
+docker compose pull
+docker compose up -d --no-build
 
 echo "==> Applying deployment hardening..."
 bash backend/harden-deployment.sh

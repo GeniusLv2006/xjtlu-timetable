@@ -21,23 +21,23 @@ https://timetable.xjtlu.uk
 | 层级 | 技术 |
 |------|------|
 | 前端 | Vue 3 · Vite · Pinia · Vue Router · PocketBase JS SDK |
-| 后端 | [PocketBase](https://pocketbase.io/) v0.23+（单二进制，SQLite） |
+| 后端 | [PocketBase](https://pocketbase.io/) v0.39.7（SQLite） |
 | 部署 | Docker · Docker Compose · Nginx Proxy Manager |
 
 ## 部署
 
 ### 前置条件
 
-- Docker & Docker Compose
-- PocketBase 二进制（v0.23+，[下载](https://github.com/pocketbase/pocketbase/releases)），放至 `backend/pocketbase`
+- Docker 24+ 与 Docker Compose v2
 
 ### 启动
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-容器对外监听 `172.17.0.1:8091`（Docker 宿主机接口），可在 `docker-compose.yml` 中修改端口绑定。
+默认拉取 `ghcr.io/geniuslv2006/xjtlu-timetable:latest`。设置 `IMAGE_TAG` 可部署指定提交标签。容器对外监听 `172.17.0.1:8091`（Docker 宿主机接口），可在 `docker-compose.yml` 中修改端口绑定。
 
 ### 初始化数据库
 
