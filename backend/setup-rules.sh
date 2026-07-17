@@ -90,16 +90,16 @@ patch_rules() {
 # ── 4. timetables ────────────────────────────────────────────────────────────
 #
 # List/View：自己 | public | 已接受的好友
-# Create：已登录即可
-# Update/Delete：仅所有者
+# Create：仅允许为自己创建
+# Update/Delete：仅所有者，且禁止转移 user 关系
 
 TIMETABLES_RULE='@request.auth.is_banned != true && (@request.auth.id = user.id || visibility = "public" || (visibility = "friends" && ((@collection.friendships.from_user.id ?= @request.auth.id && @collection.friendships.to_user.id ?= user.id && @collection.friendships.status ?= "accepted") || (@collection.friendships.to_user.id ?= @request.auth.id && @collection.friendships.from_user.id ?= user.id && @collection.friendships.status ?= "accepted"))))'
 
 patch_rules "timetables" "$ID_TIMETABLES" "$(jq -n \
   --arg lr "$TIMETABLES_RULE" \
   --arg vr "$TIMETABLES_RULE" \
-  --arg cr '@request.auth.is_banned != true && @request.auth.id != ""' \
-  --arg ur '@request.auth.is_banned != true && @request.auth.id = user.id' \
+  --arg cr '@request.auth.is_banned != true && @request.auth.id = user.id' \
+  --arg ur '@request.auth.is_banned != true && @request.auth.id = user.id && @request.body.user:changed = false' \
   --arg dr '@request.auth.is_banned != true && @request.auth.id = user.id' \
   '{listRule:$lr, viewRule:$vr, createRule:$cr, updateRule:$ur, deleteRule:$dr}')"
 
@@ -115,7 +115,7 @@ patch_rules "courses" "$ID_COURSES" "$(jq -n \
   --arg lr "$COURSES_RULE" \
   --arg vr "$COURSES_RULE" \
   --arg cr "$COURSES_WRITE" \
-  --arg ur "$COURSES_WRITE" \
+  --arg ur "$COURSES_WRITE && @request.body.timetable:changed = false" \
   --arg dr "$COURSES_WRITE" \
   '{listRule:$lr, viewRule:$vr, createRule:$cr, updateRule:$ur, deleteRule:$dr}')"
 
@@ -129,8 +129,8 @@ patch_rules "courses" "$ID_COURSES" "$(jq -n \
 patch_rules "friendships" "$ID_FRIENDSHIPS" "$(jq -n \
   --arg lr '@request.auth.is_banned != true && (@request.auth.id = from_user.id || @request.auth.id = to_user.id)' \
   --arg vr '@request.auth.is_banned != true && (@request.auth.id = from_user.id || @request.auth.id = to_user.id)' \
-  --arg cr '@request.auth.is_banned != true && @request.auth.id = from_user.id' \
-  --arg ur '@request.auth.is_banned != true && @request.auth.id = to_user.id' \
+  --arg cr '@request.auth.is_banned != true && @request.auth.id = from_user.id && @request.body.status = "pending"' \
+  --arg ur '@request.auth.is_banned != true && @request.auth.id = to_user.id && @request.body.from_user:changed = false && @request.body.to_user:changed = false && @request.body.status = "accepted"' \
   --arg dr '@request.auth.is_banned != true && (@request.auth.id = from_user.id || @request.auth.id = to_user.id)' \
   '{listRule:$lr, viewRule:$vr, createRule:$cr, updateRule:$ur, deleteRule:$dr}')"
 
@@ -150,7 +150,7 @@ patch_rules "semesters" "$ID_SEMESTERS" \
 patch_rules "ical_tokens" "$ID_ICAL_TOKENS" "$(jq -n \
   --arg lr '@request.auth.is_banned != true && @request.auth.id = user.id' \
   --arg vr '@request.auth.is_banned != true && @request.auth.id = user.id' \
-  --arg cr '@request.auth.is_banned != true && @request.auth.id != ""' \
+  --arg cr '@request.auth.is_banned != true && @request.auth.id = user.id' \
   --arg dr '@request.auth.is_banned != true && @request.auth.id = user.id' \
   '{listRule:$lr, viewRule:$vr, createRule:$cr, updateRule:null, deleteRule:$dr}')"
 

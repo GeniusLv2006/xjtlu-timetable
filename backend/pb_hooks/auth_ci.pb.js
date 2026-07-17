@@ -1,23 +1,10 @@
-// 邮箱大小写不敏感辅助接口
-// GET /api/custom/users/resolve-email?email=xxx
-// 根据用户输入的邮箱（任意大小写），返回数据库中存储的原始大小写邮箱。
+// Keep all user auth identities canonical so login remains case-insensitive
+// without exposing a public account-enumeration endpoint.
+var normalizeUserEmail = function(e) {
+  var email = (e.record.getString('email') || '').trim().toLowerCase()
+  if (email) e.record.set('email', email)
+  e.next()
+}
 
-routerAdd('GET', '/api/custom/users/resolve-email', function(e) {
-  var email = (e.request.url.query().get('email') || '').trim()
-  if (!email) {
-    return e.json(200, { email: null })
-  }
-
-  // PocketBase filter 语言不支持 LOWER()，改用 arrayOf+DynamicModel 接收原始 SQL 结果
-  var rows = arrayOf(new DynamicModel({ email: '' }))
-  try {
-    $app.db()
-      .newQuery('SELECT email FROM users WHERE LOWER(email) = {:email} LIMIT 1')
-      .bind({ email: email.toLowerCase() })
-      .all(rows)
-  } catch (_) {
-    return e.json(200, { email: null })
-  }
-
-  return e.json(200, { email: rows.length > 0 ? rows[0].email : null })
-})
+onRecordCreateRequest(normalizeUserEmail, 'users')
+onRecordUpdateRequest(normalizeUserEmail, 'users')

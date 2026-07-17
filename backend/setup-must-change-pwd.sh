@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Add must_change_pwd boolean field to users collection
-# Usage: ./setup-must-change-pwd.sh <pb_url> <admin_email> <admin_password>
-# Example: ./setup-must-change-pwd.sh http://localhost:8091 admin@example.com secret
+# Usage: ./setup-must-change-pwd.sh [pb_url] [admin_email]
+# The password is read from a hidden prompt or PB_ADMIN_PASS.
 
 set -euo pipefail
 
 PB_URL="${1:-http://localhost:8091}"
-ADMIN_EMAIL="${2:?Usage: $0 <pb_url> <admin_email> <admin_password>}"
-ADMIN_PASSWORD="${3:?Usage: $0 <pb_url> <admin_email> <admin_password>}"
+ADMIN_EMAIL="${2:-${PB_ADMIN_EMAIL:-}}"
+if [ -z "$ADMIN_EMAIL" ]; then
+  read -r -p "Admin email: " ADMIN_EMAIL
+fi
+ADMIN_PASSWORD="${PB_ADMIN_PASS:-}"
+if [ -z "$ADMIN_PASSWORD" ]; then
+  read -r -s -p "Admin password: " ADMIN_PASSWORD
+  echo
+fi
 
 echo "→ Authenticating with PocketBase at $PB_URL ..."
 TOKEN=$(curl -sf "$PB_URL/api/admins/auth-with-password" \

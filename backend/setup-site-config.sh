@@ -1,14 +1,22 @@
 #!/bin/bash
 # setup-site-config.sh — 一次性创建 site_config collection
 #
-# 用法: bash setup-site-config.sh <admin_email> <admin_password>
+# 用法: bash setup-site-config.sh [admin_email]
+# 密码通过隐藏提示读取，也可使用 PB_ADMIN_PASS 环境变量。
 # VPS PocketBase 地址: http://172.17.0.1:8091
 
 set -e
 
 BASE="http://172.17.0.1:8091"
-ADMIN_EMAIL="${1:?请传入管理员邮箱，例: bash setup-site-config.sh admin@example.com password}"
-ADMIN_PWD="${2:?请传入管理员密码}"
+ADMIN_EMAIL="${1:-${PB_ADMIN_EMAIL:-}}"
+if [ -z "$ADMIN_EMAIL" ]; then
+  read -r -p "管理员邮箱: " ADMIN_EMAIL
+fi
+ADMIN_PWD="${PB_ADMIN_PASS:-}"
+if [ -z "$ADMIN_PWD" ]; then
+  read -r -s -p "管理员密码: " ADMIN_PWD
+  echo
+fi
 
 # 1. 获取 admin token
 echo "==> 获取管理员 token..."

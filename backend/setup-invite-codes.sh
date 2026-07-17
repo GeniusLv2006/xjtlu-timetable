@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # setup-invite-codes.sh
-# 用法：./setup-invite-codes.sh <admin-email> <admin-password>
+# 用法：./setup-invite-codes.sh [admin-email]
+# 密码通过隐藏提示读取，也可使用 PB_ADMIN_PASS 环境变量。
 #
 # 功能：
 #   1. 开启用户自注册（users collection createRule → ""）
@@ -10,8 +11,15 @@
 set -e
 cd "$(dirname "$0")"
 
-ADMIN_EMAIL="${1:?请传入管理员邮箱}"
-ADMIN_PWD="${2:?请传入管理员密码}"
+ADMIN_EMAIL="${1:-${PB_ADMIN_EMAIL:-}}"
+if [ -z "$ADMIN_EMAIL" ]; then
+  read -r -p "管理员邮箱: " ADMIN_EMAIL
+fi
+ADMIN_PWD="${PB_ADMIN_PASS:-}"
+if [ -z "$ADMIN_PWD" ]; then
+  read -r -s -p "管理员密码: " ADMIN_PWD
+  echo
+fi
 BASE="http://127.0.0.1:8091"
 
 echo "==> 获取管理员 token…"

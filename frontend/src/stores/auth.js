@@ -23,16 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   async function login(email, password) {
-    // 先查询数据库中存储的原始大小写邮箱，再走标准 auth 流程
-    let loginEmail = email
-    try {
-      const res = await pb.send(
-        `/api/custom/users/resolve-email?email=${encodeURIComponent(email)}`,
-        { requestKey: null }
-      )
-      if (res?.email) loginEmail = res.email
-    } catch (_) {}
-
+    const loginEmail = email.trim().toLowerCase()
     await pb.collection('users').authWithPassword(loginEmail, password, { requestKey: null })
     if (pb.authStore.model?.must_change_pwd) {
       tempPwd.value = password
@@ -42,8 +33,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(email, password, passwordConfirm, inviteCode) {
+    const normalizedEmail = email.trim().toLowerCase()
     await pb.collection('users').create(
-      { email, password, passwordConfirm, name: email.split('@')[0], invite_code: inviteCode },
+      {
+        email: normalizedEmail,
+        password,
+        passwordConfirm,
+        name: normalizedEmail.split('@')[0],
+        invite_code: inviteCode,
+      },
       { requestKey: null }
     )
     await login(email, password)

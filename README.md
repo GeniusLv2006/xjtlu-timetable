@@ -47,10 +47,10 @@ docker compose up -d --build
 
 ```bash
 # 初始化站点配置（邮箱白名单、注册开关等）
-bash backend/setup-site-config.sh <admin_email> <admin_password>
+bash backend/setup-site-config.sh <admin_email>
 
 # 初始化邀请码
-bash backend/setup-invite-codes.sh <admin_email> <admin_password>
+bash backend/setup-invite-codes.sh <admin_email>
 ```
 
 ### 用户协议与隐私政策
