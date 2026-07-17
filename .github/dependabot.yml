@@ -31,3 +31,9 @@ updates:
       time: "10:00"
       timezone: Asia/Shanghai
     open-pull-requests-limit: 5
+    ignore:
+      # Production Node.js follows the latest LTS line. Major transitions are
+      # reviewed manually after the new line reaches LTS status.
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major
