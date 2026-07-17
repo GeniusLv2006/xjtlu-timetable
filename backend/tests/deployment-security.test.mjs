@@ -39,4 +39,12 @@ test('deployment requires an exact main revision with backup and rollback', asyn
   assert.match(deploy, /rollback\(\)/)
   assert.match(deploy, /--pull never/)
   assert.match(deploy, /Config\.User/)
+
+  const composeCalls = deploy
+    .split('\n')
+    .filter((line) => line.includes('docker compose'))
+  assert.ok(composeCalls.length > 0)
+  for (const line of composeCalls) {
+    assert.match(line, /IMAGE_TAG=/)
+  }
 })
