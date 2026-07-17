@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.18.0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run backend security tests
+        run: node --test backend/tests/*.test.mjs
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: pnpm test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm build
+
+      - name: Audit all JavaScript dependencies
+        working-directory: frontend
+        run: pnpm audit --audit-level low
+
+      - name: Validate shell scripts
+        run: >-
+          bash -n
+          backend/setup-rules.sh
+          backend/setup-site-config.sh
+          backend/setup-invite-codes.sh
+          backend/setup-must-change-pwd.sh
+          backend/verify-rules.sh
+          backend/harden-deployment.sh
+          backend/start.sh
+          deploy.sh
+
+      - name: Build runtime image
+        if: github.event_name == 'pull_request'
+        run: docker build --tag xjtlu-timetable:ci .
+
+      - name: Scan runtime image
+        if: github.event_name == 'pull_request'
+        run: >-
+          docker run --rm
+          --volume /var/run/docker.sock:/var/run/docker.sock
+          --volume "$PWD/security/trivy-ignore.yaml:/trivy-ignore.yaml:ro"
+          aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
+          image
+          --image-src docker
+          --scanners vuln
+          --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          --ignorefile /trivy-ignore.yaml
+          --exit-code 1
+          xjtlu-timetable:ci
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish reviewed image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/geniuslv2006/xjtlu-timetable:${{ github.sha }}
+            ghcr.io/geniuslv2006/xjtlu-timetable:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true

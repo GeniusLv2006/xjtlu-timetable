@@ -20,7 +20,7 @@ fi
 
 # 1. 获取 admin token
 echo "==> 获取管理员 token..."
-TOKEN=$(curl -sf -X POST "$BASE/api/admins/auth-with-password" \
+TOKEN=$(curl -sf -X POST "$BASE/api/collections/_superusers/auth-with-password" \
   -H "Content-Type: application/json" \
   -d "{\"identity\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PWD\"}" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")

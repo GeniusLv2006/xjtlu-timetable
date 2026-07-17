@@ -23,7 +23,7 @@ fi
 BASE="http://127.0.0.1:8091"
 
 echo "==> 获取管理员 token…"
-TOKEN=$(curl -s -X POST "$BASE/api/admins/auth-with-password" \
+TOKEN=$(curl -s -X POST "$BASE/api/collections/_superusers/auth-with-password" \
   -H "Content-Type: application/json" \
   -d "{\"identity\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PWD\"}" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")

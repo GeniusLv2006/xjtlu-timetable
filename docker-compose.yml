@@ -1,7 +1,7 @@
 services:
   app:
-    build: .
-    image: xjtlu-timetable:latest
+    image: ghcr.io/geniuslv2006/xjtlu-timetable:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: xjtlu-timetable
     restart: unless-stopped
     ports:

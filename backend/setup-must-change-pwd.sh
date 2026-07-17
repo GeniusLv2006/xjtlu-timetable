@@ -17,7 +17,7 @@ if [ -z "$ADMIN_PASSWORD" ]; then
 fi
 
 echo "→ Authenticating with PocketBase at $PB_URL ..."
-TOKEN=$(curl -sf "$PB_URL/api/admins/auth-with-password" \
+TOKEN=$(curl -sf "$PB_URL/api/collections/_superusers/auth-with-password" \
   -H 'Content-Type: application/json' \
   -d "{\"identity\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
   | grep -o '"token":"[^"]*"' | cut -d'"' -f4)

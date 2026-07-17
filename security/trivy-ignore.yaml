@@ -1,0 +1,18 @@
+vulnerabilities:
+  - id: CVE-2023-36308
+    paths:
+      - "pb/pocketbase"
+    expired_at: 2026-10-17
+    statement: >-
+      Not affected. The disputed advisory requires imaging.Grayscale on a
+      crafted TIFF image; PocketBase 0.39.7 does not call imaging.Grayscale,
+      and this deployment does not accept TIFF uploads.
+  - id: GO-2026-5932
+    paths:
+      - "pb/pocketbase"
+    expired_at: 2026-10-17
+    statement: >-
+      Not affected. golang.org/x/crypto/openpgp is present only in Go module
+      metadata. `go mod why` reports it is not needed, and source-mode
+      govulncheck with the production dependency overrides reports zero
+      reachable vulnerabilities.

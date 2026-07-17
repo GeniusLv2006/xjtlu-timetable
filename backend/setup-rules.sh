@@ -32,7 +32,7 @@ yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 # ── 1. 获取 Admin token ──────────────────────────────────────────────────────
 
 echo "→ 正在登录 Admin..."
-AUTH_RESP=$(curl -sf -X POST "$PB_URL/api/admins/auth-with-password" \
+AUTH_RESP=$(curl -sf -X POST "$PB_URL/api/collections/_superusers/auth-with-password" \
   -H "Content-Type: application/json" \
   -d "{\"identity\":\"$PB_ADMIN_EMAIL\",\"password\":\"$PB_ADMIN_PASS\"}")
 
