@@ -29,15 +29,19 @@ https://timetable.xjtlu.uk
 ### 前置条件
 
 - Docker 24+ 与 Docker Compose v2
+- Git、SQLite 3 与 `sha256sum`
 
-### 启动
+### 生产部署
 
 ```bash
-docker compose pull
-docker compose up -d
+git fetch origin main
+git switch main
+git merge --ff-only origin/main
+revision="$(git rev-parse HEAD)"
+bash deploy.sh "$revision"
 ```
 
-默认拉取 `ghcr.io/geniuslv2006/xjtlu-timetable:latest`。设置 `IMAGE_TAG` 可部署指定提交标签。容器对外监听 `172.17.0.1:8091`（Docker 宿主机接口），可在 `docker-compose.yml` 中修改端口绑定。
+部署脚本只接受当前 `main` 的完整提交 SHA，并自动执行 SQLite 备份、配置校验、精确镜像拉取、健康检查与启动失败回滚。容器以非 root 用户运行，并仅对 Docker 宿主机接口 `172.17.0.1:8091` 监听。完整运维与手动回滚步骤见 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)。
 
 ### 初始化数据库
 

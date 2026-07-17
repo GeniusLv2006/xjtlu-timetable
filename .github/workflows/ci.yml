@@ -57,12 +57,48 @@ jobs:
           backend/setup-must-change-pwd.sh
           backend/verify-rules.sh
           backend/harden-deployment.sh
-          backend/start.sh
           deploy.sh
+
+      - name: Validate Compose configuration
+        run: IMAGE_TAG=${{ github.sha }} docker compose config -q
 
       - name: Build runtime image
         if: github.event_name == 'pull_request'
         run: docker build --tag xjtlu-timetable:ci .
+
+      - name: Smoke test hardened runtime
+        if: github.event_name == 'pull_request'
+        run: |
+          set -eu
+          cleanup() {
+            docker rm --force --volumes xjtlu-timetable-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          test "$(docker image inspect xjtlu-timetable:ci --format '{{.Config.User}}')" = "10001:10001"
+          docker run --detach \
+            --name xjtlu-timetable-ci \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            xjtlu-timetable:ci
+
+          for _ in $(seq 1 60); do
+            health="$(docker inspect xjtlu-timetable-ci --format '{{.State.Health.Status}}')"
+            if [ "$health" = "healthy" ]; then
+              break
+            fi
+            if [ "$health" = "unhealthy" ]; then
+              docker logs xjtlu-timetable-ci
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test "$health" = "healthy"
+          test "$(docker exec xjtlu-timetable-ci id -u)" = "10001"
+          test "$(docker exec xjtlu-timetable-ci id -g)" = "10001"
 
       - name: Scan runtime image
         if: github.event_name == 'pull_request'
@@ -109,7 +145,9 @@ jobs:
           push: true
           tags: |
             ghcr.io/geniuslv2006/xjtlu-timetable:${{ github.sha }}
-            ghcr.io/geniuslv2006/xjtlu-timetable:latest
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: mode=max

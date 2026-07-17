@@ -34,20 +34,26 @@ FROM alpine:3.24.1
 WORKDIR /pb
 LABEL org.opencontainers.image.source="https://github.com/GeniusLv2006/xjtlu-timetable" \
       org.opencontainers.image.description="XJTLU timetable application" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="AGPL-3.0-only"
+
+RUN addgroup -S -g 10001 pocketbase \
+    && adduser -S -D -H -u 10001 -G pocketbase pocketbase \
+    && mkdir -p /pb/pb_data \
+    && chown -R pocketbase:pocketbase /pb
 
 # Verified PocketBase binary
-COPY --from=pocketbase /out/pocketbase ./pocketbase
+COPY --chown=pocketbase:pocketbase --from=pocketbase /out/pocketbase ./pocketbase
 
 # Built frontend
-COPY --from=builder /build/dist ./pb_public
+COPY --chown=pocketbase:pocketbase --from=builder /build/dist ./pb_public
 
 # Hooks and migrations
-COPY backend/pb_hooks ./pb_hooks
-COPY backend/pb_migrations ./pb_migrations
+COPY --chown=pocketbase:pocketbase backend/pb_hooks ./pb_hooks
+COPY --chown=pocketbase:pocketbase backend/pb_migrations ./pb_migrations
 
 VOLUME ["/pb/pb_data"]
 EXPOSE 8080
+USER 10001:10001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:8080/api/health || exit 1
