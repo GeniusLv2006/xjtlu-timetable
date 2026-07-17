@@ -70,7 +70,7 @@ backup=/root/xjtlu-timetable-backups/pre-REVISION-TIMESTAMP
 rollback_image="$(cat "$backup/ROLLBACK_IMAGE")"
 rollback_tag="${rollback_image##*:}"
 
-docker compose stop app
+IMAGE_TAG="$rollback_tag" docker compose stop app
 rm -f backend/pb_data/data.db-shm backend/pb_data/data.db-wal
 cp "$backup/data.db" backend/pb_data/data.db
 chown -R 10001:10001 backend/pb_data

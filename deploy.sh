@@ -141,5 +141,5 @@ printf '%s\n' "$REVISION" > "$BACKUP_DIR/DEPLOYED_REVISION"
 printf '%s\n' "$IMAGE_REPOSITORY:$REVISION" > "$BACKUP_DIR/DEPLOYED_IMAGE"
 
 echo "==> Deployment complete."
-docker compose ps
+IMAGE_TAG="$REVISION" docker compose ps
 echo "    Backup and rollback record: $BACKUP_DIR"
