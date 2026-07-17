@@ -851,10 +851,22 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, watchEffect, reactive, onMounted, onUnmounted } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  watch,
+  watchEffect,
+} from 'vue'
 import adminPb from '../lib/adminPb'
-import RichTextEditor from '../components/RichTextEditor.vue'
 import { syncTimetable } from '../utils/timetableSync'
+
+const RichTextEditor = defineAsyncComponent(
+  () => import('../components/RichTextEditor.vue'),
+)
 
 // ── Admin auth ────────────────────────────────────────────────────────────
 const loginEmail    = ref('')

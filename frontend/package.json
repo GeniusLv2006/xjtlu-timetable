@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
-    "@fontsource/noto-sans-sc": "^5.2.9",
     "@tiptap/starter-kit": "^3.28.0",
     "@tiptap/vue-3": "^3.28.0",
     "pinia": "^4.0.2",
