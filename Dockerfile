@@ -1,5 +1,5 @@
 # Stage 1: Build frontend
-FROM node:24.18.0-alpine3.24 AS builder
+FROM node:26.5.0-alpine3.24 AS builder
 WORKDIR /build
 RUN corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
