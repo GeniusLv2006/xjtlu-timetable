@@ -25,3 +25,6 @@ reference/claude_code_prompts.md
 
 # Claude Code local config (may contain tokens/credentials)
 .claude/settings.local.json
+
+# Local agent instructions
+AGENTS.md
