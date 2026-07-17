@@ -89,7 +89,7 @@
       <h3>3.2 Cloudflare 自动收集的数据</h3>
       <p>本站通过 <strong>Cloudflare</strong> 提供网络安全防护（含 DDoS 防御及 Web 应用防火墙），并启用了 <strong>Cloudflare Web Analytics</strong> 进行匿名访问统计。Cloudflare 作为独立第三方服务商，可能在其基础设施层面自动收集以下信息：</p>
       <ul>
-        <li>IP 地址：Cloudflare 通过请求头将客户端真实 IP 传递给本服务器。本服务在记录登录及 iCal 访问时会存储该 IP 及国家/地区信息（用户侧展示为脱敏摘要），30 天后自动清除。为补充大致城市及网络运营商信息，本服务采用 <strong>ip.sb</strong>（备用 <strong>ip-api.com</strong>）进行地理位置解析，所获结果仅用于安全审计，并随访问日志于 30 天后自动清除；各服务隐私政策见其官网；</li>
+        <li>IP 地址：Cloudflare 通过请求头将客户端真实 IP 与国家/地区代码传递给本服务器。本服务在记录登录及 iCal 访问时会存储这些信息（用户侧展示为脱敏摘要），30 天后自动清除。本服务不会为此向第三方地理位置服务发送 IP 地址；</li>
         <li>页面访问路径、访问时间及来源页面；</li>
         <li>大致地理位置（国家/地区级别）。</li>
       </ul>

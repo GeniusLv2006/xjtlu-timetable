@@ -32,7 +32,8 @@
   --blue-bg:     #E5EEF8;
 
   /* Typography */
-  --font-sans: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
   --text-xs:   11px;
