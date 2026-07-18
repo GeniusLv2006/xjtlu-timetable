@@ -5,7 +5,7 @@
       <!-- Header -->
       <div class="login-header">
         <div class="login-title">{{ instanceConfig.instance_name }}</div>
-        <div class="login-sub">XJTLU timetable service</div>
+        <div class="login-sub">Independent and unofficial.</div>
       </div>
 
       <!-- Form -->

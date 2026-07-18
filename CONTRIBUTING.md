@@ -1,8 +1,8 @@
 # Contributing
 
-Thank you for improving XJTLU Timetable. Keep changes focused, protect user data,
-and use the current code, configuration, tests, and verified runtime behavior
-as the source of truth.
+Thank you for improving Timetable Toolkit for XJTLU Students. Keep changes
+focused, protect user data, and use the current code, configuration, tests, and
+verified runtime behavior as the source of truth.
 
 ## Before opening a change
 
@@ -11,7 +11,8 @@ as the source of truth.
   credentials, tokens, personal data, or exploitable production details.
 - Do not commit `.env`, `data/`, `backend/pb_data/`, PocketBase binaries,
   dependency directories, or generated frontend output.
-- Keep the official deployment path separate from third-party self-hosting.
+- Keep the project-operated deployment path separate from third-party
+  self-hosting.
 
 ## Development setup
 

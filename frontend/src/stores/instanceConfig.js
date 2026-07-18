@@ -1,9 +1,10 @@
 import { reactive, readonly } from 'vue'
 import pb from '../lib/pocketbase'
+import { DEFAULT_INSTANCE_NAME } from '../utils/branding'
 import { isSafeEmail, safeWebUrl } from '../utils/instanceMetadata'
 
 const defaults = {
-  instance_name: 'XJTLU Timetable',
+  instance_name: DEFAULT_INSTANCE_NAME,
   operator_name: '',
   operator_contact_email: '',
   source_code_url: 'https://github.com/GeniusLv2006/xjtlu-timetable',

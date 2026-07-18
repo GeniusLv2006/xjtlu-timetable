@@ -33,7 +33,7 @@ RUN apk add --no-cache curl \
 FROM alpine:3.24.1
 WORKDIR /pb
 LABEL org.opencontainers.image.source="https://github.com/GeniusLv2006/xjtlu-timetable" \
-      org.opencontainers.image.description="XJTLU timetable application" \
+      org.opencontainers.image.description="Independent timetable toolkit for XJTLU students" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
 
 RUN addgroup -S -g 10001 pocketbase \

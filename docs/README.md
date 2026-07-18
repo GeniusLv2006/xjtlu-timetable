@@ -1,7 +1,7 @@
 # Documentation
 
 Use this page to choose the document for your role. The public deployment path
-and the official-instance path are intentionally separate.
+and the project-operated instance path are intentionally separate.
 
 ## Third-party self-hosters
 
@@ -26,10 +26,10 @@ deployment host.
 
 ## Project maintainers
 
-- [Official production operations](OPERATIONS.md): deployment and rollback for
+- [Project-operated production](OPERATIONS.md): deployment and rollback for
   `timetable.xjtlu.uk` only.
 - [Release process](RELEASE.md): SemVer preparation, image publication, and
   release verification.
 
-Do not use official production scripts or commit-addressed `main` images as a
-generic third-party deployment interface.
+Do not use project-operated production scripts or commit-addressed `main`
+images as a generic third-party deployment interface.

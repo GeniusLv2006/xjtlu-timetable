@@ -77,6 +77,21 @@ test('fresh self-host configuration is seeded with safe defaults', async () => {
   assert.match(migration, /for \(let i = 1; i < records\.length; i \+= 1\)/)
 })
 
+test('the branding migration only renames the legacy default instance', async () => {
+  const migration = await source(
+    'backend/pb_migrations/1784358117_rename_default_instance.js',
+  )
+
+  assert.match(migration, /OLD_DEFAULT_NAME = "XJTLU Timetable"/)
+  assert.match(
+    migration,
+    /NEW_DEFAULT_NAME = "Timetable Toolkit for XJTLU Students"/,
+  )
+  assert.match(migration, /'instance_name = \{:name\}'/)
+  assert.match(migration, /\{ name: from \}/)
+  assert.match(migration, /renameDefaultInstance\(app, OLD_DEFAULT_NAME, NEW_DEFAULT_NAME\)/)
+})
+
 test('production iCal links use the current instance origin', async () => {
   const settings = await source('frontend/src/views/SettingsView.vue')
 

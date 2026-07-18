@@ -1,9 +1,9 @@
-# Official production operations
+# Project-operated production
 
 This document is only for maintainers of `timetable.xjtlu.uk`. Third-party
-operators must use [`SELF_HOSTING.md`](SELF_HOSTING.md); the official override,
-NPM hardening script, repository remote checks, and `main` SHA channel are not a
-generic self-hosting interface.
+operators must use [`SELF_HOSTING.md`](SELF_HOSTING.md); the project-operated
+override, NPM hardening script, repository remote checks, and `main` SHA channel
+are not a generic self-hosting interface.
 
 Production must run an exact reviewed commit image from `main`. Do not deploy
 `latest`, a locally built image, or an uncommitted working tree.

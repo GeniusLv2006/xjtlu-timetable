@@ -5,7 +5,7 @@
     <aside v-if="authStore.isLoggedIn" class="sidebar">
       <div class="sidebar-top">
         <div class="sidebar-brand">
-          <span class="brand-x">{{ instanceConfig.instance_name }}</span>
+          <span class="brand-x">{{ compactInstanceName }}</span>
         </div>
         <nav class="sidebar-nav">
           <router-link to="/" class="nav-item">课表</router-link>
@@ -21,7 +21,7 @@
 
       <!-- Mobile header: only visible on small screens -->
       <header v-if="authStore.isLoggedIn" class="mobile-hd">
-        <span class="mobile-brand">{{ instanceConfig.instance_name }}</span>
+        <span class="mobile-brand">{{ compactInstanceName }}</span>
         <nav class="mobile-nav">
           <router-link to="/">课表</router-link>
           <router-link to="/import">导入</router-link>
@@ -69,9 +69,14 @@
       </main>
 
       <footer v-if="authStore.isLoggedIn" class="site-footer">
-        <span class="foot-copy">
-          {{ instanceConfig.operator_name || instanceConfig.instance_name }}
-        </span>
+        <div class="foot-identity">
+          <span class="foot-copy">
+            {{ instanceConfig.operator_name || instanceConfig.instance_name }}
+          </span>
+          <span class="foot-independent">
+            Independent and unofficial. Not affiliated with Xi'an Jiaotong-Liverpool University.
+          </span>
+        </div>
         <div class="foot-links">
           <router-link to="/changelog" class="foot-link">更新日志</router-link>
           <a
@@ -96,10 +101,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { instanceConfig, loadInstanceConfig } from './stores/instanceConfig'
+import { compactInstanceName as getCompactInstanceName } from './utils/branding'
 import pb from './lib/pocketbase'
 
 const authStore = useAuthStore()
@@ -112,6 +118,9 @@ const changelogDismissed = ref(false)
 const icalSuspicious   = ref(false)
 const icalRevoked      = ref(false)
 const icalAlertDismissed = ref(false)
+const compactInstanceName = computed(
+  () => getCompactInstanceName(instanceConfig.instance_name),
+)
 
 async function fetchIcalStatus() {
   if (!authStore.isLoggedIn) return
@@ -300,10 +309,21 @@ watch(() => route.name, (name, oldName) => {
   gap: 16px;
   flex-wrap: wrap;
 }
+.foot-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
 .foot-copy {
   font-size: var(--text-sm);
   color: var(--text-3);
   letter-spacing: 0.02em;
+}
+.foot-independent {
+  max-width: 560px;
+  font-size: var(--text-xs);
+  color: var(--text-3);
 }
 .foot-links {
   display: flex;
