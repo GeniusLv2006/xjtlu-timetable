@@ -13,7 +13,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Provide the exact GitHub Release or official instance revision.
+      description: Provide the exact GitHub Release or project-operated instance revision.
       placeholder: v0.2.0
     validations:
       required: true
@@ -23,7 +23,7 @@ body:
       label: Environment
       options:
         - Third-party self-hosted instance
-        - Official timetable.xjtlu.uk instance
+        - Project-operated timetable.xjtlu.uk instance
         - Local development
     validations:
       required: true

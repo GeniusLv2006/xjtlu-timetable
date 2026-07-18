@@ -894,6 +894,7 @@ import {
   watchEffect,
 } from 'vue'
 import adminPb from '../lib/adminPb'
+import { DEFAULT_INSTANCE_NAME } from '../utils/branding'
 import { isSafeEmail, safeWebUrl } from '../utils/instanceMetadata'
 import { syncTimetable } from '../utils/timetableSync'
 
@@ -1458,7 +1459,7 @@ async function saveInvitePerms() {
 
 // ── Site Config ────────────────────────────────────────────────────────────
 const siteConfigDefaults = {
-  instance_name: 'XJTLU Timetable',
+  instance_name: DEFAULT_INSTANCE_NAME,
   operator_name: '',
   operator_contact_email: '',
   source_code_url: 'https://github.com/GeniusLv2006/xjtlu-timetable',

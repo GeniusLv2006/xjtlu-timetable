@@ -121,10 +121,10 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
     out += 'BEGIN:VCALENDAR' + CRLF
     out += 'VERSION:2.0' + CRLF
-    out += 'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN' + CRLF
+    out += 'PRODID:-//Timetable Toolkit for XJTLU Students//timetable.xjtlu.uk//EN' + CRLF
     out += 'CALSCALE:GREGORIAN' + CRLF
     out += 'METHOD:PUBLISH' + CRLF
-    out += 'X-WR-CALNAME:XJTLU Timetable' + CRLF
+    out += 'X-WR-CALNAME:Timetable Toolkit for XJTLU Students' + CRLF
     out += 'X-WR-TIMEZONE:Asia/Shanghai' + CRLF
 
     out += 'BEGIN:VTIMEZONE' + CRLF
@@ -301,10 +301,10 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     var emptyIcs =
       'BEGIN:VCALENDAR\r\n' +
       'VERSION:2.0\r\n' +
-      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
+      'PRODID:-//Timetable Toolkit for XJTLU Students//timetable.xjtlu.uk//EN\r\n' +
       'CALSCALE:GREGORIAN\r\n' +
       'METHOD:PUBLISH\r\n' +
-      'X-WR-CALNAME:XJTLU Timetable\r\n' +
+      'X-WR-CALNAME:Timetable Toolkit for XJTLU Students\r\n' +
       'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
       'END:VCALENDAR\r\n'
     e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')
@@ -334,10 +334,10 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     var emptyRevoked =
       'BEGIN:VCALENDAR\r\n' +
       'VERSION:2.0\r\n' +
-      'PRODID:-//XJTLU Timetable//timetable.xjtlu.uk//EN\r\n' +
+      'PRODID:-//Timetable Toolkit for XJTLU Students//timetable.xjtlu.uk//EN\r\n' +
       'CALSCALE:GREGORIAN\r\n' +
       'METHOD:PUBLISH\r\n' +
-      'X-WR-CALNAME:XJTLU Timetable\r\n' +
+      'X-WR-CALNAME:Timetable Toolkit for XJTLU Students\r\n' +
       'X-WR-TIMEZONE:Asia/Shanghai\r\n' +
       'END:VCALENDAR\r\n'
     e.response.header().set('Content-Type', 'text/calendar; charset=utf-8')

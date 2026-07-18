@@ -27,9 +27,9 @@ Release notes are finalized in a `release/vX.Y.Z` pull request.
 
 ### Changed
 
-- Official production operations now use a dedicated Compose override and keep
+- Project-operated production now uses a dedicated Compose override and keeps
   deploying exact reviewed `main` SHA images.
-- iCal URLs now use the current instance origin instead of the official
+- iCal URLs now use the current instance origin instead of the project-operated
   deployment domain.
 - Schema and safe first-install defaults are managed entirely by migrations.
 

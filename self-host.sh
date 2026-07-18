@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Manage a release-based self-hosted XJTLU Timetable installation.
+# Manage a release-based Timetable Toolkit installation.
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -259,8 +259,8 @@ init_installation() {
   local registration_open require_invite
   if [ "$initialization_stage" -lt 2 ]; then
     local instance_name operator_name contact_email source_url legal_url
-    read -r -p "Instance name [XJTLU Timetable]: " instance_name
-    instance_name="${instance_name:-XJTLU Timetable}"
+    read -r -p "Instance name [Timetable Toolkit for XJTLU Students]: " instance_name
+    instance_name="${instance_name:-Timetable Toolkit for XJTLU Students}"
     read -r -p "Operator name (optional): " operator_name
     read -r -p "Operator contact email (optional): " contact_email
     if [ -n "$contact_email" ] && [[ "$contact_email" != *@* ]]; then

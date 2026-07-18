@@ -2,7 +2,7 @@
 
 ## System overview
 
-XJTLU Timetable is a single-container web application:
+Timetable Toolkit for XJTLU Students is a single-container web application:
 
 ```text
 Browser
@@ -37,8 +37,8 @@ views, and timetable comparison and synchronization logic. Vite builds it into
 static files copied to `/pb/pb_public` in the runtime image.
 
 In production, the frontend uses the current browser origin for PocketBase API
-and iCal URLs. This keeps third-party deployments independent from the official
-domain.
+and iCal URLs. This keeps third-party deployments independent from the
+project-operated domain.
 
 ### PocketBase application
 
@@ -93,11 +93,11 @@ Third-party operators download the checksummed bundle from the latest GitHub
 Release and run the exact SemVer image through `docker-compose.yml` and
 `self-host.sh`. Deployment hosts pull images and never build source.
 
-### Official instance
+### Project-operated instance
 
-The official instance uses `docker-compose.official.yml`, `deploy.sh`, and an
-exact commit-addressed image from reviewed `main`. Its repository checks,
-network assumptions, and reverse-proxy hardening are specific to
+The project-operated instance uses `docker-compose.official.yml`, `deploy.sh`,
+and an exact commit-addressed image from reviewed `main`. Its repository
+checks, network assumptions, and reverse-proxy hardening are specific to
 `timetable.xjtlu.uk`.
 
 These profiles share the application image but have separate release and
@@ -125,7 +125,7 @@ and the previous image tag.
 | `backend/tests/` | Runtime, security, and regression assertions |
 | `docker-compose.yml` | Supported third-party runtime contract |
 | `self-host.sh` | Third-party initialization and lifecycle operations |
-| `docker-compose.official.yml` | Official-instance Compose override |
-| `deploy.sh` | Official-instance deployment and rollback automation |
+| `docker-compose.official.yml` | Project-operated instance Compose override |
+| `deploy.sh` | Project-operated instance deployment and rollback automation |
 | `examples/proxy/` | Supported reverse-proxy configuration examples |
 | `.github/workflows/` | CI, image publication, and release automation |

@@ -1,11 +1,13 @@
-# XJTLU Timetable
+# Timetable Toolkit for XJTLU Students
 
-面向西交利物浦大学（XJTLU）学生的课表可视化与管理工具，支持从
+面向西交利物浦大学（XJTLU）学生的独立课表工具，支持从
 e-Bridge 导入课表、好友课表对比和 iCal 订阅。
 
 > 本项目与西交利物浦大学官方无任何隶属、授权或合作关系。
+> Independent and unofficial. Not affiliated with Xi'an Jiaotong-Liverpool
+> University.
 
-官方演示：[timetable.xjtlu.uk](https://timetable.xjtlu.uk)
+项目运营实例：[timetable.xjtlu.uk](https://timetable.xjtlu.uk)
 
 ## 功能
 
@@ -44,7 +46,7 @@ cp .env.example .env
 - 希望了解组件和数据流的开发者：
   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 项目贡献者：[`CONTRIBUTING.md`](CONTRIBUTING.md)
-- 官方实例维护者：[`docs/OPERATIONS.md`](docs/OPERATIONS.md)
+- 项目运营实例维护者：[`docs/OPERATIONS.md`](docs/OPERATIONS.md)
 - 版本发布维护者：[`docs/RELEASE.md`](docs/RELEASE.md)
 - 安全问题报告者：[`.github/SECURITY.md`](.github/SECURITY.md)
 - 全部文档入口：[`docs/README.md`](docs/README.md)
@@ -90,7 +92,7 @@ pnpm audit --prod
 
 - 第三方实例：使用 [正式 Release](https://github.com/GeniusLv2006/xjtlu-timetable/releases)
   和 [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
-- 官方实例维护者：使用 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)，部署
+- 项目运营实例维护者：使用 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)，部署
   `main` 的精确提交镜像。
 - 发布流程：见 [`docs/RELEASE.md`](docs/RELEASE.md)。
 - 变更记录：见 [`CHANGELOG.md`](CHANGELOG.md)。

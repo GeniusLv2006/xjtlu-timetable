@@ -68,7 +68,7 @@ migrate((app) => {
   }
 
   if (!config.getString("instance_name")) {
-    config.set("instance_name", "XJTLU Timetable")
+    config.set("instance_name", "Timetable Toolkit for XJTLU Students")
   }
   if (!config.getString("source_code_url")) {
     config.set(
