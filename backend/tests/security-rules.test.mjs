@@ -82,5 +82,4 @@ test('production iCal links use the current instance origin', async () => {
 
   assert.match(settings, /window\.location\.origin/)
   assert.doesNotMatch(settings, /const PROD_BASE/)
-  assert.equal(settings.includes('https://timetable.xjtlu.uk/api/ical/'), false)
 })

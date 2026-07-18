@@ -183,13 +183,14 @@ init_installation() {
 
   ensure_env
   require_release_tag
-  compose config -q
-  compose pull
-  prepare_data_dir
-  compose up -d --no-build
+  compose config -q </dev/null
+  compose pull </dev/null
+  prepare_data_dir </dev/null
+  compose up -d --no-build </dev/null
   wait_for_health
 
   local public_config initialization_stage
+  echo "Application is healthy; checking initialization state."
   public_config="$(
     json_request GET "/api/collections/site_config/records?perPage=2"
   )"
@@ -209,6 +210,7 @@ init_installation() {
   [[ "$email" = *@* ]] || die "invalid superuser email"
   prompt_secret "Superuser password"
   password="$REPLY"
+  echo "Checking the requested superuser account."
 
   if token="$(authenticate_superuser "$email" "$password" 2>/dev/null)"; then
     echo "Superuser already exists; keeping the existing account."
