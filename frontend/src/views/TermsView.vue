@@ -2,7 +2,7 @@
   <div class="terms-page">
     <div class="page-toolbar">
       <router-link to="/" class="back-link">← 返回</router-link>
-      <h1 class="page-title">用户协议与隐私政策</h1>
+      <h1 class="page-title">《用户协议与隐私政策》</h1>
     </div>
 
     <div class="terms-body">

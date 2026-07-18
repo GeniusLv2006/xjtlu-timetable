@@ -69,9 +69,9 @@
               :href="instanceConfig.legal_notice_url"
               target="_blank"
               rel="noopener noreferrer"
-            >用户协议与隐私政策（版本 {{ legalNoticeVersion }}）</a>
+            >《用户协议与隐私政策》</a>
             <router-link v-else to="/terms" target="_blank">
-              用户协议与隐私政策（版本 {{ legalNoticeVersion }}）
+              《用户协议与隐私政策》
             </router-link>
           </span>
         </label>
@@ -97,8 +97,8 @@
             :href="instanceConfig.legal_notice_url"
             target="_blank"
             rel="noopener noreferrer"
-          >用户协议与隐私政策</a>
-          <router-link v-else to="/terms">用户协议与隐私政策</router-link>
+          >《用户协议与隐私政策》</a>
+          <router-link v-else to="/terms">《用户协议与隐私政策》</router-link>
           <a
             :href="instanceConfig.source_code_url"
             target="_blank"

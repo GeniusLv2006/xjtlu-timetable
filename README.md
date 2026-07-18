@@ -1,11 +1,9 @@
 # Timetable Toolkit for XJTLU Students
 
-面向西交利物浦大学（XJTLU）学生的独立课表工具，支持从
-e-Bridge 导入课表、好友课表对比和 iCal 订阅。
+面向西交利物浦大学（XJTLU）学生的独立课表工具，支持从 e-Bridge 导入课表、好友课表对比和 iCal 订阅。
 
 > 本项目与西交利物浦大学官方无任何隶属、授权或合作关系。
-> Independent and unofficial. Not affiliated with Xi'an Jiaotong-Liverpool
-> University.
+> Independent and unofficial. Not affiliated with Xi'an Jiaotong-Liverpool University.
 
 项目运营实例：[timetable.xjtlu.uk](https://timetable.xjtlu.uk)
 
@@ -20,31 +18,23 @@ e-Bridge 导入课表、好友课表对比和 iCal 订阅。
 
 ## 自托管
 
-正式自托管版本使用预构建的 GHCR 镜像，支持 `linux/amd64` 和
-`linux/arm64`。部署主机不需要、也不应构建源码。
+正式自托管版本使用预构建的 GHCR 镜像，支持 `linux/amd64` 和 `linux/arm64`。部署主机不需要、也不应构建源码。
 
 ```bash
 cp .env.example .env
 ./self-host.sh init
 ```
 
-初始化工具会拉取精确版本镜像、启动安全基线、创建首位管理员，并引导完成
-实例信息、注册策略、当前学期和首个邀请码。默认只监听
-`127.0.0.1:8091`，公开服务前必须配置 HTTPS 反向代理。
+初始化工具会拉取精确版本镜像、启动安全基线、创建首位管理员，并引导完成实例信息、注册策略、当前学期和首个邀请码。默认只监听 `127.0.0.1:8091`，公开服务前必须配置 HTTPS 反向代理。
 
-完整步骤、升级、备份、Caddy/Nginx Proxy Manager 示例和故障排查见
-[`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
+完整步骤、升级、备份、Caddy/Nginx Proxy Manager 示例和故障排查见 [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
 
-不要使用不存在的 `latest` 标签；生产实例应始终选择明确的
-`vMAJOR.MINOR.PATCH` 版本。
+不要使用不存在的 `latest` 标签；生产实例应始终选择明确的 `vMAJOR.MINOR.PATCH` 版本。
 
 ## 数据保护
 
-项目运营实例正在持续改进数据保护措施，并努力履行适用的 UK GDPR
-义务，包括数据最小化、访问控制、数据导出与删除以及条款版本记录。
-这不表示本项目或任何部署实例已经自动或完全符合 UK GDPR。实际合规情况
-取决于运营者、部署地点、配置、第三方服务、数据保留期限、隐私告知和日常
-操作；自托管运营者应根据自己的实际处理活动独立评估并履行适用义务。
+项目运营实例正在持续改进数据保护措施，并努力履行适用的 UK GDPR 义务，包括数据最小化、访问控制、数据导出与删除以及条款版本记录。
+这不表示本项目或任何部署实例已经自动或完全符合 UK GDPR。实际合规情况取决于运营者、部署地点、配置、第三方服务、数据保留期限、隐私告知和日常操作；自托管运营者应根据自己的实际处理活动独立评估并履行适用义务。
 本说明不构成法律意见。
 
 ## 文档导航
@@ -52,8 +42,7 @@ cp .env.example .env
 文档按使用者角色划分：
 
 - 自托管部署者：[`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)
-- 希望了解组件和数据流的开发者：
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 希望了解组件和数据流的开发者：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 项目贡献者：[`CONTRIBUTING.md`](CONTRIBUTING.md)
 - 项目运营实例维护者：[`docs/OPERATIONS.md`](docs/OPERATIONS.md)
 - 版本发布维护者：[`docs/RELEASE.md`](docs/RELEASE.md)
@@ -69,13 +58,11 @@ README 面向中文用户；除 README 外，仓库维护的技术文档使用�
 3. 登录 e-Bridge 并进入课表页面，点击该书签提取 HASH。
 4. 将 HASH 粘贴到导入页面并同步。
 
-`reference/xjtlu_timetable_importer.html` 是独立的参考/预览工具，不是网站的
-必需部署组件。
+`reference/xjtlu_timetable_importer.html` 是独立的参考/预览工具，不是网站的必需部署组件。
 
 ## 本地开发
 
-Node.js 和 pnpm 版本由 `frontend/package.json` 固定。后端建议复用正式
-预构建镜像，避免安装错误版本的 PocketBase：
+Node.js 和 pnpm 版本由 `frontend/package.json` 固定。后端建议复用正式预构建镜像，避免安装错误版本的 PocketBase：
 
 ```bash
 cp .env.example .env
@@ -99,15 +86,12 @@ pnpm audit --prod
 
 ## 运维与发布
 
-- 第三方实例：使用 [正式 Release](https://github.com/GeniusLv2006/xjtlu-timetable/releases)
-  和 [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
-- 项目运营实例维护者：使用 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)，部署
-  `main` 的精确提交镜像。
+- 第三方实例：使用 [正式 Release](https://github.com/GeniusLv2006/xjtlu-timetable/releases) 和 [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
+- 项目运营实例维护者：使用 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)，部署 `main` 的精确提交镜像。
 - 发布流程：见 [`docs/RELEASE.md`](docs/RELEASE.md)。
 - 变更记录：见 [`CHANGELOG.md`](CHANGELOG.md)。
 - 贡献代码或文档：见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
-- 安全漏洞：请遵循 [Security Policy](.github/SECURITY.md)，不要在公开
-  Issue 中提交令牌、个人数据或可利用细节。
+- 安全漏洞：请遵循 [Security Policy](.github/SECURITY.md)，不要在公开 Issue 中提交令牌、个人数据或可利用细节。
 
 ## 技术栈
 
@@ -120,5 +104,4 @@ pnpm audit --prod
 
 ## 协议
 
-GNU AGPLv3，详见 [LICENSE](LICENSE)。运行修改版本的网络服务时，请向用户
-提供与该实例对应的源码地址。
+GNU AGPLv3，详见 [LICENSE](LICENSE)。运行修改版本的网络服务时，请向用户提供与该实例对应的源码地址。

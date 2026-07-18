@@ -259,8 +259,8 @@
         class="terms-footer-link"
         target="_blank"
         rel="noopener noreferrer"
-      >用户协议与隐私政策</a>
-      <router-link v-else to="/terms" class="terms-footer-link">用户协议与隐私政策</router-link>
+      >《用户协议与隐私政策》</a>
+      <router-link v-else to="/terms" class="terms-footer-link">《用户协议与隐私政策》</router-link>
     </section>
 
     </div><!-- end .settings-grid -->
