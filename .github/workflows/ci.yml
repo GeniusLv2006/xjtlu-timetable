@@ -51,16 +51,25 @@ jobs:
       - name: Validate shell scripts
         run: >-
           bash -n
-          backend/setup-rules.sh
-          backend/setup-site-config.sh
-          backend/setup-invite-codes.sh
-          backend/setup-must-change-pwd.sh
           backend/verify-rules.sh
           backend/harden-deployment.sh
+          backend/start.sh
+          self-host.sh
           deploy.sh
 
       - name: Validate Compose configuration
-        run: IMAGE_TAG=${{ github.sha }} docker compose config -q
+        run: |
+          IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable \
+          IMAGE_TAG=${{ github.sha }} \
+            docker compose config -q
+          IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable \
+          IMAGE_TAG=${{ github.sha }} \
+          BIND_ADDRESS=172.17.0.1 \
+          DATA_DIR=./backend/pb_data \
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.official.yml \
+              config -q
 
       - name: Build runtime image
         if: github.event_name == 'pull_request'
@@ -99,6 +108,173 @@ jobs:
           test "$health" = "healthy"
           test "$(docker exec xjtlu-timetable-ci id -u)" = "10001"
           test "$(docker exec xjtlu-timetable-ci id -g)" = "10001"
+
+          config="$(
+            docker exec xjtlu-timetable-ci \
+              wget -q -O - \
+              'http://127.0.0.1:8080/api/collections/site_config/records?perPage=2'
+          )"
+          test "$(printf '%s' "$config" | jq '.totalItems')" = "1"
+          test "$(printf '%s' "$config" | jq -r '.items[0].registration_open')" = "false"
+          test "$(printf '%s' "$config" | jq -r '.items[0].require_invite')" = "true"
+          printf '%s' "$config" | jq -e \
+            '.items[0] | has("instance_name") and has("source_code_url")' >/dev/null
+
+      - name: Test guided initialization and repeat execution
+        if: github.event_name == 'pull_request'
+        run: |
+          set -eu
+          test_root="$(mktemp -d)"
+          cleanup() {
+            docker compose \
+              --env-file "$test_root/.env" \
+              -f "$test_root/docker-compose.yml" \
+              down --volumes >/dev/null 2>&1 || true
+            docker rm --force xjtlu-timetable-ci-registry >/dev/null 2>&1 || true
+            docker rm --force xjtlu-timetable-broken-image >/dev/null 2>&1 || true
+            rm -rf "$test_root"
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name xjtlu-timetable-ci-registry \
+            --publish 127.0.0.1:5000:5000 \
+            registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+          for _ in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:5000/v2/ >/dev/null 2>&1 &&
+              break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5000/v2/ >/dev/null
+          docker tag xjtlu-timetable:ci 127.0.0.1:5000/xjtlu-timetable:v0.2.0
+          docker push 127.0.0.1:5000/xjtlu-timetable:v0.2.0
+
+          cp .env.example docker-compose.yml self-host.sh "$test_root/"
+          sed -i \
+            's#^IMAGE_REPOSITORY=.*#IMAGE_REPOSITORY=127.0.0.1:5000/xjtlu-timetable#' \
+            "$test_root/.env.example"
+          sed -i 's/^HOST_PORT=.*/HOST_PORT=18092/' "$test_root/.env.example"
+          sed -i \
+            's/^COMPOSE_PROJECT_NAME=.*/COMPOSE_PROJECT_NAME=xjtlu-timetable-init-ci/' \
+            "$test_root/.env.example"
+
+          printf '%s\n' \
+            ci-admin@example.invalid \
+            ci-initializer-password \
+            ci-initializer-password \
+            '' \
+            'CI Operator' \
+            operator@example.invalid \
+            '' \
+            '' \
+            '' \
+            '' \
+            'Upgrade test semester' \
+            2026-01-01 \
+            '' \
+            CI-INVITE |
+            "$test_root/self-host.sh" init
+          "$test_root/self-host.sh" init </dev/null
+          "$test_root/self-host.sh" check
+
+          docker create \
+            --name xjtlu-timetable-broken-image \
+            xjtlu-timetable:ci
+          docker commit \
+            --change 'CMD ["/bin/false"]' \
+            xjtlu-timetable-broken-image \
+            127.0.0.1:5000/xjtlu-timetable:v0.2.1
+          docker push 127.0.0.1:5000/xjtlu-timetable:v0.2.1
+          if SELF_HOST_HEALTH_ATTEMPTS=3 \
+            "$test_root/self-host.sh" upgrade v0.2.1; then
+            echo "Broken-image upgrade unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -qx 'IMAGE_TAG=v0.2.0' "$test_root/.env"
+          "$test_root/self-host.sh" check
+
+      - name: Test upgrade from the current production baseline
+        if: github.event_name == 'pull_request'
+        env:
+          BASELINE_IMAGE: ghcr.io/geniuslv2006/xjtlu-timetable:109908e33c77a259dd566750fc162f6ed2ee25f2
+        run: |
+          set -eu
+          volume=xjtlu-timetable-upgrade-ci
+          cleanup() {
+            docker rm --force xjtlu-timetable-baseline >/dev/null 2>&1 || true
+            docker rm --force xjtlu-timetable-upgraded >/dev/null 2>&1 || true
+            docker volume rm "$volume" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker pull "$BASELINE_IMAGE"
+          docker volume create "$volume"
+          docker run --rm \
+            --volume "$volume:/pb/pb_data" \
+            "$BASELINE_IMAGE" \
+            ./pocketbase superuser create ci-admin@example.invalid ci-upgrade-password
+          docker run --detach \
+            --name xjtlu-timetable-baseline \
+            --publish 127.0.0.1:18091:8080 \
+            --volume "$volume:/pb/pb_data" \
+            "$BASELINE_IMAGE"
+
+          for _ in $(seq 1 90); do
+            curl --fail --silent http://127.0.0.1:18091/api/health >/dev/null 2>&1 &&
+              break
+            sleep 1
+          done
+          token="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --data '{"identity":"ci-admin@example.invalid","password":"ci-upgrade-password"}' \
+              http://127.0.0.1:18091/api/collections/_superusers/auth-with-password |
+              jq -er '.token'
+          )"
+          semester_id="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --header "Authorization: $token" \
+              --data '{"name":"Upgrade fixture","start_date":"2026-01-01 00:00:00.000Z","weeks_total":13,"is_current":true}' \
+              http://127.0.0.1:18091/api/collections/semesters/records |
+              jq -er '.id'
+          )"
+          docker stop xjtlu-timetable-baseline
+          docker rm xjtlu-timetable-baseline
+
+          docker run --detach \
+            --name xjtlu-timetable-upgraded \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --publish 127.0.0.1:18091:8080 \
+            --volume "$volume:/pb/pb_data" \
+            xjtlu-timetable:ci
+          for _ in $(seq 1 90); do
+            health="$(
+              docker inspect xjtlu-timetable-upgraded \
+                --format '{{.State.Health.Status}}'
+            )"
+            [ "$health" != "unhealthy" ] || {
+              docker logs xjtlu-timetable-upgraded
+              exit 1
+            }
+            [ "$health" != "healthy" ] || break
+            sleep 1
+          done
+          test "$health" = "healthy"
+          config="$(
+            curl --fail --silent \
+              'http://127.0.0.1:18091/api/collections/site_config/records?perPage=2'
+          )"
+          test "$(printf '%s' "$config" | jq '.totalItems')" = "1"
+          test "$(printf '%s' "$config" | jq -r '.items[0].registration_open')" = "false"
+          semester="$(
+            curl --fail --silent \
+              "http://127.0.0.1:18091/api/collections/semesters/records/$semester_id"
+          )"
+          test "$(printf '%s' "$semester" | jq -r '.name')" = "Upgrade fixture"
 
       - name: Scan runtime image
         if: github.event_name == 'pull_request'

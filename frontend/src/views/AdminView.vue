@@ -214,6 +214,38 @@
             </div>
           </div>
 
+          <!-- 实例信息 -->
+          <div class="config-section">
+            <div class="config-section-title">实例信息</div>
+            <div class="field-group">
+              <label class="field-label">实例名称</label>
+              <input v-model="siteConfig.instance_name" class="field-input" maxlength="120" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">运营者名称</label>
+              <input v-model="siteConfig.operator_name" class="field-input" maxlength="120" placeholder="个人或组织名称" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">运营者联系邮箱</label>
+              <input v-model="siteConfig.operator_contact_email" type="email" class="field-input" maxlength="254" placeholder="用于隐私与数据请求" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">本实例源代码地址</label>
+              <input v-model="siteConfig.source_code_url" type="url" class="field-input" maxlength="500" />
+              <p class="field-hint">如部署了修改版本，应指向向本实例用户提供对应源码的位置。</p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">外部用户协议 / 隐私政策地址（可选）</label>
+              <input v-model="siteConfig.legal_notice_url" type="url" class="field-input" maxlength="500" placeholder="留空则使用内置通用模板" />
+            </div>
+            <div class="config-actions">
+              <button class="btn btn-primary btn-sm" :disabled="configSaving" @click="saveSiteConfig">
+                {{ configSaving ? '保存中…' : '保存实例信息' }}
+              </button>
+              <span v-if="configSaved" class="config-saved-tip">已保存 ✓</span>
+            </div>
+          </div>
+
           <!-- 注册设置 -->
           <div class="config-section">
             <div class="config-section-title">注册设置</div>
@@ -862,6 +894,7 @@ import {
   watchEffect,
 } from 'vue'
 import adminPb from '../lib/adminPb'
+import { isSafeEmail, safeWebUrl } from '../utils/instanceMetadata'
 import { syncTimetable } from '../utils/timetableSync'
 
 const RichTextEditor = defineAsyncComponent(
@@ -1425,7 +1458,12 @@ async function saveInvitePerms() {
 
 // ── Site Config ────────────────────────────────────────────────────────────
 const siteConfigDefaults = {
-  registration_open: true,
+  instance_name: 'XJTLU Timetable',
+  operator_name: '',
+  operator_contact_email: '',
+  source_code_url: 'https://github.com/GeniusLv2006/xjtlu-timetable',
+  legal_notice_url: '',
+  registration_open: false,
   require_invite: true,
   allowed_email_suffixes: '',
   site_notice: '',
@@ -1461,6 +1499,11 @@ async function loadSiteConfig() {
       const cfg = list.items[0]
       siteConfigId.value = cfg.id
       Object.assign(siteConfig, {
+        instance_name:                 cfg.instance_name || siteConfigDefaults.instance_name,
+        operator_name:                 cfg.operator_name || '',
+        operator_contact_email:        cfg.operator_contact_email || '',
+        source_code_url:               cfg.source_code_url || siteConfigDefaults.source_code_url,
+        legal_notice_url:              cfg.legal_notice_url || '',
         registration_open:              cfg.registration_open,
         require_invite:                 cfg.require_invite,
         allowed_email_suffixes:         cfg.allowed_email_suffixes || '',
@@ -1514,8 +1557,22 @@ async function saveSiteConfig() {
   configSaving.value = true
   configSaved.value = false
   try {
+    if (!siteConfigId.value) throw new Error('站点配置不可用，请确认 migration 已成功执行')
     normalizeIcalRiskConfig()
-    await adminPb.collection('site_config').update(siteConfigId.value, {
+    const contactEmail = siteConfig.operator_contact_email.trim()
+    const rawSourceUrl = siteConfig.source_code_url.trim() || siteConfigDefaults.source_code_url
+    const rawLegalUrl = siteConfig.legal_notice_url.trim()
+    const sourceUrl = safeWebUrl(rawSourceUrl)
+    const legalUrl = safeWebUrl(rawLegalUrl)
+    if (!isSafeEmail(contactEmail)) throw new Error('运营者联系邮箱格式无效')
+    if (!sourceUrl) throw new Error('源代码地址必须是有效的 HTTP 或 HTTPS URL')
+    if (rawLegalUrl && !legalUrl) throw new Error('外部法律说明地址必须是有效的 HTTP 或 HTTPS URL')
+    const payload = {
+      instance_name:                 siteConfig.instance_name.trim() || siteConfigDefaults.instance_name,
+      operator_name:                 siteConfig.operator_name.trim(),
+      operator_contact_email:        contactEmail,
+      source_code_url:               sourceUrl,
+      legal_notice_url:              legalUrl,
       registration_open:              siteConfig.registration_open,
       require_invite:                 siteConfig.require_invite,
       allowed_email_suffixes:         siteConfig.allowed_email_suffixes,
@@ -1528,7 +1585,8 @@ async function saveSiteConfig() {
       ical_revoke_ip_prefixes:        siteConfig.ical_revoke_ip_prefixes,
       ical_suspicious_grace_hours:    siteConfig.ical_suspicious_grace_hours,
       ical_empty_calendar_hours:      siteConfig.ical_empty_calendar_hours,
-    }, { requestKey: null })
+    }
+    await adminPb.collection('site_config').update(siteConfigId.value, payload, { requestKey: null })
     configSaved.value = true
     setTimeout(() => { configSaved.value = false }, 2500)
   } catch (e) {
@@ -1543,6 +1601,7 @@ async function saveNotice() {
   noticeSaving.value = true
   noticeSaved.value = false
   try {
+    if (!siteConfigId.value) throw new Error('站点配置不可用，请确认 migration 已成功执行')
     await adminPb.collection('site_config').update(siteConfigId.value, {
       site_notice: siteConfig.site_notice,
     }, { requestKey: null })

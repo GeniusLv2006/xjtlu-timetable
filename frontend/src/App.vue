@@ -5,7 +5,7 @@
     <aside v-if="authStore.isLoggedIn" class="sidebar">
       <div class="sidebar-top">
         <div class="sidebar-brand">
-          <span class="brand-x">XJTLU</span><span class="brand-dot">·</span><span class="brand-cn">课表</span>
+          <span class="brand-x">{{ instanceConfig.instance_name }}</span>
         </div>
         <nav class="sidebar-nav">
           <router-link to="/" class="nav-item">课表</router-link>
@@ -21,7 +21,7 @@
 
       <!-- Mobile header: only visible on small screens -->
       <header v-if="authStore.isLoggedIn" class="mobile-hd">
-        <span class="mobile-brand">XJTLU · 课表</span>
+        <span class="mobile-brand">{{ instanceConfig.instance_name }}</span>
         <nav class="mobile-nav">
           <router-link to="/">课表</router-link>
           <router-link to="/import">导入</router-link>
@@ -69,10 +69,25 @@
       </main>
 
       <footer v-if="authStore.isLoggedIn" class="site-footer">
-        <span class="foot-copy">© 2026 Tingkai Lyu · All rights reserved · Built with Claude Code</span>
+        <span class="foot-copy">
+          {{ instanceConfig.operator_name || instanceConfig.instance_name }}
+        </span>
         <div class="foot-links">
           <router-link to="/changelog" class="foot-link">更新日志</router-link>
-          <router-link to="/terms" class="foot-link">用户协议</router-link>
+          <a
+            v-if="instanceConfig.legal_notice_url"
+            :href="instanceConfig.legal_notice_url"
+            class="foot-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >用户协议</a>
+          <router-link v-else to="/terms" class="foot-link">用户协议</router-link>
+          <a
+            :href="instanceConfig.source_code_url"
+            class="foot-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >源代码</a>
         </div>
       </footer>
     </div>
@@ -84,6 +99,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
+import { instanceConfig, loadInstanceConfig } from './stores/instanceConfig'
 import pb from './lib/pocketbase'
 
 const authStore = useAuthStore()
@@ -166,6 +182,7 @@ function dismissChangelog() {
 }
 
 onMounted(() => {
+  loadInstanceConfig()
   if (authStore.isLoggedIn) {
     fetchNotice()
     fetchChangelog()
@@ -232,7 +249,12 @@ watch(() => route.name, (name, oldName) => {
   user-select: none;
   white-space: nowrap;
 }
-.brand-x   { color: #FFFFFF; }
+.brand-x {
+  display: block;
+  overflow: hidden;
+  color: #FFFFFF;
+  text-overflow: ellipsis;
+}
 .brand-dot { color: #3C3830; font-weight: 300; margin: 0 1px; }
 .brand-cn  { color: #FFFFFF; }
 
@@ -334,7 +356,8 @@ watch(() => route.name, (name, oldName) => {
   color: #FFFFFF;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mobile-nav {
   display: flex;

@@ -27,20 +27,18 @@ test('the corrective migration binds records to the authenticated owner', async 
   assert.match(migration, /@request\.body\.to_user:changed = false/)
 })
 
-test('the squashed baseline and current rule sources cover the secured collections', async () => {
-  const [baseline, setupRules, schema] = await Promise.all([
+test('the squashed baseline and corrective migrations cover the secured collections', async () => {
+  const [baseline, corrective] = await Promise.all([
     source('backend/pb_migrations/1776300000_add_ical_risk_config_and_ban_rules.js'),
-    source('backend/setup-rules.sh'),
-    source('backend/schema.json'),
+    source('backend/pb_migrations/1784265400_harden_record_ownership.js'),
   ])
 
   for (const collection of ['timetables', 'courses', 'friendships', 'ical_tokens']) {
     assert.match(baseline, new RegExp(`"name": "${collection}"`))
   }
 
-  for (const value of [setupRules, schema]) {
-    assert.match(value, /@request\.auth\.id = user\.id/)
-  }
+  assert.match(baseline, /@request\.auth\.id = user\.id/)
+  assert.match(corrective, /@request\.auth\.id = user\.id/)
 })
 
 test('case-insensitive login does not expose an account lookup endpoint', async () => {
@@ -53,4 +51,36 @@ test('case-insensitive login does not expose an account lookup endpoint', async 
   assert.doesNotMatch(store, /resolve-email/)
   assert.match(hook, /toLowerCase\(\)/)
   assert.match(store, /toLowerCase\(\)/)
+})
+
+test('fresh self-host configuration is seeded with safe defaults', async () => {
+  const migration = await source(
+    'backend/pb_migrations/1784349726_seed_self_host_config.js',
+  )
+
+  for (const field of [
+    'instance_name',
+    'operator_name',
+    'operator_contact_email',
+    'source_code_url',
+    'legal_notice_url',
+    'initialization_complete',
+    'initialization_stage',
+  ]) {
+    assert.match(migration, new RegExp(`"${field}"`))
+  }
+  assert.match(migration, /config\.set\("registration_open", false\)/)
+  assert.match(migration, /config\.set\("require_invite", true\)/)
+  assert.match(migration, /config\.set\("ical_risk_enabled", true\)/)
+  assert.match(migration, /config\.set\("initialization_complete", false\)/)
+  assert.match(migration, /config\.set\("initialization_stage", 0\)/)
+  assert.match(migration, /for \(let i = 1; i < records\.length; i \+= 1\)/)
+})
+
+test('production iCal links use the current instance origin', async () => {
+  const settings = await source('frontend/src/views/SettingsView.vue')
+
+  assert.match(settings, /window\.location\.origin/)
+  assert.doesNotMatch(settings, /const PROD_BASE/)
+  assert.doesNotMatch(settings, /https:\/\/timetable\.xjtlu\.uk\/api\/ical/)
 })

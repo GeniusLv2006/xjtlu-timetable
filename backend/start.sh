@@ -5,4 +5,5 @@ cd "$(dirname "$0")"
   --http=127.0.0.1:8091 \
   --publicDir=../frontend/dist \
   --dir=./pb_data \
-  --hooksDir=./pb_hooks
+  --hooksDir=./pb_hooks \
+  --migrationsDir=./pb_migrations

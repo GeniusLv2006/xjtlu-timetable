@@ -34,19 +34,16 @@ test('the published image has a runtime health check', async () => {
   assert.match(dockerfile, /http:\/\/127\.0\.0\.1:8080\/api\/health/)
 })
 
-test('setup helpers use the current PocketBase superuser endpoint', async () => {
-  const helpers = await Promise.all(
-    [
-      'backend/add-nickname-field.py',
-      'backend/setup-invite-codes.sh',
-      'backend/setup-must-change-pwd.sh',
-      'backend/setup-rules.sh',
-      'backend/setup-site-config.sh',
-    ].map(source),
-  )
+test('self-host lifecycle uses prebuilt images and current superuser APIs', async () => {
+  const helper = await source('self-host.sh')
 
-  for (const helper of helpers) {
-    assert.match(helper, /\/api\/collections\/_superusers\/auth-with-password/)
-    assert.doesNotMatch(helper, /\/api\/admins\/auth-with-password/)
-  }
+  assert.match(helper, /\/api\/collections\/_superusers\/auth-with-password/)
+  assert.match(helper, /\.\/pocketbase superuser create/)
+  assert.match(helper, /compose pull/)
+  assert.match(helper, /compose up -d --no-build/)
+  assert.match(helper, /safe_data_dir/)
+  assert.match(helper, /DATA_DIR must be a dedicated subdirectory/)
+  assert.match(helper, /IMAGE_TAG must be an exact vMAJOR\.MINOR\.PATCH release/)
+  assert.doesNotMatch(helper, /docker (?:compose )?build/)
+  assert.doesNotMatch(helper, /latest/)
 })

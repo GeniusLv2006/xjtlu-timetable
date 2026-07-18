@@ -447,13 +447,11 @@ const copied           = ref(false)
 const accessLogs       = ref([])
 const accessLogsLoading = ref(false)
 
-const PROD_BASE = 'https://timetable.xjtlu.uk'
-
 const icalUrl = computed(() => {
   if (!icalToken.value) return ''
   const base = import.meta.env.DEV
     ? `http://localhost:8091`
-    : PROD_BASE
+    : window.location.origin
   return `${base}/api/ical/${icalToken.value.token}/timetable.ics`
 })
 
