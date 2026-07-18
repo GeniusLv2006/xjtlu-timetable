@@ -162,7 +162,7 @@ const syncMsg      = ref('')
 const syncError    = ref(false)
 
 const visLabel = computed(() => {
-  const map = { private: '仅自己可见', friends: '好友可见', public: '所有人可见' }
+  const map = { private: '仅自己可见', friends: '好友可见' }
   return map[visibility.value] ?? ''
 })
 

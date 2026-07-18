@@ -69,6 +69,40 @@ test('user emails stay private and profiles are limited to connected users', asy
   assert.doesNotMatch(admin, /emailVisibility:\s*true/)
 })
 
+test('public timetable access is removed without deleting timetables', async () => {
+  const [migration, home, compare] = await Promise.all([
+    source('backend/pb_migrations/1784360100_remove_public_timetable_visibility.js'),
+    source('frontend/src/views/HomeView.vue'),
+    source('frontend/src/views/CompareView.vue'),
+  ])
+
+  assert.match(
+    migration,
+    /UPDATE timetables SET visibility = "private" WHERE visibility = "public"/,
+  )
+  assert.match(migration, /visibility\.values = \["private", "friends"\]/)
+  assert.doesNotMatch(migration, /DELETE FROM timetables/)
+
+  for (const ruleName of ['timetableReadRule', 'courseReadRule']) {
+    const rule = migration.match(
+      new RegExp(`const ${ruleName} = \\[([\\s\\S]*?)\\]\\.join\\("\\ "\\)`),
+    )
+    assert.ok(rule, `${ruleName} must be defined`)
+    assert.doesNotMatch(rule[1], /public/)
+    assert.match(rule[1], /visibility = "friends"/)
+    assert.match(rule[1], /status \?= "accepted"/)
+  }
+
+  assert.match(migration, /listRule = timetableReadRule/)
+  assert.match(migration, /viewRule = timetableReadRule/)
+  assert.match(migration, /listRule = courseReadRule/)
+  assert.match(migration, /viewRule = courseReadRule/)
+  assert.match(migration, /do not restore public timetable access/)
+  assert.doesNotMatch(home, /public:\s*'所有人可见'/)
+  assert.doesNotMatch(compare, /没有公开的课表/)
+  assert.match(compare, /没有你可访问的课表/)
+})
+
 test('fresh self-host configuration is seeded with safe defaults', async () => {
   const migration = await source(
     'backend/pb_migrations/1784349726_seed_self_host_config.js',
