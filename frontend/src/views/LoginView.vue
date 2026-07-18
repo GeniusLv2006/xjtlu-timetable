@@ -4,8 +4,8 @@
 
       <!-- Header -->
       <div class="login-header">
-        <div class="login-title">{{ instanceConfig.instance_name }}</div>
-        <div class="login-sub">Independent and unofficial.</div>
+        <div class="login-title">{{ loginDisplayName }}</div>
+        <div class="login-audience">for XJTLU Students</div>
       </div>
 
       <!-- Form -->
@@ -91,9 +91,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { instanceConfig, loadInstanceConfig } from '../stores/instanceConfig'
+import { compactInstanceName } from '../utils/branding'
 import pb from '../lib/pocketbase'
 
 const authStore = useAuthStore()
@@ -106,6 +107,9 @@ const error           = ref('')
 const loading         = ref(false)
 const requireInvite   = ref(true)  // default safe: require invite until config loaded
 const registrationOpen = ref(false)
+const loginDisplayName = computed(
+  () => compactInstanceName(instanceConfig.instance_name),
+)
 
 onMounted(async () => {
   await loadInstanceConfig()
@@ -180,12 +184,11 @@ async function handleSubmit() {
   letter-spacing: 0.02em;
   margin-bottom: var(--sp-1);
 }
-.login-sub {
-  font-size: var(--text-xs);
-  color: #7A7870;
-  letter-spacing: 0.04em;
+.login-audience {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #B8B6B0;
 }
-
 /* Form */
 .login-form {
   padding: var(--sp-6);
