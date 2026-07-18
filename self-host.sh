@@ -217,7 +217,7 @@ init_installation() {
   else
     [ "$initialization_stage" -lt 1 ] ||
       die "use the credentials of the existing superuser to resume initialization"
-    compose exec -T app ./pocketbase superuser create "$email" "$password"
+    compose exec -T app ./pocketbase superuser create "$email" "$password" </dev/null
     token="$(authenticate_superuser "$email" "$password")"
     echo "Superuser created."
   fi
@@ -301,6 +301,7 @@ init_installation() {
       "$token" \
       "$config_payload" >/dev/null
     initialization_stage=2
+    echo "Instance identity and registration policy saved."
   else
     registration_open="$(printf '%s' "$config_response" |
       jq -r '.items[0].registration_open')"
@@ -340,6 +341,7 @@ init_installation() {
       "/api/collections/semesters/records" \
       "$token" \
       "$semester_payload" >/dev/null
+    echo "Current semester created."
   else
     echo "Current semester already exists; leaving it unchanged."
   fi
