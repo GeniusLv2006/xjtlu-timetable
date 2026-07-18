@@ -169,7 +169,7 @@ onMounted(async () => {
     otherTimetables.value = otherTTs
 
     if (!otherTTs.length) {
-      loadError.value = '该用户没有公开的课表，或用户不存在。'
+      loadError.value = '没有你可访问的课表，或用户不存在。'
       loading.value = false
       return
     }
