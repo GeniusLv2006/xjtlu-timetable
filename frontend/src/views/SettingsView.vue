@@ -264,6 +264,7 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import pb from '../lib/pocketbase'
 import { useAuthStore } from '../stores/auth'
+import { buildDataExportPayload } from '../utils/dataExport'
 
 const authStore = useAuthStore()
 
@@ -578,26 +579,49 @@ async function exportData() {
   exportError.value = ''
   try {
     const userId = authStore.model.id
-    const timetables = await pb.collection('timetables').getFullList({
-      filter: `user = "${userId}"`, requestKey: null,
+    const [
+      user,
+      timetables,
+      courses,
+      friendships,
+      icalTokens,
+      inviteCodes,
+      loginLogs,
+      icalAccessLogs,
+    ] = await Promise.all([
+      pb.collection('users').getOne(userId, { requestKey: null }),
+      pb.collection('timetables').getFullList({
+        filter: `user = "${userId}"`, requestKey: null,
+      }),
+      pb.collection('courses').getFullList({
+        filter: `timetable.user = "${userId}"`, requestKey: null,
+      }),
+      pb.collection('friendships').getFullList({
+        filter: `from_user = "${userId}" || to_user = "${userId}"`, requestKey: null,
+      }),
+      pb.collection('ical_tokens').getFullList({
+        filter: `user = "${userId}"`, requestKey: null,
+      }),
+      pb.collection('invite_codes').getFullList({
+        filter: `created_by = "${userId}"`, requestKey: null,
+      }),
+      pb.collection('login_logs').getFullList({
+        filter: `user_id = "${userId}"`, requestKey: null,
+      }),
+      pb.collection('ical_access_logs').getFullList({
+        filter: `user_id = "${userId}"`, requestKey: null,
+      }),
+    ])
+    const payload = buildDataExportPayload({
+      user,
+      timetables,
+      courses,
+      friendships,
+      ical_tokens: icalTokens,
+      invite_codes: inviteCodes,
+      login_logs: loginLogs,
+      ical_access_logs: icalAccessLogs,
     })
-    const allCourses = []
-    for (const tt of timetables) {
-      const courses = await pb.collection('courses').getFullList({
-        filter: `timetable = "${tt.id}"`, requestKey: null,
-      })
-      allCourses.push(...courses.map(c => ({ ...c, timetable_label: tt.label })))
-    }
-    const payload = {
-      exported_at: new Date().toISOString(),
-      user: { id: authStore.model.id, email: authStore.model.email, nickname: authStore.model.nickname },
-      timetables: timetables.map(({ id, label, hash, visibility, last_synced, created }) =>
-        ({ id, label, hash, visibility, last_synced, created })
-      ),
-      courses: allCourses.map(({ id, timetable, timetable_label, code, activity_type, section, day, start_time, end_time, location, staff, weeks }) =>
-        ({ id, timetable, timetable_label, code, activity_type, section, day, start_time, end_time, location, staff, weeks })
-      ),
-    }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
