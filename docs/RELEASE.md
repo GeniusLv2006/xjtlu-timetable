@@ -14,6 +14,8 @@ Floating `latest` or `stable` image tags are not published.
 7. Wait for the Release workflow to build and smoke-test amd64 and arm64,
    publish the exact GHCR tag with SBOM/provenance, verify anonymous pull, and
    publish the GitHub Release and checksummed self-host bundle.
+   Each architecture runs natively and is built exactly once; the publish job
+   only combines the verified digests into the release manifest.
 8. For the official instance, back up production data and deploy the exact
    reviewed `main` SHA through `deploy.sh`; never build on the VPS.
 9. Verify public health, login, timetable display, and an existing iCal

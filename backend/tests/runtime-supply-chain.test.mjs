@@ -49,3 +49,16 @@ test('self-host lifecycle uses prebuilt images and current superuser APIs', asyn
   assert.doesNotMatch(helper, /docker (?:compose )?build/)
   assert.doesNotMatch(helper, /latest/)
 })
+
+test('release images build once per native architecture', async () => {
+  const workflow = await source('.github/workflows/release.yml')
+
+  assert.match(workflow, /runner: ubuntu-24\.04$/m)
+  assert.match(workflow, /runner: ubuntu-24\.04-arm$/m)
+  assert.match(workflow, /push-by-digest=true/)
+  assert.match(workflow, /docker buildx imagetools create/)
+  assert.match(workflow, /provenance: mode=max/)
+  assert.match(workflow, /sbom: true/)
+  assert.equal(workflow.match(/docker\/build-push-action@/g)?.length, 1)
+  assert.doesNotMatch(workflow, /setup-qemu-action/)
+})
