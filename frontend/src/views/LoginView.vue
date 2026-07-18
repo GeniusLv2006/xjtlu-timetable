@@ -4,8 +4,8 @@
 
       <!-- Header -->
       <div class="login-header">
-        <div class="login-title">XJTLU Timetable Tool</div>
-        <div class="login-sub">Xi'an Jiaotong-Liverpool University</div>
+        <div class="login-title">{{ instanceConfig.instance_name }}</div>
+        <div class="login-sub">XJTLU timetable service</div>
       </div>
 
       <!-- Form -->
@@ -65,10 +65,25 @@
 
       <!-- Toggle + Disclaimer -->
       <div class="login-footer">
-        <button class="toggle-btn" type="button" @click="toggle">
+        <button v-if="registrationOpen" class="toggle-btn" type="button" @click="toggle">
           {{ isRegister ? '已有账号？返回登录' : '还没有账号？注册' }}
         </button>
+        <p v-else class="login-disclaimer">当前实例未开放自助注册，请联系实例运营者。</p>
         <p class="login-disclaimer">非官方独立项目，与西交利物浦大学无任何隶属或背书关系。</p>
+        <div class="login-links">
+          <a
+            v-if="instanceConfig.legal_notice_url"
+            :href="instanceConfig.legal_notice_url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >用户协议与隐私政策</a>
+          <router-link v-else to="/terms">用户协议与隐私政策</router-link>
+          <a
+            :href="instanceConfig.source_code_url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >本实例源代码</a>
+        </div>
       </div>
 
     </div>
@@ -78,6 +93,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { instanceConfig, loadInstanceConfig } from '../stores/instanceConfig'
 import pb from '../lib/pocketbase'
 
 const authStore = useAuthStore()
@@ -89,11 +105,16 @@ const isRegister      = ref(false)
 const error           = ref('')
 const loading         = ref(false)
 const requireInvite   = ref(true)  // default safe: require invite until config loaded
+const registrationOpen = ref(false)
 
 onMounted(async () => {
+  await loadInstanceConfig()
   try {
     const list = await pb.collection('site_config').getList(1, 1, { requestKey: null })
-    if (list.items.length) requireInvite.value = list.items[0].require_invite
+    if (list.items.length) {
+      requireInvite.value = list.items[0].require_invite
+      registrationOpen.value = list.items[0].registration_open
+    }
   } catch { /* ignore */ }
 })
 
@@ -245,6 +266,13 @@ async function handleSubmit() {
   color: var(--text-3);
   letter-spacing: 0.01em;
   line-height: 1.5;
+}
+.login-links {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
 }
 
 /* Invite code field */

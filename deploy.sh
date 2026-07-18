@@ -10,6 +10,20 @@ DB_PATH="$DATA_DIR/data.db"
 IMAGE_REPOSITORY="ghcr.io/geniuslv2006/xjtlu-timetable"
 APP_CONTAINER="xjtlu-timetable"
 RUNTIME_UID_GID="10001:10001"
+COMPOSE_FILES=(
+  -f "$REPO_DIR/docker-compose.yml"
+  -f "$REPO_DIR/docker-compose.official.yml"
+)
+
+compose() {
+  docker compose "${COMPOSE_FILES[@]}" "$@"
+}
+
+compose_with_tag() {
+  local tag="$1"
+  shift
+  env IMAGE_TAG="$tag" docker compose "${COMPOSE_FILES[@]}" "$@"
+}
 
 if [[ ! "$REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   echo "Usage: bash deploy.sh <40-character-main-commit>" >&2
@@ -24,6 +38,13 @@ for command in docker git sqlite3 sha256sum; do
 done
 
 cd "$REPO_DIR"
+
+export IMAGE_REPOSITORY
+export IMAGE_TAG="$REVISION"
+export BIND_ADDRESS="172.17.0.1"
+export HOST_PORT="8091"
+export DATA_DIR
+export COMPOSE_PROJECT_NAME="xjtlu-timetable"
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Refusing to deploy from a modified tracked working tree." >&2
@@ -56,7 +77,7 @@ rollback() {
   if [ "$ROLLBACK_ARMED" -eq 1 ]; then
     set +e
     echo "!! Deployment failed; restoring the previous database and image." >&2
-    IMAGE_TAG="$REVISION" docker compose stop app
+    compose stop app
 
     if [ "$HAD_DATABASE" -eq 1 ]; then
       rm -f "$DB_PATH-shm" "$DB_PATH-wal"
@@ -65,9 +86,9 @@ rollback() {
     chown -R "$RUNTIME_UID_GID" "$DATA_DIR"
 
     if [ "$HAD_PREVIOUS_IMAGE" -eq 1 ]; then
-      IMAGE_TAG="$ROLLBACK_TAG" docker compose up -d --no-build --pull never
+      compose_with_tag "$ROLLBACK_TAG" up -d --no-build --pull never
     else
-      IMAGE_TAG="$REVISION" docker compose rm -f app
+      compose rm -f app
     fi
     echo "!! Rollback attempted with backup: $BACKUP_DIR" >&2
   fi
@@ -95,8 +116,8 @@ if docker inspect "$APP_CONTAINER" >/dev/null 2>&1; then
 fi
 
 echo "==> Validating configuration and pulling the exact image..."
-IMAGE_TAG="$REVISION" docker compose config -q
-IMAGE_TAG="$REVISION" docker compose pull
+compose config -q
+compose pull
 
 # The production image runs as uid/gid 10001 and the bind mount must be
 # writable before Docker starts the non-root process.
@@ -104,7 +125,7 @@ chown -R "$RUNTIME_UID_GID" "$DATA_DIR"
 
 echo "==> Starting $REVISION..."
 ROLLBACK_ARMED=1
-IMAGE_TAG="$REVISION" docker compose up -d --no-build
+compose up -d --no-build
 
 for _ in $(seq 1 90); do
   STATUS="$(docker inspect "$APP_CONTAINER" --format '{{.State.Status}}' 2>/dev/null || true)"
@@ -141,5 +162,5 @@ printf '%s\n' "$REVISION" > "$BACKUP_DIR/DEPLOYED_REVISION"
 printf '%s\n' "$IMAGE_REPOSITORY:$REVISION" > "$BACKUP_DIR/DEPLOYED_IMAGE"
 
 echo "==> Deployment complete."
-IMAGE_TAG="$REVISION" docker compose ps
+compose ps
 echo "    Backup and rollback record: $BACKUP_DIR"

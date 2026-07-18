@@ -1,0 +1,209 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$RELEASE_TAG" = "v$(jq -r .version frontend/package.json)"
+          test -f "docs/releases/$RELEASE_TAG.md"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.18.0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run repository validation
+        run: |
+          node --test backend/tests/*.test.mjs
+          bash -n self-host.sh deploy.sh backend/*.sh
+          IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable \
+          IMAGE_TAG=${{ github.ref_name }} \
+            docker compose config -q
+
+      - name: Run frontend tests, build, and audit
+        working-directory: frontend
+        run: |
+          pnpm test
+          pnpm build
+          pnpm audit --audit-level low
+
+  smoke:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build architecture image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: xjtlu-timetable:release-smoke
+          cache-from: type=gha,scope=release-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.platform }}
+
+      - name: Smoke test architecture image
+        run: |
+          set -eu
+          cleanup() {
+            docker rm --force --volumes xjtlu-timetable-release-smoke >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run --detach \
+            --name xjtlu-timetable-release-smoke \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            xjtlu-timetable:release-smoke
+          for _ in $(seq 1 90); do
+            health="$(
+              docker inspect xjtlu-timetable-release-smoke \
+                --format '{{.State.Health.Status}}'
+            )"
+            [ "$health" != "unhealthy" ] || {
+              docker logs xjtlu-timetable-release-smoke
+              exit 1
+            }
+            [ "$health" != "healthy" ] || break
+            sleep 1
+          done
+          test "$health" = "healthy"
+          config="$(
+            docker exec xjtlu-timetable-release-smoke \
+              wget -q -O - \
+              'http://127.0.0.1:8080/api/collections/site_config/records?perPage=2'
+          )"
+          test "$(printf '%s' "$config" | jq '.totalItems')" = "1"
+          test "$(printf '%s' "$config" | jq -r '.items[0].registration_open')" = "false"
+
+      - name: Scan architecture image
+        run: >-
+          docker run --rm
+          --volume /var/run/docker.sock:/var/run/docker.sock
+          --volume "$PWD/security/trivy-ignore.yaml:/trivy-ignore.yaml:ro"
+          aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
+          image
+          --image-src docker
+          --scanners vuln
+          --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          --ignorefile /trivy-ignore.yaml
+          --exit-code 1
+          xjtlu-timetable:release-smoke
+
+  publish:
+    needs:
+      - validate
+      - smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish release image
+        id: image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/geniuslv2006/xjtlu-timetable:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=release-publish
+          cache-to: type=gha,mode=max,scope=release-publish
+          provenance: mode=max
+          sbom: true
+
+      - name: Build self-host bundle
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -eu
+          bundle="xjtlu-timetable-self-host-${RELEASE_TAG}"
+          mkdir -p "$bundle"
+          cp .env.example docker-compose.yml self-host.sh LICENSE "$bundle/"
+          cp -R examples "$bundle/"
+          mkdir -p "$bundle/docs"
+          cp docs/SELF_HOSTING.md "$bundle/docs/"
+          printf '%s\n' "$IMAGE_DIGEST" > "$bundle/IMAGE_DIGEST"
+          tar -czf "$bundle.tar.gz" "$bundle"
+          sha256sum "$bundle.tar.gz" > "$bundle.tar.gz.sha256"
+
+      - name: Verify anonymous image pull
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          docker logout ghcr.io
+          docker pull "ghcr.io/geniuslv2006/xjtlu-timetable:$RELEASE_TAG"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          bundle="xjtlu-timetable-self-host-${RELEASE_TAG}"
+          gh release create "$RELEASE_TAG" \
+            "$bundle.tar.gz" \
+            "$bundle.tar.gz.sha256" \
+            --title "$RELEASE_TAG" \
+            --notes-file "docs/releases/$RELEASE_TAG.md" \
+            --verify-tag

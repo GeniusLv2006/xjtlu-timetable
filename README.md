@@ -1,91 +1,97 @@
 # XJTLU Timetable
 
-面向西交利物浦大学（XJTLU）学生的课表可视化与管理工具。支持从 e-Bridge 导入课表、好友课表对比、iCal 订阅导出。
+面向西交利物浦大学（XJTLU）学生的课表可视化与管理工具，支持从
+e-Bridge 导入课表、好友课表对比和 iCal 订阅。
 
-> 本项目与西交利物浦大学官方无任何隶属或授权关系。
+> 本项目与西交利物浦大学官方无任何隶属、授权或合作关系。
 
-## DEMO
-https://timetable.xjtlu.uk
+官方演示：[timetable.xjtlu.uk](https://timetable.xjtlu.uk)
 
 ## 功能
 
-- **课表可视化**：周视图展示所有课程
-- **e-Bridge 导入**：通过 `reference/xjtlu_timetable_importer.html` 一键提取课表
-- **好友系统**：与好友对比课表，快速找到共同空闲时间
-- **iCal 订阅**：生成订阅链接，导入 Apple 日历 / Google Calendar
-- **邀请码注册**：限制注册范围，防止滥用
-- **管理员后台**：用户管理（封禁）、公告发布、更新日志
+- 通过书签工具从 e-Bridge 提取课表 HASH 并导入
+- 周视图、课表同步和可见范围控制
+- 好友课表对比与共同空闲时间
+- Apple Calendar、Google Calendar 等客户端的 iCal 订阅
+- 邀请码、邮箱后缀、封禁、公告和学期管理
+- iCal 访问记录、限流和异常令牌处置
+
+## 自托管
+
+正式自托管版本使用预构建的 GHCR 镜像，支持 `linux/amd64` 和
+`linux/arm64`。部署主机不需要、也不应构建源码。
+
+```bash
+cp .env.example .env
+./self-host.sh init
+```
+
+初始化工具会拉取精确版本镜像、启动安全基线、创建首位管理员，并引导完成
+实例信息、注册策略、当前学期和首个邀请码。默认只监听
+`127.0.0.1:8091`，公开服务前必须配置 HTTPS 反向代理。
+
+完整步骤、升级、备份、Caddy/Nginx Proxy Manager 示例和故障排查见
+[`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
+
+不要使用不存在的 `latest` 标签；生产实例应始终选择明确的
+`vMAJOR.MINOR.PATCH` 版本。
+
+## 普通用户导入课表
+
+1. 登录部署实例并打开“导入课表”。
+2. 将页面提供的书签工具添加到浏览器书签栏。
+3. 登录 e-Bridge 并进入课表页面，点击该书签提取 HASH。
+4. 将 HASH 粘贴到导入页面并同步。
+
+`reference/xjtlu_timetable_importer.html` 是独立的参考/预览工具，不是网站的
+必需部署组件。
+
+## 本地开发
+
+Node.js 和 pnpm 版本由 `frontend/package.json` 固定。后端建议复用正式
+预构建镜像，避免安装错误版本的 PocketBase：
+
+```bash
+cp .env.example .env
+./self-host.sh init
+
+cd frontend
+corepack enable
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+验证命令：
+
+```bash
+node --test backend/tests/*.test.mjs
+cd frontend
+pnpm test
+pnpm build
+pnpm audit --prod
+```
+
+## 运维与发布
+
+- 第三方实例：使用 [正式 Release](https://github.com/GeniusLv2006/xjtlu-timetable/releases)
+  和 [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)。
+- 官方实例维护者：使用 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)，部署
+  `main` 的精确提交镜像。
+- 发布流程：见 [`docs/RELEASE.md`](docs/RELEASE.md)。
+- 变更记录：见 [`CHANGELOG.md`](CHANGELOG.md)。
+- 安全漏洞：请遵循 [Security Policy](.github/SECURITY.md)，不要在公开
+  Issue 中提交令牌、个人数据或可利用细节。
 
 ## 技术栈
 
 | 层级 | 技术 |
-|------|------|
+|---|---|
 | 前端 | Vue 3 · Vite · Pinia · Vue Router · PocketBase JS SDK |
-| 后端 | [PocketBase](https://pocketbase.io/) v0.39.7（SQLite） |
-| 部署 | Docker · Docker Compose · Nginx Proxy Manager |
-
-## 部署
-
-### 前置条件
-
-- Docker 24+ 与 Docker Compose v2
-- Git、SQLite 3 与 `sha256sum`
-
-### 生产部署
-
-```bash
-git fetch origin main
-git switch main
-git merge --ff-only origin/main
-revision="$(git rev-parse HEAD)"
-bash deploy.sh "$revision"
-```
-
-部署脚本只接受当前 `main` 的完整提交 SHA，并自动执行 SQLite 备份、配置校验、精确镜像拉取、健康检查与启动失败回滚。容器以非 root 用户运行，并仅对 Docker 宿主机接口 `172.17.0.1:8091` 监听。完整运维与手动回滚步骤见 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)。
-
-### 初始化数据库
-
-首次启动后访问 `http://localhost:8091/_/`，创建管理员账号。PocketBase 会自动执行 `backend/pb_migrations/` 中的所有 migration。
-
-然后运行初始化脚本：
-
-```bash
-# 初始化站点配置（邮箱白名单、注册开关等）
-bash backend/setup-site-config.sh <admin_email>
-
-# 初始化邀请码
-bash backend/setup-invite-codes.sh <admin_email>
-```
-
-### 用户协议与隐私政策
-
-`frontend/src/views/TermsView.vue` 中的条款内容是针对原部署（timetable.xjtlu.uk）编写的，含原作者联系邮箱。自行部署时请替换为你自己的条款与联系方式。
-
-### 邮箱白名单
-
-在 PocketBase Admin UI → `site_config` → `allowed_email_suffixes` 中填写允许注册的邮箱后缀，例如 `@student.xjtlu.edu.cn`。
-
-### 课表导入
-
-用浏览器打开 `reference/xjtlu_timetable_importer.html`，登录 e-Bridge 后一键提取课表 JSON，粘贴至网站的导入页面。
-
-## 本地开发
-
-```bash
-# 前端开发服务器（需同时运行 PocketBase）
-cd frontend
-pnpm install
-pnpm dev
-```
-
-```bash
-# 本地运行 PocketBase 后端
-./backend/pocketbase serve \
-  --http=127.0.0.1:8091 \
-  --dir=./backend/pb_data \
-  --hooksDir=./backend/pb_hooks
-```
+| 后端 | PocketBase 0.39.7 · SQLite · JavaScript hooks/migrations |
+| 运行 | Docker Compose · 非 root 只读容器 |
+| 发布 | GitHub Actions · GHCR · SBOM/provenance |
 
 ## 协议
 
-GNU AGPLv3 — 详见 [LICENSE](LICENSE)。
+GNU AGPLv3，详见 [LICENSE](LICENSE)。运行修改版本的网络服务时，请向用户
+提供与该实例对应的源码地址。

@@ -1,4 +1,9 @@
-# Production operations
+# Official production operations
+
+This document is only for maintainers of `timetable.xjtlu.uk`. Third-party
+operators must use [`SELF_HOSTING.md`](SELF_HOSTING.md); the official override,
+NPM hardening script, repository remote checks, and `main` SHA channel are not a
+generic self-hosting interface.
 
 Production must run an exact reviewed commit image from `main`. Do not deploy
 `latest`, a locally built image, or an uncommitted working tree.
@@ -70,11 +75,19 @@ backup=/root/xjtlu-timetable-backups/pre-REVISION-TIMESTAMP
 rollback_image="$(cat "$backup/ROLLBACK_IMAGE")"
 rollback_tag="${rollback_image##*:}"
 
-IMAGE_TAG="$rollback_tag" docker compose stop app
+export IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable
+export IMAGE_TAG="$rollback_tag"
+export BIND_ADDRESS=172.17.0.1
+export HOST_PORT=8091
+export DATA_DIR="$PWD/backend/pb_data"
+export COMPOSE_PROJECT_NAME=xjtlu-timetable
+compose=(docker compose -f docker-compose.yml -f docker-compose.official.yml)
+
+"${compose[@]}" stop app
 rm -f backend/pb_data/data.db-shm backend/pb_data/data.db-wal
 cp "$backup/data.db" backend/pb_data/data.db
 chown -R 10001:10001 backend/pb_data
-IMAGE_TAG="$rollback_tag" docker compose up -d --no-build --pull never
+"${compose[@]}" up -d --no-build --pull never
 ```
 
 Repeat the health, integrity, and user-facing checks after rollback. Retain at

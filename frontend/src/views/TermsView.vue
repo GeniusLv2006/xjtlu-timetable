@@ -1,8 +1,3 @@
-<!--
-  NOTE FOR DEPLOYERS: This file contains terms specific to the original deployment
-  (timetable.xjtlu.uk). If you're running your own instance, replace this file
-  with your own terms of service and privacy policy, including your contact email.
--->
 <template>
   <div class="terms-page">
     <div class="page-toolbar">
@@ -11,15 +6,20 @@
     </div>
 
     <div class="terms-body">
-      <p class="terms-meta">生效日期：2026 年 4 月 12 日</p>
+      <p class="terms-meta">通用模板 · 部署者应根据实际运营情况审阅并更新</p>
       <p class="terms-intro">
-        请在使用 XJTLU 课表系统（以下简称"本服务"）前仔细阅读本协议。
+        请在使用 {{ instanceConfig.instance_name }}（以下简称“本服务”）前仔细阅读本协议。
         <strong>注册账号或继续使用本服务，即视为您已阅读、理解并同意受本协议全部条款约束。如您不同意，请立即停止使用并注销账号。</strong>
+      </p>
+      <p class="terms-notice">
+        本页面是项目附带的通用说明模板，不构成法律意见。实际服务由
+        <strong>{{ instanceConfig.operator_name || '本实例部署者' }}</strong>
+        运营，部署者有责任确保本页面与其域名、基础设施、数据处理活动和适用法律一致。
       </p>
 
       <h2>一、服务性质与免责声明</h2>
-      <p>本服务是由个人开发者独立开发、运营的课表辅助工具，<strong>与西交利物浦大学（XJTLU）官方不存在任何隶属、授权或合作关系</strong>，与 e-Bridge、学校教务系统及任何官方平台亦无正式关联。</p>
-      <p><strong>本服务以"现状"（AS IS）及"现有"（AS AVAILABLE）形式提供，开发者不就以下事项作任何明示或暗示的陈述、保证或承诺：</strong></p>
+      <p>本服务是独立部署的课表辅助工具，<strong>与西交利物浦大学（XJTLU）官方不存在任何隶属、授权或合作关系</strong>，与 e-Bridge、学校教务系统及任何官方平台亦无正式关联。</p>
+      <p><strong>本服务以“现状”（AS IS）及“现有”（AS AVAILABLE）形式提供，实例运营者不就以下事项作任何明示或暗示的陈述、保证或承诺：</strong></p>
       <ul>
         <li>服务的持续可用性、无中断或无错误；</li>
         <li>课表数据的完整性、准确性或与 e-Bridge 官方数据的实时一致性；</li>
@@ -27,11 +27,11 @@
         <li>数据不因不可抗力（服务器故障、网络攻击、自然灾害等）而丢失。</li>
       </ul>
       <p><strong>课表数据以 e-Bridge 及学校官方系统公布的信息为唯一权威依据。</strong>本服务展示的内容仅供个人参考，不具备任何法律效力，不得用于考勤、考试安排、成绩证明或任何正式场合。因使用或信赖本服务所展示数据而产生的一切后果，由用户自行承担。</p>
-      <p>在适用法律允许的最大范围内，开发者对因使用或无法使用本服务而导致的任何直接、间接、附带、特殊、惩罚性或后果性损失（包括但不限于数据丢失、业务中断、预期利益损失等）概不承担法律责任，无论该等损失基于何种法律理论，亦无论开发者是否已被告知该等损失发生的可能性。</p>
+      <p>在适用法律允许的最大范围内，实例运营者对因使用或无法使用本服务而导致的任何直接、间接、附带、特殊、惩罚性或后果性损失（包括但不限于数据丢失、业务中断、预期利益损失等）概不承担法律责任。</p>
 
       <h2>二、适用对象与账号管理</h2>
       <p>本服务主要面向西交利物浦大学在校学生。注册须使用有效邮箱，并由您自行妥善保管登录凭证。您对该账号下发生的一切操作负完全责任；账号不得转让、出租或以任何方式共享。</p>
-      <p>如发生以下情形，开发者有权在不事先通知的情况下暂停或永久终止您的账号访问权限：</p>
+      <p>如发生以下情形，实例运营者有权在不事先通知的情况下暂停或永久终止您的账号访问权限：</p>
       <ul>
         <li>违反本协议任何条款；</li>
         <li>账号存在异常访问行为或遭滥用；</li>
@@ -55,7 +55,7 @@
           <tr>
             <td>密码</td>
             <td>身份验证</td>
-            <td>经 bcrypt 不可逆哈希后存储，开发者无法读取原始密码</td>
+            <td>经不可逆密码哈希后存储，实例运营者无法直接读取原始密码</td>
           </tr>
           <tr>
             <td>课表数据（课程代码、时间、地点、教师等）及数据校验值（去重用途）</td>
@@ -86,16 +86,16 @@
       </table>
       <p><strong>重要说明：</strong>课表数据由您通过书签工具从 e-Bridge 页面提取并主动上传，本服务不会、也无法直接访问 e-Bridge 系统或您的学校账号。</p>
 
-      <h3>3.2 Cloudflare 自动收集的数据</h3>
-      <p>本站通过 <strong>Cloudflare</strong> 提供网络安全防护（含 DDoS 防御及 Web 应用防火墙），并启用了 <strong>Cloudflare Web Analytics</strong> 进行匿名访问统计。Cloudflare 作为独立第三方服务商，可能在其基础设施层面自动收集以下信息：</p>
+      <h3>3.2 网络与反向代理服务</h3>
+      <p>部署者可能使用 Cloudflare、其他内容分发网络或反向代理提供 HTTPS、安全防护和访问控制。这些服务可能在其基础设施层面处理以下信息：</p>
       <ul>
-        <li>IP 地址：Cloudflare 通过请求头将客户端真实 IP 与国家/地区代码传递给本服务器。本服务在记录登录及 iCal 访问时会存储这些信息（用户侧展示为脱敏摘要），30 天后自动清除。本服务不会为此向第三方地理位置服务发送 IP 地址；</li>
+        <li>IP 地址及代理提供的国家、城市或网络信息；</li>
         <li>页面访问路径、访问时间及来源页面；</li>
         <li>大致地理位置（国家/地区级别）。</li>
       </ul>
-      <p><strong>关于 Cloudflare Web Analytics：</strong>该功能不使用 Cookie，不跨站追踪用户行为，符合 GDPR。本站通过该功能获取的仅为聚合统计数据（如每日访问量、常用功能分布），无法关联至任何具体个人。Cloudflare 完整隐私政策见 cloudflare.com/privacypolicy。</p>
+      <p>本项目不会假定任何实例启用了特定分析服务。部署者如启用额外分析、Cookie 或第三方数据处理服务，必须在自己的法律说明中单独披露。</p>
 
-      <h3>3.3 开发者对您数据的承诺</h3>
+      <h3>3.3 实例运营者对您数据的承诺</h3>
       <ul>
         <li><strong>不出售：</strong>您的任何数据不会被出售、交换或以任何方式有偿或无偿转让给第三方；</li>
         <li><strong>不商业化：</strong>课表及个人数据不会用于广告定向、AI 模型训练或任何商业目的；</li>
@@ -114,7 +114,7 @@
       <h3>3.5 数据删除</h3>
       <p>您可随时在"设置"页面注销账号，账号及关联数据（课表、好友关系、iCal 订阅令牌等）将被<strong>立即、永久删除，不可恢复</strong>。</p>
       <p>出于安全审计目的，访问日志和登录日志将于 <strong>30 天内自动清除</strong>。该类日志不含课表内容，仅含访问时间、来源地区及访问摘要信息。</p>
-      <p>如遇技术问题无法自助删除，请通过本协议末尾联系方式告知，开发者将在 <strong>7 个工作日</strong>内完成处理。</p>
+      <p>如遇技术问题无法自助删除，请通过本协议末尾的实例运营者联系方式提出请求。</p>
 
       <h2>四、用户行为规范</h2>
       <p>使用本服务，您不得从事以下行为：</p>
@@ -127,18 +127,28 @@
       </ul>
 
       <h2>五、知识产权</h2>
-      <p>本服务源代码以 <strong>GNU Affero General Public License v3（AGPLv3）</strong> 协议开源。与常见的 GPL v3 不同，AGPLv3 规定：即便仅以网络服务形式运行（而非对外分发软件包），任何对源码的修改也须同样以 AGPLv3 开源并向服务用户提供获取渠道。本项目源码仓库公开于 GitHub，任何人均可在遵循该协议的前提下自由使用与修改。界面设计、视觉元素及其他非代码内容的著作权归开发者所有，未经授权不得用于商业用途。您上传的课表数据著作权归您本人所有；本服务仅在提供功能所必需的范围内存储和处理上述数据，不主张超出此范围的任何权利。</p>
+      <p>本服务源代码以 <strong>GNU Affero General Public License v3（AGPLv3）</strong> 协议开源。网络服务运营者修改程序后，应按许可证要求向用户提供对应源码。当前实例声明的源码地址为：<a :href="instanceConfig.source_code_url" target="_blank" rel="noopener noreferrer">{{ instanceConfig.source_code_url }}</a>。您上传的课表数据仍归您本人所有；本服务仅在提供功能所必需的范围内处理这些数据。</p>
 
       <h2>六、协议变更</h2>
       <p>本协议可能随服务功能演进而更新。<strong>重大变更将提前通过网站公告告知；继续使用本服务将视为接受变更后的协议。</strong>建议您定期查阅本页面以了解最新条款。</p>
 
       <h2>七、联系方式</h2>
-      <p>如有疑问、数据删除申请或其他事宜，请发送邮件至：<strong>tingkailyu@icloud.com</strong></p>
+      <p v-if="instanceConfig.operator_contact_email">
+        如有疑问、数据删除申请或其他事宜，请联系：
+        <a :href="`mailto:${instanceConfig.operator_contact_email}`">{{ instanceConfig.operator_contact_email }}</a>
+      </p>
+      <p v-else>本实例尚未公布运营者联系邮箱，请联系向您提供本实例地址的部署者。</p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { instanceConfig, loadInstanceConfig } from '../stores/instanceConfig'
+
+onMounted(() => {
+  loadInstanceConfig()
+})
 </script>
 
 <style scoped>

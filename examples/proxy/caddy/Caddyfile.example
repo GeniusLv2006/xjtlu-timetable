@@ -1,0 +1,16 @@
+# Run Caddy on the same host as the application and keep BIND_ADDRESS=127.0.0.1.
+# Replace timetable.example.com before loading this configuration.
+timetable.example.com {
+	encode zstd gzip
+
+	request_body {
+		max_size 10MB
+	}
+
+	reverse_proxy 127.0.0.1:8091 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

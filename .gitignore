@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 frontend/node_modules/
+.pnpm-store/
 
 # Build output
 frontend/dist/
@@ -8,6 +9,7 @@ frontend/dist/
 # PocketBase data (never commit)
 backend/pb_data/
 backend/pb_data.bak-*/
+data/
 
 # Deployment backups and state
 backups/

@@ -7,15 +7,22 @@
         <div class="tg-sub">首次使用导入功能前需确认以下内容</div>
       </div>
       <div class="tg-body">
-        <p>本服务是由个人开发者独立开发和运营的课表辅助工具，<strong>与西交利物浦大学官方不存在任何隶属、授权或合作关系</strong>。</p>
+        <p>本服务是独立部署和运营的课表辅助工具，<strong>与西交利物浦大学官方不存在任何隶属、授权或合作关系</strong>。</p>
         <p>课表数据由你通过书签工具从 e-Bridge 页面自行提取并上传，本服务不会直接访问 e-Bridge 系统。<strong>课表数据以 e-Bridge 官方系统为准</strong>，本服务展示内容仅供个人参考，不得用于任何正式考勤、考试安排或法律用途。</p>
-        <p>本服务启用 <strong>Cloudflare</strong> 提供安全防护，并通过 <strong>Cloudflare Web Analytics</strong>（无 Cookie、无跨站追踪）收集聚合访问统计数据。你主动提供的数据（邮箱、课表内容等）仅用于功能实现，不会出售或用于商业目的。</p>
-        <p>你可以随时在"设置"页面注销账号并永久删除全部数据。</p>
-        <router-link to="/terms" target="_blank" class="terms-link">查看完整用户协议与隐私政策 →</router-link>
+        <p>本服务会保存账号、课表、好友关系、iCal 令牌及安全访问日志；部署者使用的反向代理或网络服务也可能处理访问数据。具体处理方式应以本实例运营者公布的用户协议与隐私政策为准。</p>
+        <p>你可以在“设置”页面删除账号及核心业务数据；安全访问日志可能按本实例公布的保留期限延迟清理。</p>
+        <a
+          v-if="instanceConfig.legal_notice_url"
+          :href="instanceConfig.legal_notice_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="terms-link"
+        >查看完整用户协议与隐私政策 →</a>
+        <router-link v-else to="/terms" target="_blank" class="terms-link">查看完整用户协议与隐私政策 →</router-link>
       </div>
       <label class="tg-check">
         <input type="checkbox" v-model="agreedToTerms" />
-        <span>我已阅读并同意上述<router-link to="/terms" target="_blank">用户协议与隐私政策</router-link></span>
+        <span>我已阅读并同意上述用户协议与隐私政策</span>
       </label>
       <button
         class="btn btn-primary tg-btn"
@@ -153,6 +160,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { instanceConfig } from '../stores/instanceConfig'
 
 // ── 协议门控 ──────────────────────────────────────────────────────────────
 const TERMS_KEY = 'xjtlu_terms_v1'

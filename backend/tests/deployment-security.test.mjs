@@ -25,8 +25,20 @@ test('Compose removes unnecessary runtime privileges', async () => {
   assert.match(compose, /no-new-privileges:true/)
   assert.match(compose, /pids_limit: 128/)
   assert.match(compose, /\/tmp:rw,noexec,nosuid,nodev,size=16m/)
+  assert.match(compose, /\$\{IMAGE_REPOSITORY:\?set IMAGE_REPOSITORY}/)
   assert.match(compose, /\$\{IMAGE_TAG:\?set IMAGE_TAG/)
+  assert.match(compose, /\$\{BIND_ADDRESS:-127\.0\.0\.1}/)
+  assert.match(compose, /\$\{DATA_DIR:-\.\/data}/)
+  assert.doesNotMatch(compose, /container_name:/)
   assert.doesNotMatch(compose, /IMAGE_TAG:-latest/)
+})
+
+test('local state and credentials never enter the image build context', async () => {
+  const dockerignore = await source('.dockerignore')
+
+  for (const entry of ['backend/pb_data/', 'data/', 'backups/', '.env']) {
+    assert.match(dockerignore, new RegExp(`^${entry.replace('.', '\\.')}$`, 'm'))
+  }
 })
 
 test('deployment requires an exact main revision with backup and rollback', async () => {
@@ -40,11 +52,10 @@ test('deployment requires an exact main revision with backup and rollback', asyn
   assert.match(deploy, /--pull never/)
   assert.match(deploy, /Config\.User/)
 
-  const composeCalls = deploy
-    .split('\n')
-    .filter((line) => line.includes('docker compose'))
-  assert.ok(composeCalls.length > 0)
-  for (const line of composeCalls) {
-    assert.match(line, /IMAGE_TAG=/)
-  }
+  assert.match(deploy, /docker-compose\.official\.yml/)
+  assert.match(deploy, /export IMAGE_TAG="\$REVISION"/)
+  assert.match(deploy, /export BIND_ADDRESS="172\.17\.0\.1"/)
+  assert.match(deploy, /export DATA_DIR/)
+  assert.doesNotMatch(deploy, /docker (?:compose )?build/)
+  assert.match(deploy, /compose up -d --no-build/)
 })
