@@ -28,6 +28,8 @@ Release notes are finalized in a `release/vX.Y.Z` pull request.
   import, and application-footer behavior.
 - The application footer now uses the configured instance name instead of
   displaying the legal operator name as product identity.
+- iCal product identifiers are deployment-neutral, and event identifiers use
+  a stable operator-configured domain instead of the project-operated hostname.
 - Replaced the browser-only import consent marker with account-level acceptance
   records that work across devices.
 

@@ -149,6 +149,28 @@ test('production iCal links use the current instance origin', async () => {
   assert.doesNotMatch(settings, /const PROD_BASE/)
 })
 
+test('generic iCal output uses a stable operator-configured UID domain', async () => {
+  const [hook, compose, envExample] = await Promise.all([
+    source('backend/pb_hooks/ical.pb.js'),
+    source('docker-compose.yml'),
+    source('.env.example'),
+  ])
+
+  assert.match(hook, /\$os\.getenv\('ICAL_UID_DOMAIN'\)/)
+  assert.match(hook, /xjtlu-timetable\.invalid/)
+  assert.match(hook, /'-week' \+ week \+ '@' \+ ICAL_UID_DOMAIN/)
+  assert.match(
+    hook,
+    /ICAL_PRODID = '-\/\/GeniusLv2006\/\/Timetable Toolkit for XJTLU Students\/\/EN'/,
+  )
+  assert.doesNotMatch(hook, /timetable\.xjtlu\.uk/)
+  assert.match(
+    compose,
+    /ICAL_UID_DOMAIN: \$\{ICAL_UID_DOMAIN:-xjtlu-timetable\.invalid\}/,
+  )
+  assert.match(envExample, /^ICAL_UID_DOMAIN=xjtlu-timetable\.invalid$/m)
+})
+
 test('legal acceptance records are versioned, private, immutable, and exported', async () => {
   const [migration, hook, login, settings, dataExport] = await Promise.all([
     source('backend/pb_migrations/1784383552_add_legal_acceptances.js'),

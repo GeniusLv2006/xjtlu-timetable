@@ -64,10 +64,13 @@ BIND_ADDRESS=127.0.0.1
 HOST_PORT=8091
 DATA_DIR=./data
 COMPOSE_PROJECT_NAME=xjtlu-timetable
+ICAL_UID_DOMAIN=xjtlu-timetable.invalid
 ```
 
 - Keep an exact SemVer `IMAGE_TAG`. `latest` is not published or supported.
 - Keep `BIND_ADDRESS=127.0.0.1` when the proxy runs on the host.
+- Set `ICAL_UID_DOMAIN` to the instance hostname before users subscribe and
+  keep it stable. Changing it later changes calendar event identifiers.
 - Never commit `.env` or `DATA_DIR`.
 - Do not use `docker compose build` on a deployment host.
 
