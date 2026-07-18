@@ -65,7 +65,7 @@ test('deployment requires an exact main revision with backup and rollback', asyn
 test('official privacy validation checks the legal route without exposing email', async () => {
   const check = await source('backend/check-official-privacy.sh')
 
-  assert.match(check, /https:\/\/timetable\.xjtlu\.uk/)
+  assert.ok(check.includes('BASE_URL="${1:-https://timetable.xjtlu.uk}"'))
   assert.match(check, /Terms of Use and Privacy Notice/)
   assert.match(check, /script-src 'self'/)
   assert.match(check, /data-cfemail=/)
