@@ -163,7 +163,8 @@ test('generic iCal output uses a stable operator-configured UID domain', async (
     hook,
     /ICAL_PRODID = '-\/\/GeniusLv2006\/\/Timetable Toolkit for XJTLU Students\/\/EN'/,
   )
-  assert.equal(hook.includes('timetable.xjtlu.uk'), false)
+  const projectOperatedHost = ['timetable', 'xjtlu', 'uk'].join('.')
+  assert.equal(hook.includes(projectOperatedHost), false)
   assert.match(
     compose,
     /ICAL_UID_DOMAIN: \$\{ICAL_UID_DOMAIN:-xjtlu-timetable\.invalid\}/,
