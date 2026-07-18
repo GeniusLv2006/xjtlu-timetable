@@ -587,9 +587,15 @@ upgrade_installation() {
 
   rollback_upgrade() {
     local status=$?
+    local host_uid host_gid
     trap - ERR
     echo "Upgrade failed; restoring $previous and $archive" >&2
     compose_with_tag "$target" stop app >/dev/null 2>&1 || true
+    host_uid="$(id -u)"
+    host_gid="$(id -g)"
+    compose_with_tag "$previous" run --rm --no-deps -T --pull never \
+      --user 0 --cap-add CHOWN --entrypoint sh app \
+      -c 'chown -R "$1:$2" /pb/pb_data' sh "$host_uid" "$host_gid"
     rm -rf "$data_dir"
     tar -xzf "$archive" -C "$parent"
     compose_with_tag "$previous" run --rm --no-deps -T --pull never --cap-add CHOWN \
