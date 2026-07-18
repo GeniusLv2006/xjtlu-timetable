@@ -1155,7 +1155,7 @@ async function doChangeEmail() {
   try {
     await adminPb.collection('users').update(
       changeEmailTarget.value.id,
-      { email: newEmail, emailVisibility: true },
+      { email: newEmail, emailVisibility: false },
       { requestKey: null }
     )
     changeEmailTarget.value.email = newEmail
@@ -1231,7 +1231,7 @@ async function createUser() {
       name:            newUser.name,
       password:        newUser.password,
       passwordConfirm: newUser.password,
-      emailVisibility: true,
+      emailVisibility: false,
       must_change_pwd: true,
     }, { requestKey: null })
     users.value.unshift(record)
