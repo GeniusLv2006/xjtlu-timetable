@@ -132,7 +132,7 @@ jobs:
               down --volumes >/dev/null 2>&1 || true
             docker rm --force xjtlu-timetable-ci-registry >/dev/null 2>&1 || true
             docker rm --force xjtlu-timetable-broken-image >/dev/null 2>&1 || true
-            rm -rf "$test_root"
+            sudo rm -rf "$test_root"
           }
           trap cleanup EXIT
 

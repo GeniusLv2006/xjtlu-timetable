@@ -102,7 +102,7 @@ prepare_data_dir() {
   data_dir="$(resolve_data_dir)"
   mkdir -p "$data_dir"
   data_dir="$(safe_data_dir)"
-  compose run --rm --no-deps --user 0 --cap-add CHOWN --entrypoint sh app \
+  compose run --rm --no-deps -T --user 0 --cap-add CHOWN --entrypoint sh app \
     -c 'chown -R 10001:10001 /pb/pb_data'
 }
 
@@ -568,7 +568,7 @@ upgrade_installation() {
     compose_with_tag "$target" stop app >/dev/null 2>&1 || true
     rm -rf "$data_dir"
     tar -xzf "$archive" -C "$parent"
-    compose_with_tag "$previous" run --rm --no-deps --pull never --cap-add CHOWN \
+    compose_with_tag "$previous" run --rm --no-deps -T --pull never --cap-add CHOWN \
       --user 0 --entrypoint sh app \
       -c 'chown -R 10001:10001 /pb/pb_data' >/dev/null 2>&1 || true
     set_image_tag "$previous"
