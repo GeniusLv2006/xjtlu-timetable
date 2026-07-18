@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  REGISTRY_IMAGE: ghcr.io/geniuslv2006/xjtlu-timetable
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -53,33 +56,56 @@ jobs:
 
   smoke:
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+            artifact: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            artifact: arm64
     steps:
       - name: Check out tagged source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      - name: Build architecture image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish architecture image
+        id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          load: true
-          tags: xjtlu-timetable:release-smoke
-          cache-from: type=gha,scope=release-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=release-${{ matrix.artifact }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.artifact }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Load architecture image by digest
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          docker pull "$REGISTRY_IMAGE@$IMAGE_DIGEST"
+          docker tag "$REGISTRY_IMAGE@$IMAGE_DIGEST" xjtlu-timetable:release-smoke
 
       - name: Smoke test architecture image
         run: |
@@ -130,6 +156,21 @@ jobs:
           --exit-code 1
           xjtlu-timetable:release-smoke
 
+      - name: Export architecture digest
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${IMAGE_DIGEST#sha256:}"
+
+      - name: Upload architecture digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: digests-${{ matrix.artifact }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
   publish:
     needs:
       - validate
@@ -143,8 +184,12 @@ jobs:
       - name: Check out tagged source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - name: Download architecture digests
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: digests-*
+          path: /tmp/digests
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -156,21 +201,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and publish release image
+      - name: Publish multi-architecture manifest
         id: image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/geniuslv2006/xjtlu-timetable:${{ github.ref_name }}
-          labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ github.ref_name }}
-          cache-from: type=gha,scope=release-publish
-          cache-to: type=gha,mode=max,scope=release-publish
-          provenance: mode=max
-          sbom: true
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          sources=()
+          for digest_file in /tmp/digests/*; do
+            sources+=("$REGISTRY_IMAGE@sha256:$(basename "$digest_file")")
+          done
+          [ "${#sources[@]}" -eq 2 ]
+          docker buildx imagetools create \
+            --tag "$REGISTRY_IMAGE:$RELEASE_TAG" \
+            "${sources[@]}"
+          image_digest="$(
+            docker buildx imagetools inspect "$REGISTRY_IMAGE:$RELEASE_TAG" |
+              awk '$1 == "Digest:" { print $2; exit }'
+          )"
+          [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "digest=$image_digest" >> "$GITHUB_OUTPUT"
 
       - name: Build self-host bundle
         env:
