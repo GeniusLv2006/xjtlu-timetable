@@ -207,12 +207,21 @@ test('legal acceptance records are versioned, private, immutable, and exported',
 })
 
 test('settings uses the configured external legal notice when present', async () => {
-  const settings = await source('frontend/src/views/SettingsView.vue')
+  const [settings, login, gate, terms] = await Promise.all([
+    source('frontend/src/views/SettingsView.vue'),
+    source('frontend/src/views/LoginView.vue'),
+    source('frontend/src/components/LegalAcceptanceGate.vue'),
+    source('frontend/src/views/TermsView.vue'),
+  ])
 
   assert.match(settings, /v-if="instanceConfig\.legal_notice_url"/)
   assert.match(settings, /:href="instanceConfig\.legal_notice_url"/)
   assert.match(settings, /rel="noopener noreferrer"/)
   assert.match(settings, /v-else to="\/terms"/)
+  for (const legalSurface of [settings, login, gate, terms]) {
+    assert.match(legalSurface, /《用户协议与隐私政策》/)
+    assert.doesNotMatch(legalSurface, /用户协议与隐私政策（版本/)
+  }
 })
 
 test('the application footer uses the instance identity, not the operator name', async () => {
