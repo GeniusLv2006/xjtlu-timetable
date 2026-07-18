@@ -238,6 +238,18 @@
               <label class="field-label">外部用户协议 / 隐私政策地址（可选）</label>
               <input v-model="siteConfig.legal_notice_url" type="url" class="field-input" maxlength="500" placeholder="留空则使用内置通用模板" />
             </div>
+            <div class="config-grid">
+              <div class="field-group">
+                <label class="field-label">当前条款版本（可选）</label>
+                <input v-model="siteConfig.legal_notice_version" class="field-input" maxlength="64" placeholder="例如 1.0" />
+                <p class="field-hint">填写后，用户必须接受该版本；更新版本号会触发重新确认。</p>
+              </div>
+              <div class="field-group">
+                <label class="field-label">最低年龄（0 表示不限制）</label>
+                <input v-model.number="siteConfig.minimum_age" type="number" min="0" max="120" class="field-input" />
+                <p class="field-hint">只记录用户是否确认达到门槛，不收集出生日期。</p>
+              </div>
+            </div>
             <div class="config-actions">
               <button class="btn btn-primary btn-sm" :disabled="configSaving" @click="saveSiteConfig">
                 {{ configSaving ? '保存中…' : '保存实例信息' }}
@@ -1464,6 +1476,8 @@ const siteConfigDefaults = {
   operator_contact_email: '',
   source_code_url: 'https://github.com/GeniusLv2006/xjtlu-timetable',
   legal_notice_url: '',
+  legal_notice_version: '',
+  minimum_age: 0,
   registration_open: false,
   require_invite: true,
   allowed_email_suffixes: '',
@@ -1505,6 +1519,8 @@ async function loadSiteConfig() {
         operator_contact_email:        cfg.operator_contact_email || '',
         source_code_url:               cfg.source_code_url || siteConfigDefaults.source_code_url,
         legal_notice_url:              cfg.legal_notice_url || '',
+        legal_notice_version:          cfg.legal_notice_version || '',
+        minimum_age:                   nonNegativeInt(cfg.minimum_age, 0),
         registration_open:              cfg.registration_open,
         require_invite:                 cfg.require_invite,
         allowed_email_suffixes:         cfg.allowed_email_suffixes || '',
@@ -1528,6 +1544,11 @@ async function loadSiteConfig() {
 function positiveInt(value, fallback = 1) {
   const n = Number.parseInt(value, 10)
   return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+function nonNegativeInt(value, fallback = 0) {
+  const n = Number.parseInt(value, 10)
+  return Number.isFinite(n) && n >= 0 ? n : fallback
 }
 
 function normalizeIcalRiskConfig() {
@@ -1563,17 +1584,22 @@ async function saveSiteConfig() {
     const contactEmail = siteConfig.operator_contact_email.trim()
     const rawSourceUrl = siteConfig.source_code_url.trim() || siteConfigDefaults.source_code_url
     const rawLegalUrl = siteConfig.legal_notice_url.trim()
+    const legalNoticeVersion = siteConfig.legal_notice_version.trim()
+    const minimumAge = nonNegativeInt(siteConfig.minimum_age, 0)
     const sourceUrl = safeWebUrl(rawSourceUrl)
     const legalUrl = safeWebUrl(rawLegalUrl)
     if (!isSafeEmail(contactEmail)) throw new Error('运营者联系邮箱格式无效')
     if (!sourceUrl) throw new Error('源代码地址必须是有效的 HTTP 或 HTTPS URL')
     if (rawLegalUrl && !legalUrl) throw new Error('外部法律说明地址必须是有效的 HTTP 或 HTTPS URL')
+    if (minimumAge > 120) throw new Error('最低年龄必须在 0 到 120 之间')
     const payload = {
       instance_name:                 siteConfig.instance_name.trim() || siteConfigDefaults.instance_name,
       operator_name:                 siteConfig.operator_name.trim(),
       operator_contact_email:        contactEmail,
       source_code_url:               sourceUrl,
       legal_notice_url:              legalUrl,
+      legal_notice_version:          legalNoticeVersion,
+      minimum_age:                   minimumAge,
       registration_open:              siteConfig.registration_open,
       require_invite:                 siteConfig.require_invite,
       allowed_email_suffixes:         siteConfig.allowed_email_suffixes,

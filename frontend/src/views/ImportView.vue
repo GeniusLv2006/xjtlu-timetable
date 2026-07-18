@@ -1,40 +1,5 @@
 <template>
-  <!-- 协议门控 -->
-  <div v-if="!termsAccepted" class="terms-gate">
-    <div class="terms-card">
-      <div class="tg-header">
-        <div class="tg-title">使用前请阅读并同意用户协议</div>
-        <div class="tg-sub">首次使用导入功能前需确认以下内容</div>
-      </div>
-      <div class="tg-body">
-        <p>本服务是独立部署和运营的课表辅助工具，<strong>与西交利物浦大学官方不存在任何隶属、授权或合作关系</strong>。</p>
-        <p>课表数据由你通过书签工具从 e-Bridge 页面自行提取并上传，本服务不会直接访问 e-Bridge 系统。<strong>课表数据以 e-Bridge 官方系统为准</strong>，本服务展示内容仅供个人参考，不得用于任何正式考勤、考试安排或法律用途。</p>
-        <p>本服务会保存账号、课表、好友关系、iCal 令牌及安全访问日志；部署者使用的反向代理或网络服务也可能处理访问数据。具体处理方式应以本实例运营者公布的用户协议与隐私政策为准。</p>
-        <p>你可以在“设置”页面删除账号及核心业务数据；安全访问日志可能按本实例公布的保留期限延迟清理。</p>
-        <a
-          v-if="instanceConfig.legal_notice_url"
-          :href="instanceConfig.legal_notice_url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="terms-link"
-        >查看完整用户协议与隐私政策 →</a>
-        <router-link v-else to="/terms" target="_blank" class="terms-link">查看完整用户协议与隐私政策 →</router-link>
-      </div>
-      <label class="tg-check">
-        <input type="checkbox" v-model="agreedToTerms" />
-        <span>我已阅读并同意上述用户协议与隐私政策</span>
-      </label>
-      <button
-        class="btn btn-primary tg-btn"
-        :disabled="!agreedToTerms"
-        @click="acceptTerms"
-      >
-        同意并继续
-      </button>
-    </div>
-  </div>
-
-  <div v-else class="import-page">
+  <div class="import-page">
 
     <div class="page-toolbar">
       <h1 class="page-title">导入课表</h1>
@@ -160,16 +125,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { instanceConfig } from '../stores/instanceConfig'
-
-// ── 协议门控 ──────────────────────────────────────────────────────────────
-const TERMS_KEY = 'xjtlu_terms_v1'
-const termsAccepted = ref(localStorage.getItem(TERMS_KEY) === '1')
-const agreedToTerms = ref(false)
-function acceptTerms() {
-  localStorage.setItem(TERMS_KEY, '1')
-  termsAccepted.value = true
-}
 import pb from '../lib/pocketbase'
 import { normalizeActivities } from '../utils/timetableSync'
 
@@ -323,77 +278,6 @@ async function handleImport() {
 </script>
 
 <style scoped>
-/* ── 协议门控 ────────────────────────────────────────────────────────────── */
-.terms-gate {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-4);
-  background: var(--bg);
-}
-.terms-card {
-  width: 100%;
-  max-width: 520px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.tg-header {
-  background: #18181A;
-  padding: var(--sp-5) var(--sp-6);
-}
-.tg-title {
-  font-size: var(--text-base);
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 4px;
-}
-.tg-sub {
-  font-size: var(--text-xs);
-  color: #5A5850;
-}
-.tg-body {
-  padding: var(--sp-5) var(--sp-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  border-bottom: 1px solid var(--border);
-}
-.tg-body p {
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  line-height: 1.7;
-  margin: 0;
-}
-.terms-link {
-  font-size: var(--text-xs);
-  color: var(--accent);
-  text-decoration: none;
-  margin-top: calc(-1 * var(--sp-1));
-}
-.terms-link:hover { text-decoration: underline; }
-.tg-check {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-2);
-  padding: var(--sp-4) var(--sp-6);
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  cursor: pointer;
-  line-height: 1.5;
-}
-.tg-check input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
-.tg-check a { color: var(--accent); text-decoration: none; }
-.tg-check a:hover { text-decoration: underline; }
-.tg-btn {
-  width: calc(100% - var(--sp-6) * 2);
-  margin: 0 var(--sp-6) var(--sp-5);
-  justify-content: center;
-  padding: 9px;
-}
-
 /* ── 正文 ─────────────────────────────────────────────────────────────────── */
 .import-page {
   max-width: 700px;

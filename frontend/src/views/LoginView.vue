@@ -55,6 +55,27 @@
           />
         </div>
 
+        <label v-if="isRegister && minimumAge" class="register-check">
+          <input v-model="ageConfirmed" type="checkbox" required />
+          <span>我确认我已年满 {{ minimumAge }} 周岁</span>
+        </label>
+
+        <label v-if="isRegister && legalNoticeVersion" class="register-check">
+          <input v-model="noticeAccepted" type="checkbox" required />
+          <span>
+            我已阅读并同意
+            <a
+              v-if="instanceConfig.legal_notice_url"
+              :href="instanceConfig.legal_notice_url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >用户协议与隐私政策（版本 {{ legalNoticeVersion }}）</a>
+            <router-link v-else to="/terms" target="_blank">
+              用户协议与隐私政策（版本 {{ legalNoticeVersion }}）
+            </router-link>
+          </span>
+        </label>
+
         <p v-if="error" class="login-error">{{ error }}</p>
 
         <button type="submit" class="btn btn-primary login-submit" :disabled="loading" :class="{ 'btn-loading': loading }">
@@ -102,6 +123,8 @@ const email           = ref('')
 const password        = ref('')
 const passwordConfirm = ref('')
 const inviteCode      = ref('')
+const ageConfirmed    = ref(false)
+const noticeAccepted  = ref(false)
 const isRegister      = ref(false)
 const error           = ref('')
 const loading         = ref(false)
@@ -110,6 +133,13 @@ const registrationOpen = ref(false)
 const loginDisplayName = computed(
   () => compactInstanceName(instanceConfig.instance_name),
 )
+const legalNoticeVersion = computed(() =>
+  String(instanceConfig.legal_notice_version || '').trim(),
+)
+const minimumAge = computed(() => {
+  const age = Number.parseInt(instanceConfig.minimum_age, 10)
+  return Number.isFinite(age) && age > 0 ? age : 0
+})
 
 onMounted(async () => {
   await loadInstanceConfig()
@@ -124,6 +154,8 @@ onMounted(async () => {
 
 function toggle() {
   isRegister.value = !isRegister.value
+  ageConfirmed.value = false
+  noticeAccepted.value = false
   error.value = ''
 }
 
@@ -132,7 +164,18 @@ async function handleSubmit() {
   loading.value = true
   try {
     if (isRegister.value) {
-      await authStore.register(email.value, password.value, passwordConfirm.value, inviteCode.value)
+      await authStore.register(
+        email.value,
+        password.value,
+        passwordConfirm.value,
+        inviteCode.value,
+        {
+          legal_notice_version: legalNoticeVersion.value,
+          legal_notice_accepted: noticeAccepted.value,
+          minimum_age: minimumAge.value,
+          minimum_age_confirmed: ageConfirmed.value,
+        },
+      )
     } else {
       await authStore.login(email.value, password.value)
     }
@@ -208,6 +251,20 @@ async function handleSubmit() {
   color: var(--text-2);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.register-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  cursor: pointer;
+}
+.register-check input {
+  margin-top: 3px;
+  flex: 0 0 auto;
 }
 
 .login-error {

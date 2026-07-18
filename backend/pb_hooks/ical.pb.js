@@ -3,6 +3,12 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   // ── 辅助函数 ──────────────────────────────────────────────────────────────
 
   var DAY_OFFSET = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 }
+  var ICAL_PRODID = '-//GeniusLv2006//Timetable Toolkit for XJTLU Students//EN'
+  var configuredUidDomain = ($os.getenv('ICAL_UID_DOMAIN') || '').trim().toLowerCase()
+  var validUidDomain = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
+  var ICAL_UID_DOMAIN = validUidDomain.test(configuredUidDomain)
+    ? configuredUidDomain
+    : 'xjtlu-timetable.invalid'
 
   var parseWeeks = function(str) {
     if (!str) return []
@@ -121,7 +127,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
 
     out += 'BEGIN:VCALENDAR' + CRLF
     out += 'VERSION:2.0' + CRLF
-    out += 'PRODID:-//Timetable Toolkit for XJTLU Students//timetable.xjtlu.uk//EN' + CRLF
+    out += 'PRODID:' + ICAL_PRODID + CRLF
     out += 'CALSCALE:GREGORIAN' + CRLF
     out += 'METHOD:PUBLISH' + CRLF
     out += 'X-WR-CALNAME:Timetable Toolkit for XJTLU Students' + CRLF
@@ -177,7 +183,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
         var date    = courseDate(startDate, week, day)
         var dtStart = date + 'T' + timeToIcal(startTime)
         var dtEnd   = date + 'T' + timeToIcal(endTime)
-        var uid     = identity + '-week' + week + '@timetable.xjtlu.uk'
+        var uid     = identity + '-week' + week + '@' + ICAL_UID_DOMAIN
 
         out += 'BEGIN:VEVENT' + CRLF
         out += fold('UID:' + uid)
@@ -301,7 +307,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     var emptyIcs =
       'BEGIN:VCALENDAR\r\n' +
       'VERSION:2.0\r\n' +
-      'PRODID:-//Timetable Toolkit for XJTLU Students//timetable.xjtlu.uk//EN\r\n' +
+      'PRODID:' + ICAL_PRODID + '\r\n' +
       'CALSCALE:GREGORIAN\r\n' +
       'METHOD:PUBLISH\r\n' +
       'X-WR-CALNAME:Timetable Toolkit for XJTLU Students\r\n' +
@@ -334,7 +340,7 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     var emptyRevoked =
       'BEGIN:VCALENDAR\r\n' +
       'VERSION:2.0\r\n' +
-      'PRODID:-//Timetable Toolkit for XJTLU Students//timetable.xjtlu.uk//EN\r\n' +
+      'PRODID:' + ICAL_PRODID + '\r\n' +
       'CALSCALE:GREGORIAN\r\n' +
       'METHOD:PUBLISH\r\n' +
       'X-WR-CALNAME:Timetable Toolkit for XJTLU Students\r\n' +

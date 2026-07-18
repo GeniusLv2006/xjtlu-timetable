@@ -30,7 +30,7 @@ if [[ ! "$REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   exit 2
 fi
 
-for command in docker git sqlite3 sha256sum; do
+for command in curl docker git sqlite3 sha256sum; do
   command -v "$command" >/dev/null || {
     echo "Missing required command: $command" >&2
     exit 2
@@ -157,6 +157,9 @@ ROLLBACK_ARMED=0
 
 echo "==> Reapplying reverse-proxy and ingress hardening..."
 bash backend/harden-deployment.sh
+
+echo "==> Validating the instance-specific privacy endpoint..."
+bash backend/check-official-privacy.sh
 
 printf '%s\n' "$REVISION" > "$BACKUP_DIR/DEPLOYED_REVISION"
 printf '%s\n' "$IMAGE_REPOSITORY:$REVISION" > "$BACKUP_DIR/DEPLOYED_IMAGE"
