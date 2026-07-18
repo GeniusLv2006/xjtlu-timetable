@@ -53,6 +53,22 @@ test('case-insensitive login does not expose an account lookup endpoint', async 
   assert.match(store, /toLowerCase\(\)/)
 })
 
+test('user emails stay private and profiles are limited to connected users', async () => {
+  const [hook, migration, admin] = await Promise.all([
+    source('backend/pb_hooks/auth_ci.pb.js'),
+    source('backend/pb_migrations/1784360000_protect_user_email_visibility.js'),
+    source('frontend/src/views/AdminView.vue'),
+  ])
+
+  assert.match(hook, /set\('emailVisibility', false\)/)
+  assert.match(migration, /UPDATE users SET emailVisibility = false/)
+  assert.match(migration, /'@request\.auth\.is_banned != true',\s*'&&',/)
+  assert.match(migration, /'id = @request\.auth\.id'/)
+  assert.match(migration, /@collection\.friendships\.from_user\.id/)
+  assert.match(migration, /@collection\.friendships\.to_user\.id/)
+  assert.doesNotMatch(admin, /emailVisibility:\s*true/)
+})
+
 test('fresh self-host configuration is seeded with safe defaults', async () => {
   const migration = await source(
     'backend/pb_migrations/1784349726_seed_self_host_config.js',
