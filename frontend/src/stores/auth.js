@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
     router.push(redirect && typeof redirect === 'string' && !redirect.startsWith('/login') ? redirect : '/')
   }
 
-  async function register(email, password, passwordConfirm, inviteCode) {
+  async function register(email, password, passwordConfirm, inviteCode, legalConfirmation = {}) {
     const normalizedEmail = email.trim().toLowerCase()
     await pb.collection('users').create(
       {
@@ -41,6 +41,10 @@ export const useAuthStore = defineStore('auth', () => {
         passwordConfirm,
         name: normalizedEmail.split('@')[0],
         invite_code: inviteCode,
+        legal_notice_version: legalConfirmation.legal_notice_version || '',
+        legal_notice_accepted: legalConfirmation.legal_notice_accepted === true,
+        minimum_age: legalConfirmation.minimum_age || 0,
+        minimum_age_confirmed: legalConfirmation.minimum_age_confirmed === true,
       },
       { requestKey: null }
     )

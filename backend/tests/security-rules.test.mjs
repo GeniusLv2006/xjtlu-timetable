@@ -148,3 +148,46 @@ test('production iCal links use the current instance origin', async () => {
   assert.match(settings, /window\.location\.origin/)
   assert.doesNotMatch(settings, /const PROD_BASE/)
 })
+
+test('legal acceptance records are versioned, private, immutable, and exported', async () => {
+  const [migration, hook, login, settings, dataExport] = await Promise.all([
+    source('backend/pb_migrations/1784383552_add_legal_acceptances.js'),
+    source('backend/pb_hooks/legal_acceptance.pb.js'),
+    source('frontend/src/views/LoginView.vue'),
+    source('frontend/src/views/SettingsView.vue'),
+    source('frontend/src/utils/dataExport.js'),
+  ])
+
+  for (const field of [
+    'legal_notice_version',
+    'legal_notice_accepted',
+    'minimum_age',
+    'minimum_age_confirmed',
+  ]) {
+    assert.match(migration, new RegExp(field))
+    assert.match(hook, new RegExp(field))
+  }
+  assert.match(migration, /cascadeDelete: true/)
+  assert.match(migration, /updateRule: null/)
+  assert.match(migration, /deleteRule: null/)
+  assert.match(migration, /@request\.auth\.id = user\.id/)
+  assert.match(hook, /onRecordCreateRequest[\s\S]*'users'/)
+  assert.match(hook, /e\.record\.set\('user', auth\.id\)/)
+  assert.match(login, /minimumAge/)
+  assert.match(login, /legalNoticeVersion/)
+  assert.match(settings, /collection\('legal_acceptances'\)/)
+  assert.match(dataExport, /legal_acceptances/)
+
+  for (const sourceText of [migration, hook, login, dataExport]) {
+    assert.doesNotMatch(sourceText, /date_of_birth|birth_date|birthday/i)
+  }
+})
+
+test('settings uses the configured external legal notice when present', async () => {
+  const settings = await source('frontend/src/views/SettingsView.vue')
+
+  assert.match(settings, /v-if="instanceConfig\.legal_notice_url"/)
+  assert.match(settings, /:href="instanceConfig\.legal_notice_url"/)
+  assert.match(settings, /rel="noopener noreferrer"/)
+  assert.match(settings, /v-else to="\/terms"/)
+})

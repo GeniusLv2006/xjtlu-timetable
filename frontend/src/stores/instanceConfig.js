@@ -9,6 +9,8 @@ const defaults = {
   operator_contact_email: '',
   source_code_url: 'https://github.com/GeniusLv2006/xjtlu-timetable',
   legal_notice_url: '',
+  legal_notice_version: '',
+  minimum_age: 0,
 }
 
 const state = reactive({
@@ -34,6 +36,11 @@ export async function loadInstanceConfig({ force = false } = {}) {
           defaults.source_code_url,
         )
         state.legal_notice_url = safeWebUrl(config.legal_notice_url)
+        state.legal_notice_version = String(config.legal_notice_version || '').trim()
+        const minimumAge = Number.parseInt(config.minimum_age, 10)
+        state.minimum_age = Number.isFinite(minimumAge) && minimumAge > 0
+          ? minimumAge
+          : 0
         state.operator_contact_email = isSafeEmail(config.operator_contact_email)
           ? String(config.operator_contact_email || '').trim()
           : ''

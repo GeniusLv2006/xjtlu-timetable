@@ -1,5 +1,6 @@
 <template>
   <div id="layout">
+    <LegalAcceptanceGate v-if="authStore.isLoggedIn" />
 
     <!-- ── Sidebar (desktop) ──────────────────────────────────────────── -->
     <aside v-if="authStore.isLoggedIn" class="sidebar">
@@ -107,6 +108,7 @@ import { useAuthStore } from './stores/auth'
 import { instanceConfig, loadInstanceConfig } from './stores/instanceConfig'
 import { compactInstanceName as getCompactInstanceName } from './utils/branding'
 import pb from './lib/pocketbase'
+import LegalAcceptanceGate from './components/LegalAcceptanceGate.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()

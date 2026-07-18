@@ -58,4 +58,20 @@ test('deployment requires an exact main revision with backup and rollback', asyn
   assert.match(deploy, /export DATA_DIR/)
   assert.doesNotMatch(deploy, /docker (?:compose )?build/)
   assert.match(deploy, /compose up -d --no-build/)
+  assert.match(deploy, /ROLLBACK_ARMED=0[\s\S]*check-official-privacy\.sh/)
+  assert.match(deploy, /for command in curl docker git sqlite3 sha256sum/)
+})
+
+test('official privacy validation checks the legal route without exposing email', async () => {
+  const check = await source('backend/check-official-privacy.sh')
+
+  assert.match(check, /https:\/\/timetable\.xjtlu\.uk/)
+  assert.match(check, /Terms of Use and Privacy Notice/)
+  assert.match(check, /script-src 'self'/)
+  assert.match(check, /data-cfemail=/)
+  assert.match(check, /CFEMAIL_COUNT.*"2"/s)
+  assert.match(check, /email-decode\.min\.js/)
+  assert.match(check, /legal_notice_url/)
+  assert.match(check, /api\/health/)
+  assert.doesNotMatch(check, /tingkailyu@icloud\.com/)
 })

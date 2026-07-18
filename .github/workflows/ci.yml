@@ -146,8 +146,12 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:5000/v2/ >/dev/null
-          docker tag xjtlu-timetable:ci 127.0.0.1:5000/xjtlu-timetable:v0.2.0
-          docker push 127.0.0.1:5000/xjtlu-timetable:v0.2.0
+          current_tag="v$(jq -r .version frontend/package.json)"
+          broken_tag="v9.9.9"
+          docker tag \
+            xjtlu-timetable:ci \
+            "127.0.0.1:5000/xjtlu-timetable:$current_tag"
+          docker push "127.0.0.1:5000/xjtlu-timetable:$current_tag"
 
           cp .env.example docker-compose.yml self-host.sh "$test_root/"
           sed -i \
@@ -183,14 +187,14 @@ jobs:
           docker commit \
             --change 'CMD ["/bin/false"]' \
             xjtlu-timetable-broken-image \
-            127.0.0.1:5000/xjtlu-timetable:v0.2.1
-          docker push 127.0.0.1:5000/xjtlu-timetable:v0.2.1
+            "127.0.0.1:5000/xjtlu-timetable:$broken_tag"
+          docker push "127.0.0.1:5000/xjtlu-timetable:$broken_tag"
           if SELF_HOST_HEALTH_ATTEMPTS=3 \
-            "$test_root/self-host.sh" upgrade v0.2.1; then
+            "$test_root/self-host.sh" upgrade "$broken_tag"; then
             echo "Broken-image upgrade unexpectedly succeeded" >&2
             exit 1
           fi
-          grep -qx 'IMAGE_TAG=v0.2.0' "$test_root/.env"
+          grep -qx "IMAGE_TAG=$current_tag" "$test_root/.env"
           "$test_root/self-host.sh" check
 
       - name: Test upgrade from the current production baseline

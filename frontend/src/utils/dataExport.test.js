@@ -12,9 +12,14 @@ describe('buildDataExportPayload', () => {
       invite_codes: [{ id: 'invite1', code: 'INVITE' }],
       login_logs: [{ id: 'login1', ip_full: '192.0.2.1' }],
       ical_access_logs: [{ id: 'ical1', user_agent: 'Calendar' }],
+      legal_acceptances: [{
+        id: 'legal1',
+        legal_notice_version: '1.0',
+        minimum_age: 18,
+      }],
     }, '2026-07-18T00:00:00.000Z')
 
-    expect(payload.export_version).toBe(1)
+    expect(payload.export_version).toBe(2)
     expect(payload.exported_at).toBe('2026-07-18T00:00:00.000Z')
     expect(payload.user.email).toBe('user@example.com')
     expect(payload.timetables[0].hash).toBe('secret-hash')
@@ -24,6 +29,8 @@ describe('buildDataExportPayload', () => {
     expect(payload.invite_codes[0].code).toBe('INVITE')
     expect(payload.login_logs[0].ip_full).toBe('192.0.2.1')
     expect(payload.ical_access_logs[0].user_agent).toBe('Calendar')
+    expect(payload.legal_acceptances[0].legal_notice_version).toBe('1.0')
+    expect(payload.legal_acceptances[0].minimum_age).toBe(18)
   })
 
   it('excludes PocketBase metadata and authentication secrets', () => {

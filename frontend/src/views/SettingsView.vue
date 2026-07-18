@@ -253,7 +253,14 @@
         </div>
       </Transition>
 
-      <router-link to="/terms" class="terms-footer-link">用户协议与隐私政策</router-link>
+      <a
+        v-if="instanceConfig.legal_notice_url"
+        :href="instanceConfig.legal_notice_url"
+        class="terms-footer-link"
+        target="_blank"
+        rel="noopener noreferrer"
+      >用户协议与隐私政策</a>
+      <router-link v-else to="/terms" class="terms-footer-link">用户协议与隐私政策</router-link>
     </section>
 
     </div><!-- end .settings-grid -->
@@ -265,6 +272,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import pb from '../lib/pocketbase'
 import { useAuthStore } from '../stores/auth'
 import { buildDataExportPayload } from '../utils/dataExport'
+import { instanceConfig } from '../stores/instanceConfig'
 
 const authStore = useAuthStore()
 
@@ -588,6 +596,7 @@ async function exportData() {
       inviteCodes,
       loginLogs,
       icalAccessLogs,
+      legalAcceptances,
     ] = await Promise.all([
       pb.collection('users').getOne(userId, { requestKey: null }),
       pb.collection('timetables').getFullList({
@@ -611,6 +620,9 @@ async function exportData() {
       pb.collection('ical_access_logs').getFullList({
         filter: `user_id = "${userId}"`, requestKey: null,
       }),
+      pb.collection('legal_acceptances').getFullList({
+        filter: `user = "${userId}"`, requestKey: null,
+      }),
     ])
     const payload = buildDataExportPayload({
       user,
@@ -621,6 +633,7 @@ async function exportData() {
       invite_codes: inviteCodes,
       login_logs: loginLogs,
       ical_access_logs: icalAccessLogs,
+      legal_acceptances: legalAcceptances,
     })
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -670,8 +683,7 @@ async function deleteAccount() {
     // 4. 删除用户账号
     await pb.collection('users').delete(userId, { requestKey: null })
 
-    // 5. 登出并清除本地存储
-    localStorage.removeItem('xjtlu_terms_v1')
+    // 5. 登出
     authStore.logout()
   } catch (e) {
     deleteError.value = e.message || '注销失败，请重试或联系管理员'

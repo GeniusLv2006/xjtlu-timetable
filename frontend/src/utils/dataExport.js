@@ -101,6 +101,16 @@ const fields = {
     'created',
     'updated',
   ],
+  legal_acceptances: [
+    'id',
+    'user',
+    'legal_notice_version',
+    'legal_notice_accepted',
+    'minimum_age',
+    'minimum_age_confirmed',
+    'created',
+    'updated',
+  ],
 }
 
 function selectFields(record, names) {
@@ -113,7 +123,7 @@ function selectFields(record, names) {
 
 export function buildDataExportPayload(data, exportedAt = new Date().toISOString()) {
   const payload = {
-    export_version: 1,
+    export_version: 2,
     exported_at: exportedAt,
     user: selectFields(data.user, fields.user),
   }

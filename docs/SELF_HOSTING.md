@@ -22,7 +22,7 @@ Download the self-host bundle attached to the selected GitHub Release and
 verify its checksum:
 
 ```bash
-release=v0.2.0
+release=v0.2.1
 curl -fLO \
   "https://github.com/GeniusLv2006/xjtlu-timetable/releases/download/${release}/xjtlu-timetable-self-host-${release}.tar.gz"
 curl -fLO \
@@ -59,7 +59,7 @@ The safe default is closed registration with invitation checks enabled.
 
 ```dotenv
 IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable
-IMAGE_TAG=v0.2.0
+IMAGE_TAG=v0.2.1
 BIND_ADDRESS=127.0.0.1
 HOST_PORT=8091
 DATA_DIR=./data
@@ -191,9 +191,9 @@ the target bundle first, replace only the tracked tooling/configuration files,
 preserve `.env`, `data/`, and `backups/`, then run the upgrade command.
 
 The first supported self-host release is `v0.2.0`; there is no supported
-pre-`v0.2.0` installation for the upgrade command to migrate. Install `v0.2.0`
-as a fresh deployment, and use `upgrade` only when moving from an installed
-supported release to a newer release.
+pre-`v0.2.0` installation for the upgrade command to migrate. New deployments
+should install the latest published release. Existing supported installations
+should use `upgrade` when moving to a newer release.
 
 ## Troubleshooting
 
