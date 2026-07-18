@@ -97,6 +97,25 @@ wait_for_health() {
   return 1
 }
 
+wait_for_container_health() {
+  local container="$1"
+  local health=""
+  for _ in $(seq 1 "$HEALTH_ATTEMPTS"); do
+    health="$(docker inspect "$container" --format '{{.State.Health.Status}}')"
+    case "$health" in
+      healthy) return 0 ;;
+      unhealthy)
+        compose logs --tail 80 app >&2 || true
+        echo "Error: container health check failed" >&2
+        return 1
+        ;;
+    esac
+    sleep 1
+  done
+  echo "Error: container health remained ${health:-unknown}" >&2
+  return 1
+}
+
 prepare_data_dir() {
   local data_dir
   data_dir="$(resolve_data_dir)"
@@ -405,6 +424,7 @@ check_installation() {
   local container image expected_image user health config semesters
   container="$(compose ps -q app)"
   [ -n "$container" ] || die "app container is not running"
+  wait_for_container_health "$container"
   image="$(docker inspect "$container" --format '{{.Config.Image}}')"
   expected_image="$(
     printf '%s:%s' \

@@ -42,6 +42,7 @@ test('self-host lifecycle uses prebuilt images and current superuser APIs', asyn
   assert.match(helper, /compose pull/)
   assert.match(helper, /compose up -d --no-build/)
   assert.match(helper, /--cap-add CHOWN/)
+  assert.match(helper, /wait_for_container_health/)
   assert.match(helper, /safe_data_dir/)
   assert.match(helper, /DATA_DIR must be a dedicated subdirectory/)
   assert.match(helper, /IMAGE_TAG must be an exact vMAJOR\.MINOR\.PATCH release/)
