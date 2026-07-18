@@ -3,6 +3,11 @@
 This is the supported deployment path for third-party operators. It uses an
 exact prebuilt release image and never builds on the deployment host.
 
+Only the latest published GitHub Release receives third-party self-hosting
+support and security fixes. See the
+[Security Policy](../.github/SECURITY.md#supported-versions) for the complete
+version policy.
+
 ## Five-minute start
 
 ### Requirements
@@ -107,18 +112,59 @@ PocketBase data directory, verifies that the archive is readable, restarts the
 same exact image, and waits for health. Backups are stored under `./backups/` by
 default and must be copied to a separate machine or object store.
 
+Record a checksum immediately after each backup, then copy both files off the
+deployment host:
+
+```bash
+archive=./backups/pb_data-YYYYMMDDTHHMMSSZ.tar.gz
+sha256sum "$archive" > "$archive.sha256"
+sha256sum -c "$archive.sha256"
+```
+
 PocketBase also provides online backups in its dashboard under
 Settings → Backups. These temporarily make the application read-only and can
 use S3-compatible storage. Test restoration before relying on either method.
 
 For manual restore:
 
-1. stop the app with `docker compose stop app`;
-2. preserve the current broken data directory separately;
-3. extract the verified backup so that `DATA_DIR` is restored exactly;
-4. restore ownership to `10001:10001`;
-5. start with `docker compose up -d --no-build`;
-6. run `./self-host.sh check`.
+1. copy the selected archive onto the deployment host and verify its checksum
+   against the value recorded by your off-host backup system;
+2. inspect the archive with `tar -tzf` and confirm that it contains one complete
+   data directory rather than individual SQLite files;
+3. validate Compose and stop the application;
+4. move the current data directory aside instead of deleting it;
+5. extract the archive, restore uid/gid `10001:10001`, and start the same exact
+   image without pulling or building;
+6. run `./self-host.sh check` and test login, timetable display, and iCal before
+   removing the preserved directory.
+
+For the default `DATA_DIR=./data` layout, run these commands from the extracted
+self-host bundle directory:
+
+```bash
+archive=./backups/pb_data-YYYYMMDDTHHMMSSZ.tar.gz
+preserved="./data.pre-restore-$(date -u +%Y%m%dT%H%M%SZ)"
+
+test -f "$archive"
+sha256sum -c "$archive.sha256"
+tar -tzf "$archive"
+docker compose --env-file .env -f docker-compose.yml config -q
+docker compose --env-file .env -f docker-compose.yml stop app
+mv ./data "$preserved"
+tar -xzf "$archive" -C .
+docker compose --env-file .env -f docker-compose.yml \
+  run --rm --no-deps -T --pull never \
+  --user 0 --cap-add CHOWN --entrypoint sh app \
+  -c 'chown -R 10001:10001 /pb/pb_data'
+docker compose --env-file .env -f docker-compose.yml \
+  up -d --no-build --pull never
+./self-host.sh check
+```
+
+If `DATA_DIR` is customized, preserve and restore that exact directory and
+extract the archive into its parent directory. Do not use the default commands
+unchanged. Keep the preserved directory until application checks and an
+independent backup restore have succeeded.
 
 Do not replace a live SQLite database by copying individual files while the
 application is running.
@@ -128,7 +174,7 @@ application is running.
 Read the target release notes first. Then run:
 
 ```bash
-./self-host.sh upgrade v0.2.1
+./self-host.sh upgrade vX.Y.Z
 ```
 
 The command rejects floating tags, validates the target configuration, pulls
@@ -143,6 +189,11 @@ directory until the new version and an independent restore have been verified.
 If release notes announce a self-host bundle format change, download and verify
 the target bundle first, replace only the tracked tooling/configuration files,
 preserve `.env`, `data/`, and `backups/`, then run the upgrade command.
+
+The first supported self-host release is `v0.2.0`; there is no supported
+pre-`v0.2.0` installation for the upgrade command to migrate. Install `v0.2.0`
+as a fresh deployment, and use `upgrade` only when moving from an installed
+supported release to a newer release.
 
 ## Troubleshooting
 

@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose a focused improvement
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user or operator problem without prescribing an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Explain the behavior or documentation outcome you want.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: impact
+    attributes:
+      label: Deployment or compatibility impact
+      description: Note any expected migration, configuration, security, or self-hosting impact.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: This request contains no credentials, tokens, personal data, or security vulnerability details.
+          required: true

@@ -1,0 +1,64 @@
+name: Self-hosting help
+description: Ask for help with a supported Release deployment
+title: "docs(self-host): "
+labels:
+  - self-hosting
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use the latest GitHub Release and follow `docs/SELF_HOSTING.md` before requesting help.
+        Sanitize all output. Never include `.env`, passwords, timetable HASH values, iCal URLs, personal data, or private network details.
+  - type: input
+    id: version
+    attributes:
+      label: Release
+      description: Only the latest published Release is supported.
+      placeholder: v0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Host architecture
+      options:
+        - linux/amd64
+        - linux/arm64
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: docker
+    attributes:
+      label: Docker and Compose versions
+      placeholder: Docker 28.x, Docker Compose v2.x
+    validations:
+      required: true
+  - type: textarea
+    id: action
+    attributes:
+      label: Command or operation
+      description: Describe the documented step or lifecycle command that failed.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Sanitized result
+      description: Provide the exact error after removing all sensitive values.
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Checks already completed
+      description: Summarize `./self-host.sh check`, health, proxy, and architecture checks that were safe to run.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I am using the latest published GitHub Release rather than a local VPS build or `main`.
+          required: true
+        - label: I removed credentials, tokens, HASH values, iCal URLs, personal data, and other secrets.
+          required: true
