@@ -72,7 +72,7 @@
       <footer v-if="authStore.isLoggedIn" class="site-footer">
         <div class="foot-identity">
           <span class="foot-copy">
-            {{ instanceConfig.operator_name || instanceConfig.instance_name }}
+            {{ instanceConfig.instance_name }}
           </span>
           <span class="foot-independent">
             Independent and unofficial. Not affiliated with Xi'an Jiaotong-Liverpool University.

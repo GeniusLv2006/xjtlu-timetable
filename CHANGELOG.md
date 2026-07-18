@@ -26,6 +26,8 @@ Release notes are finalized in a `release/vX.Y.Z` pull request.
   guides, and focused GitHub issue and pull request templates.
 - Settings now opens the configured external legal notice, matching the login,
   import, and application-footer behavior.
+- The application footer now uses the configured instance name instead of
+  displaying the legal operator name as product identity.
 - Replaced the browser-only import consent marker with account-level acceptance
   records that work across devices.
 

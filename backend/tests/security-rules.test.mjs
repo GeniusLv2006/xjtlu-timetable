@@ -191,3 +191,13 @@ test('settings uses the configured external legal notice when present', async ()
   assert.match(settings, /rel="noopener noreferrer"/)
   assert.match(settings, /v-else to="\/terms"/)
 })
+
+test('the application footer uses the instance identity, not the operator name', async () => {
+  const app = await source('frontend/src/App.vue')
+
+  assert.match(app, /\{\{ instanceConfig\.instance_name \}\}/)
+  assert.doesNotMatch(
+    app,
+    /instanceConfig\.operator_name \|\| instanceConfig\.instance_name/,
+  )
+})
