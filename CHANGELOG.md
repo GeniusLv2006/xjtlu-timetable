@@ -6,6 +6,13 @@ All notable project releases are documented here.
 
 Release notes are finalized in a `release/vX.Y.Z` pull request.
 
+### Changed
+
+- Clarified the supported self-host release channel, corrected the v0.2.0 fresh
+  installation instructions, and added checksum-backed manual restore steps.
+- Added role-based documentation navigation, architecture and contribution
+  guides, and focused GitHub issue and pull request templates.
+
 ## [0.2.0] - 2026-07-18
 
 ### Added

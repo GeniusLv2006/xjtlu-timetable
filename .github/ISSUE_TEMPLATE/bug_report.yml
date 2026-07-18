@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible application defect
+title: "fix: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, timetable HASH values, iCal URLs, personal data, or production logs containing secrets.
+        Report security vulnerabilities through GitHub private vulnerability reporting instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Provide the exact GitHub Release or official instance revision.
+      placeholder: v0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Third-party self-hosted instance
+        - Official timetable.xjtlu.uk instance
+        - Local development
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: Explain what happened and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Relevant checks
+      description: Include sanitized health or browser information. Do not paste secrets or unsanitized logs.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I removed credentials, HASH values, iCal URLs, personal data, and other secrets.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

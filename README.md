@@ -36,6 +36,21 @@ cp .env.example .env
 不要使用不存在的 `latest` 标签；生产实例应始终选择明确的
 `vMAJOR.MINOR.PATCH` 版本。
 
+## 文档导航
+
+文档按使用者角色划分：
+
+- 自托管部署者：[`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)
+- 希望了解组件和数据流的开发者：
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 项目贡献者：[`CONTRIBUTING.md`](CONTRIBUTING.md)
+- 官方实例维护者：[`docs/OPERATIONS.md`](docs/OPERATIONS.md)
+- 版本发布维护者：[`docs/RELEASE.md`](docs/RELEASE.md)
+- 安全问题报告者：[`.github/SECURITY.md`](.github/SECURITY.md)
+- 全部文档入口：[`docs/README.md`](docs/README.md)
+
+README 面向中文用户；除 README 外，仓库维护的技术文档使用英文。
+
 ## 普通用户导入课表
 
 1. 登录部署实例并打开“导入课表”。
@@ -79,6 +94,7 @@ pnpm audit --prod
   `main` 的精确提交镜像。
 - 发布流程：见 [`docs/RELEASE.md`](docs/RELEASE.md)。
 - 变更记录：见 [`CHANGELOG.md`](CHANGELOG.md)。
+- 贡献代码或文档：见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 - 安全漏洞：请遵循 [Security Policy](.github/SECURITY.md)，不要在公开
   Issue 中提交令牌、个人数据或可利用细节。
 

@@ -1,9 +1,21 @@
 # Security Policy
 
-## Supported version
+## Supported versions
 
-Only the current `main` branch and the production revision deployed from it are
-supported with security updates.
+| Channel | Supported | Intended use |
+|---|---|---|
+| Latest published GitHub Release | Yes | Third-party self-hosting |
+| Current `main` branch and its official production revision | Yes | Development and the official instance |
+| Older Releases and other commits | No, unless a security advisory says otherwise | Upgrade to the latest Release |
+
+Third-party operators should deploy the latest immutable
+`vMAJOR.MINOR.PATCH` Release and follow its release notes. Commit-addressed
+images from `main` are part of the official deployment channel and are not the
+supported third-party installation interface.
+
+Security fixes for self-hosters are released as a new SemVer version. The
+project does not backport fixes to older Releases unless the corresponding
+security advisory explicitly states otherwise.
 
 ## Reporting a vulnerability
 
