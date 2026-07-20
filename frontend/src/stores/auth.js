@@ -16,6 +16,11 @@ export const useAuthStore = defineStore('auth', () => {
   // after login. pb.authStore.isValid is a plain JS property — Vue cannot track it,
   // so computed(() => pb.authStore.isValid) would return a stale cached value.
   const isLoggedIn = computed(() => model.value !== null && pb.authStore.isValid && pb.authStore.model?.collectionName !== '_superusers')
+  const isRestricted = computed(() => (
+    isLoggedIn.value &&
+    model.value?.is_banned === true &&
+    model.value?.restricted_login_allowed === true
+  ))
 
   pb.authStore.onChange(() => {
     // Spread to create a new object reference so Vue detects the change
@@ -56,5 +61,5 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/login')
   }
 
-  return { model, isLoggedIn, tempPwd, login, register, logout }
+  return { model, isLoggedIn, isRestricted, tempPwd, login, register, logout }
 })

@@ -74,7 +74,7 @@ async function refresh() {
   error.value = ''
   ageConfirmed.value = false
   noticeAccepted.value = false
-  if (!authStore.isLoggedIn) return
+  if (!authStore.isLoggedIn || authStore.isRestricted) return
 
   await loadInstanceConfig()
   if (!requiresLegalAcceptance(instanceConfig)) return

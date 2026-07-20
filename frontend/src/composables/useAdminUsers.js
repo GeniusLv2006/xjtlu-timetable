@@ -8,6 +8,13 @@ export function useAdminUsers() {
   const usersLoading = ref(false)
   const usersError   = ref('')
   const userSearch   = ref('')
+  const banModal = ref(false)
+  const banTarget = ref(null)
+  const banRestrictedAllowed = ref(false)
+  const banSaving = ref(false)
+  const unblockEmail = ref('')
+  const unblockLoading = ref(false)
+  const unblockMessage = ref('')
 
   const filteredUsers = computed(() => {
     const q = userSearch.value.trim().toLowerCase()
@@ -54,14 +61,64 @@ export function useAdminUsers() {
     }
   }
 
-  async function toggleBan(u) {
-    const action = u.is_banned ? '恢复' : '停用'
-    if (!confirm(`确定要${action}用户 ${u.email} 吗？`)) return
+  async function openBanDialog(u) {
+    if (u.is_banned) {
+      if (!confirm(`确定要恢复用户 ${u.email} 吗？`)) return
+      try {
+        await adminPb.collection('users').update(u.id, {
+          is_banned: false,
+          restricted_login_allowed: false,
+        }, { requestKey: null })
+        u.is_banned = false
+        u.restricted_login_allowed = false
+      } catch (e) {
+        usersError.value = e.message
+      }
+      return
+    }
+    banTarget.value = u
+    banRestrictedAllowed.value = false
+    banModal.value = true
+  }
+
+  async function applyBan() {
+    if (!banTarget.value) return
+    banSaving.value = true
     try {
-      await adminPb.collection('users').update(u.id, { is_banned: !u.is_banned }, { requestKey: null })
-      u.is_banned = !u.is_banned
+      await adminPb.collection('users').update(banTarget.value.id, {
+        is_banned: true,
+        restricted_login_allowed: banRestrictedAllowed.value,
+      }, { requestKey: null })
+      banTarget.value.is_banned = true
+      banTarget.value.restricted_login_allowed = banRestrictedAllowed.value
+      banModal.value = false
     } catch (e) {
       usersError.value = e.message
+    } finally {
+      banSaving.value = false
+    }
+  }
+
+  async function removeRegistrationBlock() {
+    unblockMessage.value = ''
+    const email = unblockEmail.value.trim().toLowerCase()
+    if (!email || !email.includes('@')) {
+      unblockMessage.value = '请输入有效的邮箱地址'
+      return
+    }
+    unblockLoading.value = true
+    try {
+      const result = await adminPb.send('/api/admin/registration-block/remove', {
+        method: 'POST',
+        body: { email },
+        requestKey: null,
+      })
+      unblockMessage.value = result.removed ? '已解除该邮箱的注册限制' : '未找到有效的注册限制记录'
+      if (result.removed) unblockEmail.value = ''
+    } catch (e) {
+      unblockMessage.value = e.message
+    } finally {
+      unblockLoading.value = false
     }
   }
 
@@ -250,7 +307,12 @@ export function useAdminUsers() {
   }
 
   return {
+    applyBan,
     adminSyncTimetable,
+    banModal,
+    banRestrictedAllowed,
+    banSaving,
+    banTarget,
     cancelEditName,
     changeEmailError,
     changeEmailLoading,
@@ -269,9 +331,11 @@ export function useAdminUsers() {
     loadUsers,
     newUser,
     openChangeEmail,
+    openBanDialog,
     openCreateUser,
     openResetPwd,
     openSyncTimetables,
+    removeRegistrationBlock,
     resetPwdError,
     resetPwdLoading,
     resetPwdModal,
@@ -285,7 +349,9 @@ export function useAdminUsers() {
     syncTargetUser,
     syncTimetables,
     syncTimetablesLoading,
-    toggleBan,
+    unblockEmail,
+    unblockLoading,
+    unblockMessage,
     userSearch,
     users,
     usersError,

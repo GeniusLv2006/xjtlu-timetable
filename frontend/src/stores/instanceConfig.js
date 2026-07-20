@@ -11,6 +11,7 @@ const defaults = {
   legal_notice_url: '',
   legal_notice_version: '',
   minimum_age: 0,
+  blocked_registration_retention_days: 365,
 }
 
 const state = reactive({
@@ -41,6 +42,10 @@ export async function loadInstanceConfig({ force = false } = {}) {
         state.minimum_age = Number.isFinite(minimumAge) && minimumAge > 0
           ? minimumAge
           : 0
+        const retentionDays = Number.parseInt(config.blocked_registration_retention_days, 10)
+        state.blocked_registration_retention_days = Number.isFinite(retentionDays) && retentionDays >= 0
+          ? retentionDays
+          : defaults.blocked_registration_retention_days
         state.operator_contact_email = isSafeEmail(config.operator_contact_email)
           ? String(config.operator_contact_email || '').trim()
           : ''

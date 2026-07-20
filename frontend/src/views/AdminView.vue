@@ -108,8 +108,11 @@
                 <td class="mono-cell" data-label="邮箱">{{ u.email }}</td>
                 <td class="mono-cell dimmed" data-label="ID">{{ u.id }}</td>
                 <td data-label="状态">
-                  <span class="status-badge" :class="u.is_banned ? 'banned' : 'active'">
-                    {{ u.is_banned ? '已停用' : '正常' }}
+                  <span
+                    class="status-badge"
+                    :class="u.is_banned ? (u.restricted_login_allowed ? 'restricted' : 'banned') : 'active'"
+                  >
+                    {{ u.is_banned ? (u.restricted_login_allowed ? '受限登录' : '完全停用') : '正常' }}
                   </span>
                 </td>
                 <td class="dimmed" data-label="注册时间">{{ fmtDate(u.created) }}</td>
@@ -132,7 +135,7 @@
                     <button
                       class="btn btn-xs"
                       :class="u.is_banned ? 'btn-primary' : 'btn-danger'"
-                      @click="toggleBan(u)"
+                      @click="openBanDialog(u)"
                     >{{ u.is_banned ? '恢复' : '停用' }}</button>
                     <button class="btn btn-danger btn-xs" @click="deleteUser(u)">删除</button>
                   </div>
@@ -285,6 +288,28 @@
               <label class="field-label">允许的邮箱后缀（逗号分隔，留空不限制）</label>
               <input v-model="siteConfig.allowed_email_suffixes" class="field-input" placeholder="xjtlu.edu.cn,liverpool.ac.uk" />
               <p class="field-hint">例：xjtlu.edu.cn,liverpool.ac.uk · 仅填写域名，不含 @</p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">封禁账号删除后的注册限制（天）</label>
+              <input
+                v-model.number="siteConfig.blocked_registration_retention_days"
+                type="number"
+                min="0"
+                max="3650"
+                class="field-input"
+              />
+              <p class="field-hint">默认 365 天；0 会关闭此机制并清除现有假名化邮箱指纹。缩短期限会同步缩短现有记录，增加期限只影响新记录。</p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">解除已删除账号的注册限制</label>
+              <div class="config-inline-action">
+                <input v-model="unblockEmail" type="email" class="field-input" placeholder="输入完整邮箱" />
+                <button class="btn btn-secondary btn-sm" :disabled="unblockLoading" @click="removeRegistrationBlock">
+                  {{ unblockLoading ? '处理中…' : '解除限制' }}
+                </button>
+              </div>
+              <p v-if="unblockMessage" class="field-hint">{{ unblockMessage }}</p>
+              <p class="field-hint">系统不会列出或显示已保存的邮箱指纹；需输入完整邮箱进行匹配。</p>
             </div>
             <div class="config-actions">
               <button class="btn btn-primary btn-sm" :disabled="configSaving" @click="saveSiteConfig">
@@ -648,6 +673,27 @@
       </div><!-- /admin-body -->
 
       <!-- ── Create User Modal ──────────────────────────────────────────── -->
+      <div v-if="banModal" class="modal-overlay" @click.self="banModal = false">
+        <div class="modal-card">
+          <h3 class="modal-title">停用用户 — {{ banTarget?.email }}</h3>
+          <p class="field-hint">选择该用户被停用后的登录方式。两种模式都会阻止课表、好友、订阅和账号修改操作。</p>
+          <label class="ban-choice" :class="{ selected: !banRestrictedAllowed }">
+            <input v-model="banRestrictedAllowed" type="radio" :value="false" />
+            <span><strong>完全禁止登录</strong><small>用户无法建立或刷新登录会话。</small></span>
+          </label>
+          <label class="ban-choice" :class="{ selected: banRestrictedAllowed }">
+            <input v-model="banRestrictedAllowed" type="radio" :value="true" />
+            <span><strong>允许受限登录</strong><small>用户只能导出数据、永久注销账号或退出登录。</small></span>
+          </label>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" :disabled="banSaving" @click="banModal = false">取消</button>
+            <button class="btn btn-danger" :disabled="banSaving" @click="applyBan">
+              {{ banSaving ? '保存中…' : '确认停用' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div v-if="createUserModal" class="modal-overlay" @click.self="createUserModal = false">
         <div class="modal-card">
           <h3 class="modal-title">新建用户</h3>
@@ -926,7 +972,12 @@ const activeTab = ref('users')
 let skipNextTabWatch = false
 
 const {
+  applyBan,
   adminSyncTimetable,
+  banModal,
+  banRestrictedAllowed,
+  banSaving,
+  banTarget,
   cancelEditName,
   changeEmailError,
   changeEmailLoading,
@@ -945,9 +996,11 @@ const {
   loadUsers,
   newUser,
   openChangeEmail,
+  openBanDialog,
   openCreateUser,
   openResetPwd,
   openSyncTimetables,
+  removeRegistrationBlock,
   resetPwdError,
   resetPwdLoading,
   resetPwdModal,
@@ -961,7 +1014,9 @@ const {
   syncTargetUser,
   syncTimetables,
   syncTimetablesLoading,
-  toggleBan,
+  unblockEmail,
+  unblockLoading,
+  unblockMessage,
   userSearch,
   users,
   usersError,

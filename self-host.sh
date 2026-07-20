@@ -133,6 +133,36 @@ ensure_env() {
   fi
 }
 
+ensure_account_block_key() {
+  local configured first_key generated temp
+  configured="$(env_value ACCOUNT_BLOCK_HMAC_KEYS "")"
+  first_key="${configured%%,*}"
+  if [ -n "$configured" ]; then
+    [ "${#first_key}" -ge 32 ] ||
+      die "ACCOUNT_BLOCK_HMAC_KEYS entries must contain at least 32 characters"
+    return
+  fi
+
+  need openssl
+  generated="$(openssl rand -hex 32)"
+  temp="$(mktemp "$ROOT_DIR/.env.account-key.XXXXXX")"
+  awk -v generated="$generated" '
+    BEGIN { updated = 0 }
+    /^ACCOUNT_BLOCK_HMAC_KEYS=/ {
+      print "ACCOUNT_BLOCK_HMAC_KEYS=" generated
+      updated = 1
+      next
+    }
+    { print }
+    END {
+      if (!updated) print "ACCOUNT_BLOCK_HMAC_KEYS=" generated
+    }
+  ' "$ENV_FILE" > "$temp"
+  chmod 600 "$temp"
+  mv "$temp" "$ENV_FILE"
+  echo "Generated a private account-blocking key in $ENV_FILE"
+}
+
 require_release_tag() {
   local tag
   tag="$(env_value IMAGE_TAG "")"
@@ -201,6 +231,7 @@ init_installation() {
   need stat
 
   ensure_env
+  ensure_account_block_key
   require_release_tag
   compose config -q </dev/null
   compose pull </dev/null
@@ -498,7 +529,9 @@ check_installation() {
 create_backup() {
   need docker
   need tar
+  need openssl
   [ -f "$ENV_FILE" ] || die ".env does not exist"
+  ensure_account_block_key
 
   require_release_tag
   local data_dir parent base stamp archive

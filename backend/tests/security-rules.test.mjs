@@ -200,12 +200,45 @@ test('legal acceptance records are versioned, private, immutable, and exported',
   assert.match(hook, /e\.record\.set\('user', auth\.id\)/)
   assert.match(login, /minimumAge/)
   assert.match(login, /legalNoticeVersion/)
-  assert.match(accountData, /collection\('legal_acceptances'\)/)
+  assert.match(accountData, /authorization\.data/)
+  assert.match(await source('backend/pb_hooks/data_export.pb.js'), /legal_acceptances/)
   assert.match(dataExport, /legal_acceptances/)
 
   for (const sourceText of [migration, hook, login, dataExport]) {
     assert.doesNotMatch(sourceText, /date_of_birth|birth_date|birthday/i)
   }
+})
+
+test('restricted accounts have server-enforced export and deletion boundaries', async () => {
+  const [migration, restrictions, admin, exportHook, invite, router, restrictedView] = await Promise.all([
+    source('backend/pb_migrations/1784600000_add_restricted_account_access.js'),
+    source('backend/pb_hooks/account_restrictions.pb.js'),
+    source('backend/pb_hooks/admin.pb.js'),
+    source('backend/pb_hooks/data_export.pb.js'),
+    source('backend/pb_hooks/invite_hook.pb.js'),
+    source('frontend/src/router/index.js'),
+    source('frontend/src/views/RestrictedAccountView.vue'),
+  ])
+
+  assert.match(migration, /restricted_login_allowed/)
+  assert.match(migration, /blocked_registration_retention_days/)
+  assert.match(migration, /blocked_registration_identifiers/)
+  assert.match(migration, /users\.deleteRule = null/)
+  assert.match(migration, /@request\.auth\.is_banned != true && id = @request\.auth\.id/)
+  assert.match(restrictions, /\$security\.hs256/)
+  assert.match(restrictions, /ACCOUNT_BLOCK_HMAC_KEYS/)
+  assert.match(restrictions, /auth\.validatePassword\(password\)/)
+  assert.match(restrictions, /\/api\/account\/delete/)
+  assert.match(restrictions, /\/api\/admin\/registration-block\/remove/)
+  assert.match(admin, /restricted_login_allowed/)
+  assert.match(exportHook, /data: data/)
+  assert.match(exportHook, /restricted_login_allowed/)
+  assert.match(invite, /blocked_registration_identifiers/)
+  assert.ok(invite.indexOf('blocked_registration_identifiers') < invite.indexOf("invite.set('uses'"))
+  assert.match(router, /RestrictedAccount/)
+  assert.match(restrictedView, /导出我的数据/)
+  assert.match(restrictedView, /假名化指纹/)
+  assert.doesNotMatch(restrictions, /passwordHash|tokenKey/)
 })
 
 test('data export authorization is private, authenticated, and atomically rate limited', async () => {

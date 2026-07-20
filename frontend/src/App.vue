@@ -1,9 +1,9 @@
 <template>
   <div id="layout">
-    <LegalAcceptanceGate v-if="authStore.isLoggedIn" />
+    <LegalAcceptanceGate v-if="normalSession" />
 
     <!-- ── Sidebar (desktop) ──────────────────────────────────────────── -->
-    <aside v-if="authStore.isLoggedIn" class="sidebar">
+    <aside v-if="normalSession" class="sidebar">
       <div class="sidebar-top">
         <div class="sidebar-brand">
           <span class="brand-x">{{ compactInstanceName }}</span>
@@ -18,10 +18,10 @@
     </aside>
 
     <!-- ── Main wrap ─────────────────────────────────────────────────── -->
-    <div class="main-wrap" :class="{ 'has-sidebar': authStore.isLoggedIn }">
+    <div class="main-wrap" :class="{ 'has-sidebar': normalSession }">
 
       <!-- Mobile header: only visible on small screens -->
-      <header v-if="authStore.isLoggedIn" class="mobile-hd">
+      <header v-if="normalSession" class="mobile-hd">
         <span class="mobile-brand">{{ compactInstanceName }}</span>
         <nav class="mobile-nav">
           <router-link to="/">课表</router-link>
@@ -32,17 +32,17 @@
       </header>
 
       <!-- Site notice banner -->
-      <div v-if="siteNotice && !noticeDismissed" class="notice-banner">
+      <div v-if="normalSession && siteNotice && !noticeDismissed" class="notice-banner">
         <span>{{ siteNotice }}</span>
         <button class="notice-close" @click="noticeDismissed = true">×</button>
       </div>
 
       <!-- iCal security alert banner (global, all pages) -->
-      <div v-if="icalRevoked" class="ical-security-banner ical-security-revoked">
+      <div v-if="normalSession && icalRevoked" class="ical-security-banner ical-security-revoked">
         <span>🔴 <strong>iCal 订阅链接已被自动吊销</strong>，日历已停止同步。请立即重置以恢复订阅。</span>
         <router-link to="/settings" class="ical-security-link">前往设置重置</router-link>
       </div>
-      <div v-else-if="icalSuspicious && !icalAlertDismissed" class="ical-security-banner">
+      <div v-else-if="normalSession && icalSuspicious && !icalAlertDismissed" class="ical-security-banner">
         <span>⚠️ <strong>安全提醒：</strong>iCal 订阅链接疑似被多方访问，若不及时重置将被自动吊销。</span>
         <div class="ical-security-right">
           <router-link to="/settings" class="ical-security-link">前往重置</router-link>
@@ -51,7 +51,7 @@
       </div>
 
       <!-- Changelog banner -->
-      <div v-if="changelogEntry && !changelogDismissed" class="changelog-banner">
+      <div v-if="normalSession && changelogEntry && !changelogDismissed" class="changelog-banner">
         <span>
           <strong>{{ changelogEntry.version }}</strong> 已发布 &nbsp;·&nbsp; {{ changelogEntry.title }}
         </span>
@@ -69,7 +69,7 @@
         </router-view>
       </main>
 
-      <footer v-if="authStore.isLoggedIn" class="site-footer">
+      <footer v-if="normalSession" class="site-footer">
         <div class="foot-identity">
           <span class="foot-copy">
             {{ instanceConfig.instance_name }}
@@ -123,9 +123,10 @@ const icalAlertDismissed = ref(false)
 const compactInstanceName = computed(
   () => getCompactInstanceName(instanceConfig.instance_name),
 )
+const normalSession = computed(() => authStore.isLoggedIn && !authStore.isRestricted)
 
 async function fetchIcalStatus() {
-  if (!authStore.isLoggedIn) return
+  if (!normalSession.value) return
   try {
     const records = await pb.collection('ical_tokens').getFullList({ requestKey: null })
     if (records.length > 0) {
@@ -194,7 +195,7 @@ function dismissChangelog() {
 
 onMounted(() => {
   loadInstanceConfig()
-  if (authStore.isLoggedIn) {
+  if (normalSession.value) {
     fetchNotice()
     fetchChangelog()
     validateSession()
@@ -202,7 +203,7 @@ onMounted(() => {
   }
 })
 
-watch(() => authStore.isLoggedIn, (v) => {
+watch(normalSession, (v) => {
   if (v) { fetchNotice(); fetchChangelog(); fetchIcalStatus() }
 })
 
@@ -211,11 +212,11 @@ watch(() => authStore.isLoggedIn, (v) => {
 watch(() => route.name, (name, oldName) => {
   if (name === 'Changelog') {
     dismissChangelog()
-  } else if (authStore.isLoggedIn && !changelogDismissed.value) {
+  } else if (normalSession.value && !changelogDismissed.value) {
     fetchChangelog()
   }
   // Re-check ical status when leaving settings (user may have reset token)
-  if (oldName === 'Settings' && authStore.isLoggedIn) {
+  if (oldName === 'Settings' && normalSession.value) {
     icalAlertDismissed.value = false
     fetchIcalStatus()
   }

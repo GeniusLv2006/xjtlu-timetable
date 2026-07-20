@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 
-export const DATA_EXPORT_FORMAT_VERSION = 3
+export const DATA_EXPORT_FORMAT_VERSION = 4
 
 const fields = {
   account: [
@@ -12,6 +12,7 @@ const fields = {
     'verified',
     'emailVisibility',
     'is_banned',
+    'restricted_login_allowed',
     'must_change_pwd',
     'can_invite',
     'invite_quota',
@@ -174,6 +175,8 @@ This document is provided in good faith as an informational snapshot generated w
 
 The archive is intended to help you inspect and reuse account-related information held in the application's user-facing database. It is not necessarily a complete response to a formal UK GDPR Article 15 subject access request. Reverse-proxy logs, PocketBase operational logs, backups, third-party service records, correspondence and information held outside the application database may not be included. Use the privacy contact above if you require a formal access request or information about those systems.
 
+If an account is suspended when it is deleted, the service may retain a keyed, pseudonymous digest of the normalized email address for up to ${Number(instance.blocked_registration_retention_days) || 0} days to prevent evasion of the suspension through immediate re-registration. The digest is not included in this archive because it is created only when the account is deleted. It is not anonymous data and is not retained on the basis of consent. Consult the instance privacy notice or contact the operator to object or request a review where applicable.
+
 ## Files and processing purposes
 
 - \`account.json\`: account identification, authentication state and administration settings used to provide and protect the account.
@@ -252,6 +255,8 @@ export function buildDataExportFiles(
       privacy_contact: instance.operator_contact_email || null,
       privacy_notice_url: instance.legal_notice_url || null,
       privacy_notice_version: instance.legal_notice_version || null,
+      blocked_registration_retention_days:
+        Number(instance.blocked_registration_retention_days) || 0,
     },
     files: manifestEntries,
   }

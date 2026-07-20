@@ -15,10 +15,11 @@ vi.mock('../stores/instanceConfig', () => ({
 
 import { useAccountData } from './useAccountData'
 
-function accountData() {
+function accountData(store = {}) {
   return useAccountData({
     model: { id: 'user1', email: 'user@example.invalid' },
     logout: vi.fn(),
+    ...store,
   })
 }
 
@@ -73,5 +74,25 @@ describe('useAccountData export rate limit', () => {
 
     expect(api.exportError.value).toContain('本次申请已计入限额')
     expect(api.exportCanExport.value).toBe(false)
+  })
+
+  it('requires the current password and deletes through the dedicated endpoint', async () => {
+    const logout = vi.fn()
+    const api = accountData({ logout })
+
+    await api.deleteAccount()
+    expect(api.deleteError.value).toContain('请输入当前密码')
+    expect(send).not.toHaveBeenCalledWith('/api/account/delete', expect.anything())
+
+    send.mockResolvedValueOnce({ deleted: true })
+    api.deletePassword.value = 'current-password'
+    await api.deleteAccount()
+
+    expect(send).toHaveBeenCalledWith('/api/account/delete', {
+      method: 'POST',
+      body: { password: 'current-password' },
+      requestKey: null,
+    })
+    expect(logout).toHaveBeenCalledOnce()
   })
 })

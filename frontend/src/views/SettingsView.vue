@@ -251,12 +251,25 @@
             <strong>此操作不可撤回。</strong>
             你的账号、所有课表、课程、好友关系及 iCal 令牌将被永久删除。
           </p>
+          <p class="section-desc">
+            安全日志和备份可能按隐私政策所述期限继续保留。若账号在删除时处于封禁状态，系统还会保存假名化邮箱指纹，以防止规避封禁后重新注册。
+          </p>
+          <div class="field-group">
+            <label class="field-label">输入当前密码以确认</label>
+            <input
+              v-model="deletePassword"
+              type="password"
+              class="field-input"
+              autocomplete="current-password"
+              @keydown.enter="deleteAccount"
+            />
+          </div>
           <p v-if="deleteError" class="msg-error">{{ deleteError }}</p>
           <div class="delete-btns">
-            <button class="btn btn-danger" :disabled="deleting" @click="deleteAccount">
+            <button class="btn btn-danger" :disabled="deleting || !deletePassword" @click="deleteAccount">
               {{ deleting ? '删除中…' : '确认永久注销' }}
             </button>
-            <button class="btn btn-secondary" :disabled="deleting" @click="showDeleteConfirm = false">
+            <button class="btn btn-secondary" :disabled="deleting" @click="showDeleteConfirm = false; deletePassword = ''">
               取消
             </button>
           </div>
@@ -348,6 +361,7 @@ const {
 const {
   deleteAccount,
   deleteError,
+  deletePassword,
   deleting,
   exportCanExport,
   exportData,

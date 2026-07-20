@@ -3,6 +3,13 @@ cronAdd('cleanup-logs', '0 2 * * *', function() {
   var cutoff = "datetime('now', '-30 days')"
   try {
     $app.db()
+      .newQuery("DELETE FROM blocked_registration_identifiers WHERE datetime(expires_at) <= datetime('now')")
+      .execute()
+  } catch (e) {
+    console.error('[cleanup] blocked_registration_identifiers:', e)
+  }
+  try {
+    $app.db()
       .newQuery("DELETE FROM ical_access_logs WHERE created < " + cutoff)
       .execute()
   } catch (e) {

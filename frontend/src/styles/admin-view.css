@@ -278,6 +278,29 @@
 }
 .status-badge.active { background: var(--green-bg); color: var(--green); }
 .status-badge.banned { background: var(--red-bg);   color: var(--red);   }
+.status-badge.restricted { background: var(--amber-bg); color: var(--amber); }
+
+.config-inline-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+}
+
+.ban-choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-3);
+  align-items: start;
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ban-choice.selected { border-color: var(--text-3); background: var(--surface-2); }
+.ban-choice input { margin-top: 3px; }
+.ban-choice span { display: grid; gap: 3px; }
+.ban-choice small { color: var(--text-3); line-height: 1.5; }
 
 /* ── Name inline edit ────────────────────────────────────────────────────── */
 .name-cell {
