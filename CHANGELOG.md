@@ -6,6 +6,8 @@ All notable project releases are documented here.
 
 Release notes are finalized in a `release/vX.Y.Z` pull request.
 
+## [0.3.0] - 2026-07-20
+
 ### Added
 
 - Added administrator-controlled restricted login for suspended accounts, exposing only self-service data export, password-confirmed account deletion, and sign-out.

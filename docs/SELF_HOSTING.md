@@ -22,7 +22,7 @@ Download the self-host bundle attached to the selected GitHub Release and
 verify its checksum:
 
 ```bash
-release=v0.2.1
+release=v0.3.0
 curl -fLO \
   "https://github.com/GeniusLv2006/xjtlu-timetable/releases/download/${release}/xjtlu-timetable-self-host-${release}.tar.gz"
 curl -fLO \
@@ -59,7 +59,7 @@ The safe default is closed registration with invitation checks enabled.
 
 ```dotenv
 IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable
-IMAGE_TAG=v0.2.1
+IMAGE_TAG=v0.3.0
 BIND_ADDRESS=127.0.0.1
 HOST_PORT=8091
 DATA_DIR=./data
