@@ -58,18 +58,34 @@ Backups and rollback metadata are stored in
 
 ## Verify
 
+Treat a successful `deploy.sh` run as the evidence for the backup, Compose
+validation, exact image pull, internal health check, runtime uid/gid, SQLite
+integrity, reverse-proxy hardening, and privacy contract check. Do not repeat
+those checks unless the deployment reported an ambiguity or production state
+changed afterwards.
+
+Every application deployment has one small core acceptance check:
+
 ```bash
 docker inspect xjtlu-timetable \
-  --format 'image={{.Config.Image}} user={{.Config.User}} health={{.State.Health.Status}}'
-docker exec xjtlu-timetable \
-  wget -q -O /dev/null http://127.0.0.1:8080/api/health
+  --format 'image={{.Config.Image}} user={{.Config.User}} health={{.State.Health.Status}} readOnly={{.HostConfig.ReadonlyRootfs}}'
 curl --fail --silent --show-error \
   https://timetable.xjtlu.uk/api/health
-sqlite3 backend/pb_data/data.db 'PRAGMA integrity_check;'
 ```
 
-Also verify the login flow, timetable display, and an existing iCal
-subscription without exposing credentials or subscription tokens in logs.
+Add exactly the affected acceptance profiles:
+
+| Profile | Run when | Additional live check |
+| --- | --- | --- |
+| Authentication | Login, token refresh, legal gate, or account status changed | One normal login/refresh and the changed status transition |
+| Timetable | Timetable, course, friendship, or import behavior changed | One existing or disposable timetable workflow |
+| iCal | Token, feed, event, or iCal security behavior changed | One existing subscription without printing its token |
+| Privacy/legal | Notice content, route, acknowledgement, retention, or legal configuration changed | The private privacy validator and one acknowledgement-state check |
+| Account deletion | Deletion, export, suspension, or registration blocking changed | One disposable account covering only the changed boundary, followed by cleanup |
+
+Do not run unrelated profiles. A required profile that cannot be completed is
+reported as `Not verified`; theoretical checks outside the selected profiles do
+not need that label.
 
 ## Manual rollback
 
