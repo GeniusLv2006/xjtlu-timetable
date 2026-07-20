@@ -1,9 +1,9 @@
-// Block banned users from logging in + record login log on success.
+// Block fully suspended users from logging in + record login log on success.
 // v0.23+: Before/After hooks merged into single hook with e.next().
 
 onRecordAuthWithPasswordRequest(function(e) {
   var record = e.record
-  if (record && record.getBool('is_banned')) {
+  if (record && record.getBool('is_banned') && !record.getBool('restricted_login_allowed')) {
     throw new BadRequestError('Account suspended. Please contact the administrator')
   }
 
@@ -52,9 +52,10 @@ onRecordAuthWithPasswordRequest(function(e) {
   } catch (_) {}
 }, 'users')
 
-// Block banned users from refreshing their token.
+// Restricted accounts may refresh their token only while the administrator
+// continues to allow restricted access.
 onRecordAuthRefreshRequest(function(e) {
-  if (e.record && e.record.getBool('is_banned')) {
+  if (e.record && e.record.getBool('is_banned') && !e.record.getBool('restricted_login_allowed')) {
     throw new BadRequestError('Account suspended. Please contact the administrator')
   }
   e.next()

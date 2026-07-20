@@ -29,6 +29,7 @@ test('Compose removes unnecessary runtime privileges', async () => {
   assert.match(compose, /\$\{IMAGE_TAG:\?set IMAGE_TAG/)
   assert.match(compose, /\$\{BIND_ADDRESS:-127\.0\.0\.1}/)
   assert.match(compose, /\$\{DATA_DIR:-\.\/data}/)
+  assert.match(compose, /ACCOUNT_BLOCK_HMAC_KEYS: \$\{ACCOUNT_BLOCK_HMAC_KEYS:\?set/)
   assert.doesNotMatch(compose, /container_name:/)
   assert.doesNotMatch(compose, /IMAGE_TAG:-latest/)
 })

@@ -59,11 +59,13 @@ jobs:
         run: |
           IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable \
           IMAGE_TAG=${{ github.sha }} \
+          ACCOUNT_BLOCK_HMAC_KEYS=ci-account-block-key-0000000000000000 \
             docker compose config -q
           IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable \
           IMAGE_TAG=${{ github.sha }} \
           BIND_ADDRESS=172.17.0.1 \
           DATA_DIR=./backend/pb_data \
+          ACCOUNT_BLOCK_HMAC_KEYS=ci-account-block-key-0000000000000000 \
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.official.yml \
@@ -85,6 +87,7 @@ jobs:
           test "$(docker image inspect xjtlu-timetable:ci --format '{{.Config.User}}')" = "10001:10001"
           docker run --detach \
             --name xjtlu-timetable-ci \
+            --env ACCOUNT_BLOCK_HMAC_KEYS=ci-account-block-current-000000000000,ci-account-block-previous-0000000000 \
             --publish 127.0.0.1:18090:8080 \
             --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
@@ -126,6 +129,7 @@ jobs:
           PB_INTEGRATION_URL=http://127.0.0.1:18090 \
           PB_SUPERUSER_EMAIL=ci-rules@example.invalid \
           PB_SUPERUSER_PASSWORD=ci-rules-password \
+          PB_ACCOUNT_BLOCK_KEYS=ci-account-block-current-000000000000,ci-account-block-previous-0000000000 \
             node --test backend/tests/access-rules.integration.test.mjs
 
       - name: Test guided initialization and repeat execution
@@ -256,6 +260,7 @@ jobs:
 
           docker run --detach \
             --name xjtlu-timetable-upgraded \
+            --env ACCOUNT_BLOCK_HMAC_KEYS=ci-account-block-current-000000000000,ci-account-block-previous-0000000000 \
             --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
             --cap-drop ALL \

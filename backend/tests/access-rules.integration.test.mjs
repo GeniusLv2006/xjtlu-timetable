@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 import test from 'node:test'
 
 const baseUrl = process.env.PB_INTEGRATION_URL?.replace(/\/$/, '')
 const superuserEmail = process.env.PB_SUPERUSER_EMAIL
 const superuserPassword = process.env.PB_SUPERUSER_PASSWORD
 const enabled = Boolean(baseUrl && superuserEmail && superuserPassword)
+const accountBlockKeys = (process.env.PB_ACCOUNT_BLOCK_KEYS || '')
+  .split(',')
+  .map(value => value.trim())
+  .filter(Boolean)
 
 if (enabled) {
   const hostname = new URL(baseUrl).hostname
@@ -258,6 +262,241 @@ test('runtime access rules enforce timetable and friendship boundaries', {
     expected: [403],
     method: 'POST',
     token: owner.token,
+  })
+
+  await request('/api/collections/users/auth-with-password', {
+    body: { identity: owner.email, password },
+    expected: [400],
+    method: 'POST',
+  })
+  await request(`/api/collections/users/records/${owner.id}`, {
+    body: { restricted_login_allowed: true },
+    method: 'PATCH',
+    token: adminToken,
+  })
+  const restrictedToken = await authenticate('users', owner.email, password)
+  await request(timetablePath, {
+    expected: [400, 403, 404],
+    token: restrictedToken,
+  })
+  await request(`/api/collections/users/records/${owner.id}`, {
+    body: { name: 'restricted-user-cannot-update' },
+    expected: [400, 403, 404],
+    method: 'PATCH',
+    token: restrictedToken,
+  })
+  const restrictedStatus = await request('/api/user-data-export/status', {
+    token: restrictedToken,
+  })
+  assert.equal(restrictedStatus.can_export, false)
+
+  await request(`/api/collections/data_export_requests/records/${ownerExportRequests.items[0].id}`, {
+    body: {
+      requested_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+    },
+    method: 'PATCH',
+    token: adminToken,
+  })
+  const restrictedExport = await request('/api/user-data-export/authorize', {
+    method: 'POST',
+    token: restrictedToken,
+  })
+  assert.equal(restrictedExport.data.user.id, owner.id)
+  assert.equal(restrictedExport.data.user.email, owner.email)
+  assert.equal(restrictedExport.data.user.restricted_login_allowed, true)
+  assert.ok(restrictedExport.data.timetables.some(item => item.id === timetable.id))
+  assert.ok(restrictedExport.data.courses.some(item => item.id === course.id))
+  assert.equal(restrictedExport.data.user.passwordHash, undefined)
+  assert.equal(restrictedExport.data.user.tokenKey, undefined)
+
+  await request('/api/account/delete', {
+    body: { password: 'incorrect-password' },
+    expected: [400],
+    method: 'POST',
+    token: restrictedToken,
+  })
+  await request('/api/account/delete', {
+    body: { password },
+    method: 'POST',
+    token: restrictedToken,
+  })
+  await request(`/api/collections/users/records/${owner.id}`, {
+    expected: [404],
+    token: adminToken,
+  })
+  let blockedRecords = await request(
+    '/api/collections/blocked_registration_identifiers/records?perPage=20',
+    { token: adminToken },
+  )
+  assert.equal(blockedRecords.totalItems, 1)
+  assert.equal(blockedRecords.items[0].algorithm, 'hmac-sha256-v1')
+  assert.notEqual(blockedRecords.items[0].identifier_hash, owner.email)
+  assert.equal(JSON.stringify(blockedRecords.items).includes(owner.email), false)
+
+  await request('/api/collections/users/records', {
+    body: {
+      email: owner.email,
+      emailVisibility: false,
+      name: 'blocked-recreation',
+      password,
+      passwordConfirm: password,
+    },
+    expected: [400],
+    method: 'POST',
+    token: adminToken,
+  })
+  const unblockResult = await request('/api/admin/registration-block/remove', {
+    body: { email: owner.email },
+    method: 'POST',
+    token: adminToken,
+  })
+  assert.equal(unblockResult.removed, true)
+  const recreatedOwner = await request('/api/collections/users/records', {
+    body: {
+      email: owner.email,
+      emailVisibility: false,
+      name: 'released-recreation',
+      password,
+      passwordConfirm: password,
+    },
+    method: 'POST',
+    token: adminToken,
+  })
+  await request(`/api/collections/users/records/${recreatedOwner.id}`, {
+    expected: [204],
+    method: 'DELETE',
+    token: adminToken,
+  })
+  blockedRecords = await request(
+    '/api/collections/blocked_registration_identifiers/records?perPage=20',
+    { token: adminToken },
+  )
+  assert.equal(blockedRecords.totalItems, 0)
+
+  const adminDeleted = await createUser('admin-deleted-banned')
+  await request(`/api/collections/users/records/${adminDeleted.id}`, {
+    body: { is_banned: true, restricted_login_allowed: false },
+    method: 'PATCH',
+    token: adminToken,
+  })
+  await request(`/api/collections/users/records/${adminDeleted.id}`, {
+    expected: [204],
+    method: 'DELETE',
+    token: adminToken,
+  })
+  blockedRecords = await request(
+    '/api/collections/blocked_registration_identifiers/records?perPage=20',
+    { token: adminToken },
+  )
+  assert.equal(blockedRecords.totalItems, 1)
+  await request(`/api/collections/site_config/records/${configList.items[0].id}`, {
+    body: { blocked_registration_retention_days: 30 },
+    method: 'PATCH',
+    token: adminToken,
+  })
+  blockedRecords = await request(
+    '/api/collections/blocked_registration_identifiers/records?perPage=20',
+    { token: adminToken },
+  )
+  const shortenedCreated = new Date(blockedRecords.items[0].created).getTime()
+  const shortenedExpiry = new Date(blockedRecords.items[0].expires_at).getTime()
+  assert.ok(shortenedExpiry - shortenedCreated <= 30 * 24 * 60 * 60 * 1000 + 1000)
+  const adminUnblock = await request('/api/admin/registration-block/remove', {
+    body: { email: adminDeleted.email },
+    method: 'POST',
+    token: adminToken,
+  })
+  assert.equal(adminUnblock.removed, true)
+
+  if (accountBlockKeys.length >= 2) {
+    const rotatedEmail = `rotated-${suffix}@example.invalid`
+    const previousDigest = createHmac('sha256', accountBlockKeys[1])
+      .update(rotatedEmail)
+      .digest('hex')
+    await request('/api/collections/blocked_registration_identifiers/records', {
+      body: {
+        algorithm: 'hmac-sha256-v1',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        identifier_hash: previousDigest,
+      },
+      method: 'POST',
+      token: adminToken,
+    })
+    await request('/api/collections/users/records', {
+      body: {
+        email: rotatedEmail,
+        password,
+        passwordConfirm: password,
+      },
+      expected: [400],
+      method: 'POST',
+      token: adminToken,
+    })
+    const rotatedUnblock = await request('/api/admin/registration-block/remove', {
+      body: { email: rotatedEmail },
+      method: 'POST',
+      token: adminToken,
+    })
+    assert.equal(rotatedUnblock.removed, true)
+  }
+
+  const activeKey = accountBlockKeys[0]
+  if (activeKey) {
+    const expiredEmail = `expired-${suffix}@example.invalid`
+    const expiredDigest = createHmac('sha256', activeKey).update(expiredEmail).digest('hex')
+    const expiredRecord = await request('/api/collections/blocked_registration_identifiers/records', {
+      body: {
+        algorithm: 'hmac-sha256-v1',
+        expires_at: new Date(Date.now() - 60 * 1000).toISOString(),
+        identifier_hash: expiredDigest,
+      },
+      method: 'POST',
+      token: adminToken,
+    })
+    const expiredRecreated = await request('/api/collections/users/records', {
+      body: {
+        email: expiredEmail,
+        password,
+        passwordConfirm: password,
+      },
+      method: 'POST',
+      token: adminToken,
+    })
+    await request(`/api/collections/users/records/${expiredRecreated.id}`, {
+      expected: [204],
+      method: 'DELETE',
+      token: adminToken,
+    })
+    await request(`/api/collections/blocked_registration_identifiers/records/${expiredRecord.id}`, {
+      expected: [204],
+      method: 'DELETE',
+      token: adminToken,
+    })
+  }
+
+  await request('/api/collections/blocked_registration_identifiers/records', {
+    body: {
+      algorithm: 'hmac-sha256-v1',
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      identifier_hash: 'retention-disable-fixture',
+    },
+    method: 'POST',
+    token: adminToken,
+  })
+  await request(`/api/collections/site_config/records/${configList.items[0].id}`, {
+    body: { blocked_registration_retention_days: 0 },
+    method: 'PATCH',
+    token: adminToken,
+  })
+  blockedRecords = await request(
+    '/api/collections/blocked_registration_identifiers/records?perPage=20',
+    { token: adminToken },
+  )
+  assert.equal(blockedRecords.totalItems, 0)
+  await request(`/api/collections/site_config/records/${configList.items[0].id}`, {
+    body: { blocked_registration_retention_days: 365 },
+    method: 'PATCH',
+    token: adminToken,
   })
 
   await request('/api/collections/semesters/records?perPage=1')

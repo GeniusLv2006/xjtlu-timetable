@@ -6,6 +6,21 @@ All notable project releases are documented here.
 
 Release notes are finalized in a `release/vX.Y.Z` pull request.
 
+### Added
+
+- Added administrator-controlled restricted login for suspended accounts, exposing only self-service data export, password-confirmed account deletion, and sign-out.
+- Added time-limited, keyed email digests that prevent deleted suspended accounts from re-registering, with administrator review, expiry, removal, and HMAC key rotation controls.
+
+### Changed
+
+- Personal-data exports are now collected by a dedicated server endpoint so restricted accounts can receive the same complete archive without gaining collection access.
+- The generic legal notice, self-hosting guidance, and export processing information now describe suspended-account deletion, pseudonymous registration blocking, retention, and possible rights without representing the project as automatically compliant with the UK GDPR.
+
+### Security
+
+- Suspended sessions remain blocked from ordinary collections, profile updates, direct account deletion, access logs, timetables, friendships, invitations, and iCal management.
+- Self-service account deletion now requires the current password and follows the same registration-blocking policy as administrator deletion.
+
 ## [0.2.1] - 2026-07-18
 
 ### Added

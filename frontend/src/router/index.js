@@ -3,6 +3,11 @@ import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
+    path: '/restricted-account',
+    name: 'RestrictedAccount',
+    component: () => import('../views/RestrictedAccountView.vue'),
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/LoginView.vue'),
@@ -70,11 +75,18 @@ router.beforeEach((to) => {
   if (!to.meta.public && !authStore.isLoggedIn) {
     return { name: 'Login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : undefined }
   }
+  if (authStore.isRestricted && to.name !== 'RestrictedAccount' && !to.meta.public) {
+    return { name: 'RestrictedAccount' }
+  }
+  if (!authStore.isRestricted && to.name === 'RestrictedAccount') {
+    return { name: authStore.isLoggedIn ? 'Home' : 'Login' }
+  }
   // Force password change if admin set must_change_pwd
   if (
     authStore.isLoggedIn &&
     authStore.model?.must_change_pwd &&
-    to.name !== 'ChangePassword'
+    to.name !== 'ChangePassword' &&
+    !authStore.isRestricted
   ) {
     return { name: 'ChangePassword' }
   }

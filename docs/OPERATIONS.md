@@ -10,6 +10,13 @@ Production must run an exact reviewed commit image from `main`. Do not deploy
 Docker Compose is the only supported production runtime; the former root
 systemd unit has been removed.
 
+`ACCOUNT_BLOCK_HMAC_KEYS` must be present in the private production `.env`
+before deploying a revision that includes deleted-suspended-account blocking.
+Generate at least 32 random bytes, never print the populated value in command
+output, and retain prior comma-separated keys through their identifier expiry
+window when rotating. A missing key makes Compose validation fail before the
+runtime is changed.
+
 ## Prerequisites
 
 - Docker 24 or newer with Docker Compose v2

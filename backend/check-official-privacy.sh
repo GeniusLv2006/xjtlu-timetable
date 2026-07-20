@@ -16,6 +16,7 @@ curl -fsS \
 
 grep -Fq '<title>Terms of Use and Privacy Notice | timetable.xjtlu.uk</title>' \
   "$WORK_DIR/privacy.html"
+grep -Fq 'Version 1.3' "$WORK_DIR/privacy.html"
 grep -Eiq "^content-security-policy: .*script-src 'self'" "$WORK_DIR/headers"
 
 if grep -Eiq '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}' \
@@ -34,10 +35,11 @@ curl -fsS \
   --retry 2 \
   --connect-timeout 10 \
   --max-time 30 \
-  "$BASE_URL/api/collections/site_config/records?perPage=1&fields=legal_notice_url" \
+  "$BASE_URL/api/collections/site_config/records?perPage=1&fields=legal_notice_url,legal_notice_version" \
   > "$WORK_DIR/site-config.json"
 grep -Fq '"legal_notice_url":"https://timetable.xjtlu.uk/privacy"' \
   "$WORK_DIR/site-config.json"
+grep -Fq '"legal_notice_version":"1.3"' "$WORK_DIR/site-config.json"
 
 curl -fsS \
   --retry 2 \

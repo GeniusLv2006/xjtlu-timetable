@@ -45,6 +45,7 @@ jobs:
           bash -n self-host.sh deploy.sh backend/*.sh
           IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable \
           IMAGE_TAG=${{ github.ref_name }} \
+          ACCOUNT_BLOCK_HMAC_KEYS=release-account-block-key-000000000000 \
             docker compose config -q
 
       - name: Run frontend tests, build, and audit
@@ -116,6 +117,7 @@ jobs:
           trap cleanup EXIT
           docker run --detach \
             --name xjtlu-timetable-release-smoke \
+            --env ACCOUNT_BLOCK_HMAC_KEYS=release-account-block-key-000000000000 \
             --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
             --cap-drop ALL \

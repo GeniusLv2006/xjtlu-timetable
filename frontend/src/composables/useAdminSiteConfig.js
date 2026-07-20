@@ -13,6 +13,7 @@ export function useAdminSiteConfig(semesters) {
     legal_notice_url: '',
     legal_notice_version: '',
     minimum_age: 0,
+    blocked_registration_retention_days: 365,
     registration_open: false,
     require_invite: true,
     allowed_email_suffixes: '',
@@ -56,6 +57,10 @@ export function useAdminSiteConfig(semesters) {
           legal_notice_url:              cfg.legal_notice_url || '',
           legal_notice_version:          cfg.legal_notice_version || '',
           minimum_age:                   nonNegativeInt(cfg.minimum_age, 0),
+          blocked_registration_retention_days: nonNegativeInt(
+            cfg.blocked_registration_retention_days,
+            siteConfigDefaults.blocked_registration_retention_days,
+          ),
           registration_open:              cfg.registration_open,
           require_invite:                 cfg.require_invite,
           allowed_email_suffixes:         cfg.allowed_email_suffixes || '',
@@ -127,6 +132,11 @@ export function useAdminSiteConfig(semesters) {
       if (!sourceUrl) throw new Error('源代码地址必须是有效的 HTTP 或 HTTPS URL')
       if (rawLegalUrl && !legalUrl) throw new Error('外部法律说明地址必须是有效的 HTTP 或 HTTPS URL')
       if (minimumAge > 120) throw new Error('最低年龄必须在 0 到 120 之间')
+      const retentionDays = nonNegativeInt(
+        siteConfig.blocked_registration_retention_days,
+        siteConfigDefaults.blocked_registration_retention_days,
+      )
+      if (retentionDays > 3650) throw new Error('注册限制留存期限必须在 0 到 3650 天之间')
       const payload = {
         instance_name:                 siteConfig.instance_name.trim() || siteConfigDefaults.instance_name,
         operator_name:                 siteConfig.operator_name.trim(),
@@ -135,6 +145,7 @@ export function useAdminSiteConfig(semesters) {
         legal_notice_url:              legalUrl,
         legal_notice_version:          legalNoticeVersion,
         minimum_age:                   minimumAge,
+        blocked_registration_retention_days: retentionDays,
         registration_open:              siteConfig.registration_open,
         require_invite:                 siteConfig.require_invite,
         allowed_email_suffixes:         siteConfig.allowed_email_suffixes,

@@ -65,6 +65,7 @@ HOST_PORT=8091
 DATA_DIR=./data
 COMPOSE_PROJECT_NAME=xjtlu-timetable
 ICAL_UID_DOMAIN=xjtlu-timetable.invalid
+ACCOUNT_BLOCK_HMAC_KEYS=<private-random-value>
 ```
 
 - Keep an exact SemVer `IMAGE_TAG`. `latest` is not published or supported.
@@ -73,6 +74,33 @@ ICAL_UID_DOMAIN=xjtlu-timetable.invalid
   keep it stable. Changing it later changes calendar event identifiers.
 - Never commit `.env` or `DATA_DIR`.
 - Do not use `docker compose build` on a deployment host.
+
+### Account-blocking key
+
+The application retains only a keyed, pseudonymous digest of the normalized
+email address when an account is deleted while suspended. This prevents an
+immediate re-registration without retaining the clear-text address in the
+blocking collection.
+
+The initializer generates this secret directly into the mode-`0600` `.env`
+file when it is empty. To generate or rotate it manually, use:
+
+```bash
+openssl rand -hex 32
+```
+
+Set the result as `ACCOUNT_BLOCK_HMAC_KEYS` in the private `.env` file. Never
+commit or log the populated value. For rotation, place the new key first and
+keep the previous key after a comma until every identifier created with it has
+expired. Losing an old key prevents the application from matching its existing
+identifiers; it does not reveal or recover the original email addresses.
+
+The retention period is configured in the administration UI and defaults to
+365 days. Setting it to `0` disables the feature and deletes existing blocking
+identifiers. Operators must describe their actual purpose, lawful-basis
+assessment, retention period, and review/contact route in their own privacy
+notice. The bundled notice is a generic template, not legal advice or a
+compliance certification.
 
 Instance name, operator contact, source URL, registration rules, iCal risk
 controls, notices, semesters, and invitations are managed at `/admin`.

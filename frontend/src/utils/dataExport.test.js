@@ -18,6 +18,7 @@ const instance = {
   operator_contact_email: 'privacy@example.invalid',
   legal_notice_url: 'https://example.invalid/privacy',
   legal_notice_version: '1.0',
+  blocked_registration_retention_days: 365,
 }
 
 function exportData() {
@@ -67,9 +68,10 @@ describe('user data export archive', () => {
     expect(JSON.parse(files['courses.json'])[0].identity).toBe('source-row')
 
     const manifest = JSON.parse(files['manifest.json'])
-    expect(manifest.export_format_version).toBe(3)
+    expect(manifest.export_format_version).toBe(4)
     expect(manifest.exported_at).toBe(exportedAt)
     expect(manifest.instance.name).toBe('Test Timetable')
+    expect(manifest.instance.blocked_registration_retention_days).toBe(365)
     expect(manifest.files.find(file => file.name === 'courses.json').record_count).toBe(1)
   })
 
@@ -85,6 +87,8 @@ describe('user data export archive', () => {
     expect(files['data-processing-information.md']).toContain('not legal advice')
     expect(files['data-processing-information.md']).toContain('data controller where applicable')
     expect(files['data-processing-information.md']).toContain('possible rights')
+    expect(files['data-processing-information.md']).toContain('keyed, pseudonymous digest')
+    expect(files['data-processing-information.md']).toContain('365 days')
     expect(files['data-processing-information.md']).toContain('This ZIP archive is not encrypted')
     expect(files['data-processing-information.md']).toContain('https://ico.org.uk/')
     expect(files['data-processing-information.md']).not.toContain('Instance operator / controller')

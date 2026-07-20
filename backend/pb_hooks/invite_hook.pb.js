@@ -12,6 +12,41 @@
 
 // ── 注册：验证邀请码 ───────────────────────────────────────────────────────
 onRecordCreateRequest(function(e) {
+  // Check deleted suspended-account identifiers before consuming an invite or
+  // performing any other registration side effect. Superuser-created accounts
+  // intentionally follow the same block and must be explicitly released first.
+  var registrationBody = e.requestInfo().body || {}
+  var registrationEmail = String(registrationBody['email'] || '').trim().toLowerCase()
+  var retentionDays = 365
+  try {
+    var retentionConfigs = $app.findRecordsByFilter('site_config', 'id != ""', 'created', 1, 0)
+    if (retentionConfigs.length) {
+      retentionDays = retentionConfigs[0].getInt('blocked_registration_retention_days')
+    }
+  } catch (_) {}
+  if (retentionDays > 0) {
+    var blockKeys = ($os.getenv('ACCOUNT_BLOCK_HMAC_KEYS') || '')
+      .split(',')
+      .map(function(value) { return value.trim() })
+      .filter(function(value) { return value.length >= 32 })
+    if (!blockKeys.length) {
+      throw new BadRequestError('Account protection is temporarily unavailable. Please contact the administrator')
+    }
+    for (var blockKey of blockKeys) {
+      var digest = $security.hs256(registrationEmail, blockKey)
+      var isBlocked = false
+      try {
+        $app.findFirstRecordByFilter(
+          'blocked_registration_identifiers',
+          'identifier_hash = {:digest} && expires_at > @now',
+          { digest: digest },
+        )
+        isBlocked = true
+      } catch (_) {}
+      if (isBlocked) throw new BadRequestError('无法使用此邮箱创建账号；如需复核，请联系实例运营者')
+    }
+  }
+
   // ── 全局注册配置检查 ──────────────────────────────────────────────────
   var configs
   try {
