@@ -143,10 +143,12 @@ test('the branding migration only renames the legacy default instance', async ()
 })
 
 test('production iCal links use the current instance origin', async () => {
-  const settings = await source('frontend/src/views/SettingsView.vue')
+  const subscription = await source(
+    'frontend/src/composables/useIcalSubscription.js',
+  )
 
-  assert.match(settings, /window\.location\.origin/)
-  assert.doesNotMatch(settings, /const PROD_BASE/)
+  assert.match(subscription, /window\.location\.origin/)
+  assert.doesNotMatch(subscription, /const PROD_BASE/)
 })
 
 test('generic iCal output uses a stable operator-configured UID domain', async () => {
@@ -173,11 +175,11 @@ test('generic iCal output uses a stable operator-configured UID domain', async (
 })
 
 test('legal acceptance records are versioned, private, immutable, and exported', async () => {
-  const [migration, hook, login, settings, dataExport] = await Promise.all([
+  const [migration, hook, login, accountData, dataExport] = await Promise.all([
     source('backend/pb_migrations/1784383552_add_legal_acceptances.js'),
     source('backend/pb_hooks/legal_acceptance.pb.js'),
     source('frontend/src/views/LoginView.vue'),
-    source('frontend/src/views/SettingsView.vue'),
+    source('frontend/src/composables/useAccountData.js'),
     source('frontend/src/utils/dataExport.js'),
   ])
 
@@ -198,7 +200,7 @@ test('legal acceptance records are versioned, private, immutable, and exported',
   assert.match(hook, /e\.record\.set\('user', auth\.id\)/)
   assert.match(login, /minimumAge/)
   assert.match(login, /legalNoticeVersion/)
-  assert.match(settings, /collection\('legal_acceptances'\)/)
+  assert.match(accountData, /collection\('legal_acceptances'\)/)
   assert.match(dataExport, /legal_acceptances/)
 
   for (const sourceText of [migration, hook, login, dataExport]) {
