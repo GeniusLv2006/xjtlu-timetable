@@ -229,8 +229,14 @@ test('data export authorization is private, authenticated, and atomically rate l
   assert.match(accountData, /\/api\/user-data-export\/authorize/)
   assert.match(dataExport, /data-export-request\.json/)
   assert.match(dataExport, /export_format_version: DATA_EXPORT_FORMAT_VERSION/)
+  assert.match(dataExport, /does not certify or guarantee full compliance/)
   assert.match(terms, /最近一次获准的数据导出申请时间/)
   assert.match(terms, /每 24 小时至多申请一次/)
+  assert.match(terms, /不表示或保证任何部署实例完全符合 UK GDPR/)
+  assert.match(terms, /注销不表示所有副本会在同一时刻从所有系统中消失/)
+  assert.doesNotMatch(terms, /不存在任何隐性数据采集行为/)
+  assert.doesNotMatch(terms, /立即、永久删除，不可恢复/)
+  assert.doesNotMatch(terms, /您的任何数据不会被出售/)
 })
 
 test('settings uses the configured external legal notice when present', async () => {

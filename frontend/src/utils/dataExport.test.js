@@ -80,9 +80,14 @@ describe('user data export archive', () => {
     expect(JSON.parse(files['legal-acceptances.json'])).toEqual([])
     expect(files['data-processing-information.md']).toContain('Test Operator')
     expect(files['data-processing-information.md']).toContain('UK GDPR Article 15')
+    expect(files['data-processing-information.md']).toContain('provided in good faith')
+    expect(files['data-processing-information.md']).toContain('does not certify or guarantee full compliance')
     expect(files['data-processing-information.md']).toContain('not legal advice')
+    expect(files['data-processing-information.md']).toContain('data controller where applicable')
+    expect(files['data-processing-information.md']).toContain('possible rights')
     expect(files['data-processing-information.md']).toContain('This ZIP archive is not encrypted')
     expect(files['data-processing-information.md']).toContain('https://ico.org.uk/')
+    expect(files['data-processing-information.md']).not.toContain('Instance operator / controller')
   })
 
   it('creates a readable ZIP containing independently parseable JSON files', async () => {
