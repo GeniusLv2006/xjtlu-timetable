@@ -51,9 +51,7 @@ jobs:
       - name: Validate shell scripts
         run: >-
           bash -n
-          backend/verify-rules.sh
           backend/harden-deployment.sh
-          backend/start.sh
           self-host.sh
           deploy.sh
 
@@ -87,6 +85,7 @@ jobs:
           test "$(docker image inspect xjtlu-timetable:ci --format '{{.Config.User}}')" = "10001:10001"
           docker run --detach \
             --name xjtlu-timetable-ci \
+            --publish 127.0.0.1:18090:8080 \
             --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
             --cap-drop ALL \
@@ -119,6 +118,15 @@ jobs:
           test "$(printf '%s' "$config" | jq -r '.items[0].require_invite')" = "true"
           printf '%s' "$config" | jq -e \
             '.items[0] | has("instance_name") and has("source_code_url")' >/dev/null
+
+          docker exec xjtlu-timetable-ci \
+            ./pocketbase superuser create \
+            ci-rules@example.invalid \
+            ci-rules-password
+          PB_INTEGRATION_URL=http://127.0.0.1:18090 \
+          PB_SUPERUSER_EMAIL=ci-rules@example.invalid \
+          PB_SUPERUSER_PASSWORD=ci-rules-password \
+            node --test backend/tests/access-rules.integration.test.mjs
 
       - name: Test guided initialization and repeat execution
         if: github.event_name == 'pull_request'

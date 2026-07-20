@@ -58,8 +58,6 @@ README 面向中文用户；除 README 外，仓库维护的技术文档使用�
 3. 登录 e-Bridge 并进入课表页面，点击该书签提取 HASH。
 4. 将 HASH 粘贴到导入页面并同步。
 
-`reference/xjtlu_timetable_importer.html` 是独立的参考/预览工具，不是网站的必需部署组件。
-
 ## 本地开发
 
 Node.js 和 pnpm 版本由 `frontend/package.json` 固定。后端建议复用正式预构建镜像，避免安装错误版本的 PocketBase：
