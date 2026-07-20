@@ -50,7 +50,7 @@ awk '
             "    # END XJTLU TIMETABLE SECURITY HEADERS\n"
   }
   /# Proxy!/ && !inserted {
-    printf "%s\n", block
+    printf "%s", block
     inserted = 1
   }
   { print }
@@ -59,9 +59,13 @@ awk '
   }
 ' "$TMP_STRIPPED" > "$TMP_UPDATED"
 
-docker cp "$TMP_UPDATED" "${NPM_CONTAINER}:${CONF_PATH}"
-docker exec "$NPM_CONTAINER" nginx -t
-docker exec "$NPM_CONTAINER" nginx -s reload
+if cmp -s "$TMP_CONF" "$TMP_UPDATED"; then
+  echo "    Nginx security headers already current; reload skipped"
+else
+  docker cp "$TMP_UPDATED" "${NPM_CONTAINER}:${CONF_PATH}"
+  docker exec "$NPM_CONTAINER" nginx -t
+  docker exec "$NPM_CONTAINER" nginx -s reload
+fi
 
 echo "==> Applying Docker ingress firewall rule for ${APP_CONTAINER}:${APP_PORT}..."
 APP_IP="$(

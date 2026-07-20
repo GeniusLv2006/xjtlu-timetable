@@ -73,6 +73,18 @@ test('official privacy validation checks the legal route without exposing email'
   assert.match(check, /CFEMAIL_COUNT.*"2"/s)
   assert.match(check, /email-decode\.min\.js/)
   assert.match(check, /legal_notice_url/)
+  assert.match(check, /xjtlu-timetable-legal-notice-version/)
+  assert.match(check, /test "\$PAGE_VERSION" = "\$CONFIG_VERSION"/)
+  assert.doesNotMatch(check, /Version 1\.3/)
   assert.match(check, /api\/health/)
   assert.doesNotMatch(check, /tingkailyu@icloud\.com/)
+})
+
+test('deployment hardening avoids an unchanged Nginx reload', async () => {
+  const hardening = await source('backend/harden-deployment.sh')
+
+  assert.match(hardening, /cmp -s "\$TMP_CONF" "\$TMP_UPDATED"/)
+  assert.match(hardening, /printf "%s", block/)
+  assert.match(hardening, /reload skipped/)
+  assert.match(hardening, /else[\s\S]*nginx -t[\s\S]*nginx -s reload/)
 })
