@@ -160,7 +160,7 @@ Exported at: ${exportedAt}
 
 Service instance: ${instanceName}
 
-Instance operator / controller: ${operatorName}
+Instance operator (and data controller where applicable): ${operatorName}
 
 Privacy contact: ${contact}
 
@@ -170,9 +170,9 @@ Privacy notice version: ${noticeVersion}
 
 ## Purpose and status of this document
 
-This document is an information snapshot generated with a self-service data export. It explains the files in this archive and supplements, but does not replace, the privacy notice for this service instance. It is not legal advice and does not exclude or limit any responsibility, obligation, remedy or data protection right that cannot lawfully be excluded or limited.
+This document is provided in good faith as an informational snapshot generated with a self-service data export. It explains the files in this archive and is intended to improve transparency about current processing practices, but it does not replace the privacy notice for this service instance. The operator aims to review and improve these practices in light of applicable data protection requirements. This document does not certify or guarantee full compliance with the UK GDPR or any other law, and it is not legal advice. Nothing in it excludes or limits any responsibility, obligation, remedy or data protection right that cannot lawfully be excluded or limited.
 
-The archive is intended to help you inspect and reuse account-related information held in the application's user-facing database. It is not necessarily a complete response to a formal UK GDPR Article 15 subject access request. Reverse-proxy logs, PocketBase operational logs, backups, third-party service records, correspondence and information held outside the application database may not be included. Contact the controller if you require a formal access request or information about those systems.
+The archive is intended to help you inspect and reuse account-related information held in the application's user-facing database. It is not necessarily a complete response to a formal UK GDPR Article 15 subject access request. Reverse-proxy logs, PocketBase operational logs, backups, third-party service records, correspondence and information held outside the application database may not be included. Use the privacy contact above if you require a formal access request or information about those systems.
 
 ## Files and processing purposes
 
@@ -185,11 +185,11 @@ The archive is intended to help you inspect and reuse account-related informatio
 - \`legal-acceptances.json\`: records used to demonstrate acceptance of the applicable notice and minimum-age confirmation.
 - \`data-export-request.json\`: the latest approved export time retained while the account exists so that the service can enforce its rolling 24-hour export limit. The approved time for this archive is ${singleLine(request.authorized_at, exportedAt)}.
 
-Most information comes from you, your browser or your use of the service. Timetable and teaching staff information is obtained when a user imports a timetable. Network and approximate location information may be supplied by the connection or reverse proxy. Where the UK GDPR applies, the instance privacy notice should identify the controller's applicable lawful bases, recipients, processors, international transfers and detailed retention arrangements.
+Most information comes from you, your browser or your use of the service. Timetable and teaching staff information is obtained when a user imports a timetable. Network and approximate location information may be supplied by the connection or reverse proxy. For legal classifications, lawful bases, recipients, processors, international transfers and detailed retention arrangements, consult the current instance privacy notice. Those descriptions reflect the operator's current assessment and may depend on the applicable law and circumstances.
 
-## Your rights
+## Data protection context and possible rights
 
-Where the UK GDPR applies, you may have rights to request access, correction or erasure; restrict processing; object to processing based on legitimate interests; receive portable data; and complain to a supervisory authority. These rights depend on the circumstances and may be limited by law. Use the privacy contact above for a formal request. You may also complain to the UK Information Commissioner's Office: https://ico.org.uk/make-a-complaint/data-protection-complaints/
+Depending on whether the UK GDPR applies to the processing and on your circumstances, you may have rights to request access, correction or erasure; restrict processing; object to processing based on legitimate interests; receive portable data; and complain to a supervisory authority. These rights are not absolute and may be limited by law. Use the privacy contact above for a formal request. Where applicable, you may also complain to the UK Information Commissioner's Office: https://ico.org.uk/make-a-complaint/data-protection-complaints/
 
 ## Security and responsible use
 
