@@ -64,6 +64,11 @@ cd frontend
 pnpm audit --prod
 ```
 
+Pull request CI also runs the access-rule integration test against the freshly
+built PocketBase image. The job creates isolated users, friendships, timetable,
+and course fixtures on a loopback-only test instance, then removes the container
+and its data volume.
+
 Docker, PocketBase, deployment, migration, or release changes also require
 container build and startup validation, successful hook and migration loading,
 and a health endpoint check. Clearly mark anything that was not completed as

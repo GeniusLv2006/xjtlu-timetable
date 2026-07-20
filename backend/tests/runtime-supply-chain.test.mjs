@@ -50,6 +50,17 @@ test('self-host lifecycle uses prebuilt images and current superuser APIs', asyn
   assert.doesNotMatch(helper, /latest/)
 })
 
+test('pull request CI runs access rules against the built runtime image', async () => {
+  const workflow = await source('.github/workflows/ci.yml')
+
+  assert.match(workflow, /--publish 127\.0\.0\.1:18090:8080/)
+  assert.match(workflow, /PB_INTEGRATION_URL=http:\/\/127\.0\.0\.1:18090/)
+  assert.match(
+    workflow,
+    /node --test backend\/tests\/access-rules\.integration\.test\.mjs/,
+  )
+})
+
 test('release images build once per native architecture', async () => {
   const workflow = await source('.github/workflows/release.yml')
 
