@@ -1,18 +1,73 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import pb from '../lib/pocketbase'
-import { buildDataExportPayload } from '../utils/dataExport'
+import { instanceConfig } from '../stores/instanceConfig'
+import {
+  buildDataExportFiles,
+  buildDataExportZip,
+  dataExportFilename,
+} from '../utils/dataExport'
 
 export function useAccountData(authStore) {
   const exporting = ref(false)
   const exportError = ref('')
+  const exportStage = ref('')
+  const exportStatusLoading = ref(true)
+  const exportStatusKnown = ref(false)
+  const exportCanExport = ref(false)
+  const exportNextAllowedAt = ref(null)
   const showDeleteConfirm = ref(false)
   const deleting = ref(false)
   const deleteError = ref('')
 
+  const exportNextAllowedLabel = computed(() => {
+    if (!exportNextAllowedAt.value) return ''
+    const date = new Date(exportNextAllowedAt.value)
+    if (!Number.isFinite(date.getTime())) return ''
+    return date.toLocaleString('zh-CN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  })
+
+  function applyExportStatus(status = {}) {
+    exportStatusKnown.value = true
+    exportCanExport.value = status.can_export === true
+    exportNextAllowedAt.value = status.next_allowed_at || null
+  }
+
+  async function loadExportStatus() {
+    exportStatusLoading.value = true
+    try {
+      const status = await pb.send('/api/user-data-export/status', {
+        method: 'GET',
+        requestKey: null,
+      })
+      applyExportStatus(status)
+    } catch {
+      // Authorization remains the source of truth if status preloading fails.
+      exportStatusKnown.value = false
+      exportCanExport.value = false
+      exportNextAllowedAt.value = null
+    } finally {
+      exportStatusLoading.value = false
+    }
+  }
+
   async function exportData() {
     exporting.value = true
     exportError.value = ''
+    exportStage.value = '正在申请导出…'
+    let authorization = null
     try {
+      authorization = await pb.send('/api/user-data-export/authorize', {
+        method: 'POST',
+        requestKey: null,
+      })
+      applyExportStatus({
+        can_export: false,
+        next_allowed_at: authorization.next_allowed_at,
+      })
+      exportStage.value = '正在收集数据…'
       const userId = authStore.model.id
       const [
         user,
@@ -51,7 +106,7 @@ export function useAccountData(authStore) {
           filter: `user = "${userId}"`, requestKey: null,
         }),
       ])
-      const payload = buildDataExportPayload({
+      const data = {
         user,
         timetables,
         courses,
@@ -61,18 +116,41 @@ export function useAccountData(authStore) {
         login_logs: loginLogs,
         ical_access_logs: icalAccessLogs,
         legal_acceptances: legalAcceptances,
-      })
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      }
+      const exportedAt = new Date().toISOString()
+      const files = buildDataExportFiles(
+        data,
+        instanceConfig,
+        authorization,
+        exportedAt,
+      )
+      exportStage.value = '正在生成压缩包…'
+      const bytes = await buildDataExportZip(files)
+      const blob = new Blob([bytes], { type: 'application/zip' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `xjtlu-timetable-export-${new Date().toISOString().slice(0, 10)}.json`
+      link.download = dataExportFilename(exportedAt)
+      document.body.appendChild(link)
       link.click()
-      URL.revokeObjectURL(url)
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (error) {
-      exportError.value = error.message || '导出失败，请重试'
+      if (error?.status === 429 && error.response) {
+        applyExportStatus(error.response)
+        exportError.value = exportNextAllowedLabel.value
+          ? `每 24 小时只能申请一次，请于 ${exportNextAllowedLabel.value} 后重试。`
+          : '每 24 小时只能申请一次，请稍后重试。'
+      } else if (authorization) {
+        exportError.value = exportNextAllowedLabel.value
+          ? `导出生成失败，但本次申请已计入限额。可于 ${exportNextAllowedLabel.value} 后再次申请。`
+          : '导出生成失败，但本次申请已计入 24 小时限额。'
+      } else {
+        exportError.value = error.message || '导出申请失败，请重试'
+      }
     } finally {
       exporting.value = false
+      exportStage.value = ''
     }
   }
 
@@ -117,8 +195,14 @@ export function useAccountData(authStore) {
     deleteError,
     deleting,
     exportData,
+    exportCanExport,
     exportError,
+    exportNextAllowedLabel,
+    exportStage,
+    exportStatusKnown,
+    exportStatusLoading,
     exporting,
+    loadExportStatus,
     showDeleteConfirm,
   }
 }

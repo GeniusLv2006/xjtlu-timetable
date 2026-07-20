@@ -208,6 +208,31 @@ test('legal acceptance records are versioned, private, immutable, and exported',
   }
 })
 
+test('data export authorization is private, authenticated, and atomically rate limited', async () => {
+  const [migration, hook, accountData, dataExport, terms] = await Promise.all([
+    source('backend/pb_migrations/1784520000_add_data_export_requests.js'),
+    source('backend/pb_hooks/data_export.pb.js'),
+    source('frontend/src/composables/useAccountData.js'),
+    source('frontend/src/utils/dataExport.js'),
+    source('frontend/src/views/TermsView.vue'),
+  ])
+
+  for (const rule of ['listRule', 'viewRule', 'createRule', 'updateRule', 'deleteRule']) {
+    assert.match(migration, new RegExp(`${rule}: null`))
+  }
+  assert.match(migration, /cascadeDelete: true/)
+  assert.match(migration, /CREATE UNIQUE INDEX `idx_data_export_requests_user`/)
+  assert.match(hook, /\$apis\.requireAuth\('users'\)/)
+  assert.match(hook, /ON CONFLICT\("user"\) DO UPDATE SET/)
+  assert.match(hook, /result\.rowsAffected\(\) !== 1/)
+  assert.match(hook, /Retry-After/)
+  assert.match(accountData, /\/api\/user-data-export\/authorize/)
+  assert.match(dataExport, /data-export-request\.json/)
+  assert.match(dataExport, /export_format_version: DATA_EXPORT_FORMAT_VERSION/)
+  assert.match(terms, /最近一次获准的数据导出申请时间/)
+  assert.match(terms, /每 24 小时至多申请一次/)
+})
+
 test('settings uses the configured external legal notice when present', async () => {
   const [settings, login, gate, terms] = await Promise.all([
     source('frontend/src/views/SettingsView.vue'),
