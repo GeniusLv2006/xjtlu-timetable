@@ -156,5 +156,109 @@ test('runtime access rules enforce timetable and friendship boundaries', {
     method: 'DELETE',
     token: stranger.token,
   })
+
+  await request('/api/user-data-export/status', { expected: [401] })
+  const initialExportStatus = await request('/api/user-data-export/status', {
+    token: owner.token,
+  })
+  assert.equal(initialExportStatus.can_export, true)
+
+  const authorizedExport = await request('/api/user-data-export/authorize', {
+    method: 'POST',
+    token: owner.token,
+  })
+  assert.equal(authorizedExport.cooldown_seconds, 86400)
+  assert.ok(authorizedExport.authorized_at)
+  assert.ok(authorizedExport.next_allowed_at)
+
+  const limitedResponse = await fetch(
+    `${baseUrl}/api/user-data-export/authorize`,
+    {
+      method: 'POST',
+      headers: { Authorization: owner.token },
+    },
+  )
+  assert.equal(limitedResponse.status, 429)
+  assert.ok(Number(limitedResponse.headers.get('retry-after')) > 0)
+  const limitedExport = await limitedResponse.json()
+  assert.equal(limitedExport.can_export, false)
+  assert.equal(limitedExport.last_requested_at, authorizedExport.authorized_at)
+
+  const ownerExportRequests = await request(
+    `/api/collections/data_export_requests/records?filter=${encodeURIComponent(`user = "${owner.id}"`)}`,
+    { token: adminToken },
+  )
+  assert.equal(ownerExportRequests.totalItems, 1)
+  await request(
+    `/api/collections/data_export_requests/records/${ownerExportRequests.items[0].id}`,
+    {
+      body: {
+        requested_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      },
+      method: 'PATCH',
+      token: adminToken,
+    },
+  )
+  const authorizedAfterCooldown = await request(
+    '/api/user-data-export/authorize',
+    { method: 'POST', token: owner.token },
+  )
+  assert.ok(authorizedAfterCooldown.authorized_at)
+
+  await request('/api/collections/data_export_requests/records', {
+    expected: [403],
+    token: owner.token,
+  })
+
+  const concurrentResponses = await Promise.all([
+    fetch(`${baseUrl}/api/user-data-export/authorize`, {
+      method: 'POST',
+      headers: { Authorization: friend.token },
+    }),
+    fetch(`${baseUrl}/api/user-data-export/authorize`, {
+      method: 'POST',
+      headers: { Authorization: friend.token },
+    }),
+  ])
+  assert.deepEqual(
+    concurrentResponses.map(response => response.status).sort(),
+    [200, 429],
+  )
+
+  await request('/api/user-data-export/authorize', {
+    method: 'POST',
+    token: stranger.token,
+  })
+  const exportRequestsBeforeDelete = await request(
+    `/api/collections/data_export_requests/records?filter=${encodeURIComponent(`user = "${stranger.id}"`)}`,
+    { token: adminToken },
+  )
+  assert.equal(exportRequestsBeforeDelete.totalItems, 1)
+  await request(`/api/collections/users/records/${stranger.id}`, {
+    expected: [204],
+    method: 'DELETE',
+    token: adminToken,
+  })
+  const exportRequestsAfterDelete = await request(
+    `/api/collections/data_export_requests/records?filter=${encodeURIComponent(`user = "${stranger.id}"`)}`,
+    { token: adminToken },
+  )
+  assert.equal(exportRequestsAfterDelete.totalItems, 0)
+
+  await request(`/api/collections/users/records/${owner.id}`, {
+    body: { is_banned: true },
+    method: 'PATCH',
+    token: adminToken,
+  })
+  await request('/api/user-data-export/status', {
+    expected: [403],
+    token: owner.token,
+  })
+  await request('/api/user-data-export/authorize', {
+    expected: [403],
+    method: 'POST',
+    token: owner.token,
+  })
+
   await request('/api/collections/semesters/records?perPage=1')
 })

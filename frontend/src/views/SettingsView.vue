@@ -224,14 +224,24 @@
     <section class="settings-section">
       <h2 class="section-title">账号操作</h2>
       <div class="action-row">
-        <button class="btn btn-secondary" :disabled="exporting" @click="exportData">
-          {{ exporting ? '导出中…' : '导出我的数据' }}
+        <button
+          class="btn btn-secondary"
+          :disabled="exporting || exportStatusLoading || (exportStatusKnown && !exportCanExport)"
+          @click="exportData"
+        >
+          {{ exportStage || (exportStatusLoading ? '检查导出状态…' : '导出我的数据') }}
         </button>
         <button class="btn btn-danger" @click="authStore.logout">退出登录</button>
         <button class="btn btn-danger" @click="showDeleteConfirm = true" :disabled="deleting">
           注销账号
         </button>
       </div>
+      <p
+        v-if="exportStatusKnown && !exportCanExport && exportNextAllowedLabel"
+        class="export-limit"
+      >
+        下次可申请时间：{{ exportNextAllowedLabel }}
+      </p>
       <p v-if="exportError" class="msg-error">{{ exportError }}</p>
 
       <!-- 注销确认 -->
@@ -339,9 +349,15 @@ const {
   deleteAccount,
   deleteError,
   deleting,
+  exportCanExport,
   exportData,
   exportError,
+  exportNextAllowedLabel,
+  exportStage,
+  exportStatusKnown,
+  exportStatusLoading,
   exporting,
+  loadExportStatus,
   showDeleteConfirm,
 } = useAccountData(authStore)
 
@@ -351,6 +367,7 @@ onMounted(async () => {
   } catch {
     // Keep settings available when a background refresh cannot complete.
   }
+  loadExportStatus()
   loadMyInvites()
   loadIcalSubscription()
 })
