@@ -60,7 +60,7 @@ Backups and rollback metadata are stored in
 
 Treat a successful `deploy.sh` run as the evidence for the backup, Compose
 validation, exact image pull, internal health check, runtime uid/gid, SQLite
-integrity, reverse-proxy hardening, and privacy contract check. Do not repeat
+integrity, and reverse-proxy hardening. Do not repeat
 those checks unless the deployment reported an ambiguity or production state
 changed afterwards.
 
@@ -80,7 +80,7 @@ Add exactly the affected acceptance profiles:
 | Authentication | Login, token refresh, legal gate, or account status changed | One normal login/refresh and the changed status transition |
 | Timetable | Timetable, course, friendship, or import behavior changed | One existing or disposable timetable workflow |
 | iCal | Token, feed, event, or iCal security behavior changed | One existing subscription without printing its token |
-| Privacy/legal | Notice content, route, acknowledgement, retention, or legal configuration changed | The private privacy validator and one acknowledgement-state check |
+| Privacy/legal | Notice URL, acknowledgement, retention, or legal configuration changed | Verify the configured URL and one acknowledgement-state check; external notice content is maintained independently |
 | Account deletion | Deletion, export, suspension, or registration blocking changed | One disposable account covering only the changed boundary, followed by cleanup |
 
 Do not run unrelated profiles. A required profile that cannot be completed is

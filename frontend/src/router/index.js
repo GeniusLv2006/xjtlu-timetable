@@ -52,6 +52,13 @@ const routes = [
     meta: { public: true },
   },
   {
+    path: '/privacy',
+    alias: ['/privacy/', '/privacy.html'],
+    name: 'LegalNoticeRedirect',
+    component: () => import('../views/LegalNoticeRedirectView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/changelog',
     name: 'Changelog',
     component: () => import('../views/ChangelogView.vue'),

@@ -6,6 +6,14 @@ All notable project releases are documented here.
 
 Release notes are finalized in a `release/vX.Y.Z` pull request.
 
+### Changed
+
+- The bundled legal page is now a deployment-neutral reference template that
+  requires operators to write and configure their own notice.
+- Legacy `/privacy` URLs now redirect to the operator-configured legal notice,
+  while application deployments no longer validate or depend on externally
+  hosted notice content.
+
 ## [0.3.0] - 2026-07-20
 
 ### Added

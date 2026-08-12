@@ -10,6 +10,10 @@ export function safeWebUrl(value, fallback = '') {
   }
 }
 
+export function legalNoticeTarget(value) {
+  return safeWebUrl(value, '/terms')
+}
+
 export function isSafeEmail(value) {
   const input = String(value || '').trim()
   if (!input) return true

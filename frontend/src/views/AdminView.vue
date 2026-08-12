@@ -238,14 +238,15 @@
               <p class="field-hint">如部署了修改版本，应指向向本实例用户提供对应源码的位置。</p>
             </div>
             <div class="field-group">
-              <label class="field-label">外部用户协议 / 隐私政策地址（可选）</label>
-              <input v-model="siteConfig.legal_notice_url" type="url" class="field-input" maxlength="500" placeholder="留空则使用内置通用模板" />
+              <label class="field-label">用户协议 / 隐私政策地址（可选）</label>
+              <input v-model="siteConfig.legal_notice_url" type="url" class="field-input" maxlength="500" placeholder="https://example.com/legal" />
+              <p class="field-hint">公开运营前应配置由部署者自行撰写并审阅的 HTTP(S) 地址；留空仅显示内置参考模板。</p>
             </div>
             <div class="config-grid">
               <div class="field-group">
                 <label class="field-label">当前条款版本（可选）</label>
                 <input v-model="siteConfig.legal_notice_version" class="field-input" maxlength="64" placeholder="例如 1.0" />
-                <p class="field-hint">填写后，用户必须接受该版本；更新版本号会触发重新确认。</p>
+                <p class="field-hint">独立于协议地址和应用版本；更新后会触发用户重新确认。</p>
               </div>
               <div class="field-group">
                 <label class="field-label">最低年龄（0 表示不限制）</label>
