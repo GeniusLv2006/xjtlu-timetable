@@ -10,24 +10,17 @@ Release notes are finalized in a `release/vX.Y.Z` pull request.
 
 ### Changed
 
-- The bundled legal page is now a deployment-neutral reference template that
-  requires operators to write and configure their own notice.
-- Legacy `/privacy` URLs now redirect to the operator-configured legal notice,
-  while application deployments no longer validate or depend on externally
-  hosted notice content.
-- Access history now presents the country code supplied by the trusted proxy
-  without retaining city, network-organization, or GeoIP-provider metadata.
+- The bundled legal page is now a deployment-neutral reference template that requires operators to write and configure their own notice.
+- Legacy `/privacy` URLs now redirect to the operator-configured legal notice, while application deployments no longer validate or depend on externally hosted notice content.
+- Access history now presents the country code supplied by the trusted proxy without retaining city, network-organization, or GeoIP-provider metadata.
 
 ### Removed
 
-- Removed the unused GeoIP cache and the city, network-organization, and
-  provider-source fields from login and iCal access logs, administration,
-  user-visible history, and personal-data exports.
+- Removed the unused GeoIP cache and the city, network-organization, and provider-source fields from login and iCal access logs, administration, user-visible history, and personal-data exports.
 
 ### Security
 
-- Pinned the build-time `nanoid` dependency to 3.3.17, which fixes
-  CVE-2026-67213 without changing the deployed runtime dependency set.
+- Pinned the build-time `nanoid` dependency to 3.3.17, which fixes CVE-2026-67213 without changing the deployed runtime dependency set.
 
 ## [0.3.0] - 2026-07-20
 
