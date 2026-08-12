@@ -487,7 +487,6 @@
           <div class="logs-filter-bar">
             <input v-model="logsFilter.email"   class="field-input filter-input" placeholder="邮箱搜索" @keyup.enter="applyLogsFilter" />
             <input v-model="logsFilter.ip"      class="field-input filter-input" placeholder="IP 前缀" @keyup.enter="applyLogsFilter" />
-            <input v-model="logsFilter.isp"     class="field-input filter-input" placeholder="ISP/组织" @keyup.enter="applyLogsFilter" />
             <input v-model="logsFilter.country" class="field-input filter-input filter-input--xs" placeholder="国家(CN)" maxlength="2" @keyup.enter="applyLogsFilter" />
             <input v-model="logsFilter.dateFrom" type="date" class="field-input filter-input filter-input--date" title="开始日期（上海时区）" />
             <span class="filter-to">至</span>
@@ -566,16 +565,13 @@
                   <th>时间</th>
                   <th>用户邮箱</th>
                   <th>完整 IP</th>
-                  <th>地区</th>
-                  <th>城市</th>
-                  <th>Organization</th>
-                  <th>数据源</th>
+                  <th>国家/地区</th>
                   <th>设备</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="currentPageLogs.length === 0">
-                  <td colspan="9" class="empty-cell">暂无日志</td>
+                  <td colspan="6" class="empty-cell">暂无日志</td>
                 </tr>
                 <tr
                   v-for="log in currentPageLogs"
@@ -600,14 +596,6 @@
                     <span v-else>—</span>
                   </td>
                   <td>{{ fmtLogCountry(log.country) }}</td>
-                  <td>{{ log.city || '—' }}</td>
-                  <td>{{ log.isp || '—' }}</td>
-                  <td>
-                    <template v-if="log.geo_source">
-                      <span v-for="s in log.geo_source.split('+')" :key="s" class="badge badge-geo">{{ { ip2location: 'IP2Loc', ipsb: 'ip.sb', ipapi: 'ip-api' }[s] || s }}</span>
-                    </template>
-                    <span v-else>—</span>
-                  </td>
                   <td>{{ parseDevice(log.user_agent, logsSubTab) }}</td>
                 </tr>
               </tbody>
@@ -1197,7 +1185,6 @@ onMounted(() => {
   if (params.get('sub')) logsSubTab.value = params.get('sub')
   if (params.get('email')) logsFilter.email = params.get('email')
   if (params.get('ip')) logsFilter.ip = params.get('ip')
-  if (params.get('isp')) logsFilter.isp = params.get('isp')
   if (params.get('country')) logsFilter.country = params.get('country')
   if (params.get('from')) logsFilter.dateFrom = params.get('from')
   if (params.get('to')) logsFilter.dateTo = params.get('to')

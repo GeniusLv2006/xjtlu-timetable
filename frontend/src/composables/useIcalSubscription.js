@@ -40,7 +40,6 @@ export function useIcalSubscription(authStore) {
         groups[key] = {
           ip: key,
           country: log.country,
-          city: log.city || '',
           count: 0,
           latest: log.created,
         }
@@ -49,7 +48,6 @@ export function useIcalSubscription(authStore) {
       if (log.created > groups[key].latest) {
         groups[key].latest = log.created
         groups[key].country = log.country
-        groups[key].city = log.city || ''
       }
     }
     return Object.values(groups).sort((a, b) => b.latest.localeCompare(a.latest))
