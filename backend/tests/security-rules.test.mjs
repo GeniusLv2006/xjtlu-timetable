@@ -242,12 +242,11 @@ test('restricted accounts have server-enforced export and deletion boundaries', 
 })
 
 test('data export authorization is private, authenticated, and atomically rate limited', async () => {
-  const [migration, hook, accountData, dataExport, terms] = await Promise.all([
+  const [migration, hook, accountData, dataExport] = await Promise.all([
     source('backend/pb_migrations/1784520000_add_data_export_requests.js'),
     source('backend/pb_hooks/data_export.pb.js'),
     source('frontend/src/composables/useAccountData.js'),
     source('frontend/src/utils/dataExport.js'),
-    source('frontend/src/views/TermsView.vue'),
   ])
 
   for (const rule of ['listRule', 'viewRule', 'createRule', 'updateRule', 'deleteRule']) {
@@ -263,31 +262,37 @@ test('data export authorization is private, authenticated, and atomically rate l
   assert.match(dataExport, /data-export-request\.json/)
   assert.match(dataExport, /export_format_version: DATA_EXPORT_FORMAT_VERSION/)
   assert.match(dataExport, /does not certify or guarantee full compliance/)
-  assert.match(terms, /最近一次获准的数据导出申请时间/)
-  assert.match(terms, /每 24 小时至多申请一次/)
-  assert.match(terms, /不表示或保证任何部署实例完全符合 UK GDPR/)
-  assert.match(terms, /注销不表示所有副本会在同一时刻从所有系统中消失/)
-  assert.doesNotMatch(terms, /不存在任何隐性数据采集行为/)
-  assert.doesNotMatch(terms, /立即、永久删除，不可恢复/)
-  assert.doesNotMatch(terms, /您的任何数据不会被出售/)
 })
 
-test('settings uses the configured external legal notice when present', async () => {
-  const [settings, login, gate, terms] = await Promise.all([
+test('legal surfaces use the configured external notice with generic fallbacks', async () => {
+  const [settings, login, gate, terms, redirect, router] = await Promise.all([
     source('frontend/src/views/SettingsView.vue'),
     source('frontend/src/views/LoginView.vue'),
     source('frontend/src/components/LegalAcceptanceGate.vue'),
     source('frontend/src/views/TermsView.vue'),
+    source('frontend/src/views/LegalNoticeRedirectView.vue'),
+    source('frontend/src/router/index.js'),
   ])
 
   assert.match(settings, /v-if="instanceConfig\.legal_notice_url"/)
   assert.match(settings, /:href="instanceConfig\.legal_notice_url"/)
   assert.match(settings, /rel="noopener noreferrer"/)
   assert.match(settings, /v-else to="\/terms"/)
-  for (const legalSurface of [settings, login, gate, terms]) {
+  for (const legalSurface of [settings, login, gate]) {
     assert.match(legalSurface, /《用户协议与隐私政策》/)
     assert.doesNotMatch(legalSurface, /用户协议与隐私政策（版本/)
   }
+  assert.match(terms, /用户协议与隐私政策通用模板/)
+  assert.match(terms, /部署者必须自行撰写并审阅正式协议/)
+  for (const instanceSpecificText of ['XJTLU', 'e-Bridge', 'Cloudflare', 'Field Notes', 'UK GDPR']) {
+    assert.doesNotMatch(terms, new RegExp(instanceSpecificText, 'i'))
+  }
+  assert.match(redirect, /loadInstanceConfig/)
+  assert.match(redirect, /legalNoticeTarget\(instanceConfig\.legal_notice_url\)/)
+  assert.match(redirect, /window\.location\.replace\(target\)/)
+  assert.match(redirect, /router\.replace\('\/terms'\)/)
+  assert.match(router, /path: '\/privacy'/)
+  assert.match(router, /alias: \['\/privacy\/', '\/privacy\.html'\]/)
 })
 
 test('the application footer uses the instance identity, not the operator name', async () => {

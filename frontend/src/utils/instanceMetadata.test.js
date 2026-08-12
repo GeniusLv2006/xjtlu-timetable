@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isSafeEmail, safeWebUrl } from './instanceMetadata.js'
+import { isSafeEmail, legalNoticeTarget, safeWebUrl } from './instanceMetadata.js'
 
 describe('safeWebUrl', () => {
   it('accepts HTTPS source and legal notice URLs', () => {
@@ -15,6 +15,22 @@ describe('safeWebUrl', () => {
   it('uses the fallback for malformed or empty values', () => {
     expect(safeWebUrl('not a URL', 'fallback')).toBe('fallback')
     expect(safeWebUrl('', 'fallback')).toBe('fallback')
+  })
+})
+
+describe('legalNoticeTarget', () => {
+  it('uses any valid HTTP(S) notice configured by the instance operator', () => {
+    expect(legalNoticeTarget('https://legal.example.org/notice')).toBe(
+      'https://legal.example.org/notice',
+    )
+    expect(legalNoticeTarget('http://intranet.example.test/terms')).toBe(
+      'http://intranet.example.test/terms',
+    )
+  })
+
+  it('falls back to the bundled reference template', () => {
+    expect(legalNoticeTarget('')).toBe('/terms')
+    expect(legalNoticeTarget('javascript:alert(1)')).toBe('/terms')
   })
 })
 

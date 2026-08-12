@@ -99,8 +99,10 @@ The retention period is configured in the administration UI and defaults to
 365 days. Setting it to `0` disables the feature and deletes existing blocking
 identifiers. Operators must describe their actual purpose, lawful-basis
 assessment, retention period, and review/contact route in their own privacy
-notice. The bundled notice is a generic template, not legal advice or a
-compliance certification.
+notice. The bundled page is only a public reference template, not an instance's
+formal notice, legal advice, or a compliance certification. Before public
+operation, write and review a notice for the actual instance and configure its
+HTTP(S) URL in the administration UI.
 
 Instance name, operator contact, source URL, registration rules, iCal risk
 controls, notices, semesters, and invitations are managed at `/admin`.

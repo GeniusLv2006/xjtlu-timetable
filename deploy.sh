@@ -158,9 +158,6 @@ ROLLBACK_ARMED=0
 echo "==> Reapplying reverse-proxy and ingress hardening..."
 bash backend/harden-deployment.sh
 
-echo "==> Validating the instance-specific privacy endpoint..."
-bash backend/check-official-privacy.sh
-
 printf '%s\n' "$REVISION" > "$BACKUP_DIR/DEPLOYED_REVISION"
 printf '%s\n' "$IMAGE_REPOSITORY:$REVISION" > "$BACKUP_DIR/DEPLOYED_IMAGE"
 

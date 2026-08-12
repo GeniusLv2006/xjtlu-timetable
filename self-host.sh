@@ -301,7 +301,9 @@ init_installation() {
       "Source code URL [https://github.com/GeniusLv2006/xjtlu-timetable]: " \
       source_url
     source_url="${source_url:-https://github.com/GeniusLv2006/xjtlu-timetable}"
-    read -r -p "External legal notice URL (optional): " legal_url
+    echo "Provide a legal notice written and reviewed for this instance before public operation."
+    echo "Leaving the URL empty exposes only the bundled reference template."
+    read -r -p "Legal notice HTTP(S) URL (optional during setup): " legal_url
     [[ "$source_url" =~ ^https?://[^[:space:]]+$ ]] ||
       die "source code URL must use HTTP or HTTPS"
     if [ -n "$legal_url" ] && [[ ! "$legal_url" =~ ^https?://[^[:space:]]+$ ]]; then
