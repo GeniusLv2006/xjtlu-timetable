@@ -8,18 +8,6 @@ async function source(path) {
   return readFile(new URL(path, root), 'utf8')
 }
 
-test('request hooks do not call third-party GeoIP services', async () => {
-  const hooks = await Promise.all([
-    source('backend/pb_hooks/admin.pb.js'),
-    source('backend/pb_hooks/ical.pb.js'),
-  ])
-
-  for (const hook of hooks) {
-    assert.doesNotMatch(hook, /\$http\.send/)
-    assert.doesNotMatch(hook, /api\.ip\.sb|ip-api\.com|api\.ip2location\.io/)
-  }
-})
-
 test('the iCal hook fetches courses in one relation query', async () => {
   const hook = await source('backend/pb_hooks/ical.pb.js')
 
@@ -40,7 +28,6 @@ test('the performance migration covers recurring query paths', async () => {
     'idx_ical_access_user_created',
     'idx_ical_access_created',
     'idx_login_logs_created',
-    'idx_ip_geo_cache_expires',
   ]) {
     assert.match(migration, new RegExp(index))
   }

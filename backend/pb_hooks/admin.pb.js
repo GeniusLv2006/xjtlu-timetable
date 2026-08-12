@@ -30,11 +30,6 @@ onRecordAuthWithPasswordRequest(function(e) {
   if (v4m) { prefix = v4m[1] + '.x' }
   else if (rawIp.indexOf(':') !== -1) { prefix = rawIp.split(':').slice(0, 4).join(':') + ':...' }
 
-  // Do not block authentication on third-party GeoIP services. Cloudflare
-  // already supplies the country code; city and ISP remain optional fields.
-  var city = ''
-  var isp  = ''
-
   try {
     var col = $app.findCollectionByNameOrId('login_logs')
     var rec = new Record(col)
@@ -45,10 +40,6 @@ onRecordAuthWithPasswordRequest(function(e) {
     rec.set('country', country)
     rec.set('user_agent', userAgent)
     $app.save(rec)
-    $app.db()
-      .newQuery("UPDATE login_logs SET city = {:city}, isp = {:isp} WHERE id = {:id}")
-      .bind({ city: city, isp: isp, id: rec.id })
-      .execute()
   } catch (_) {}
 }, 'users')
 

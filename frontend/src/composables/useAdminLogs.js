@@ -11,11 +11,11 @@ export function useAdminLogs(activeTab) {
   const logsTotalPages  = ref(1)
   const logsLoading     = ref(false)
   const logsError       = ref('')
-  const logsFilter      = reactive({ email: '', ip: '', isp: '', country: '', dateFrom: '', dateTo: '' })
+  const logsFilter      = reactive({ email: '', ip: '', country: '', dateFrom: '', dateTo: '' })
   const logsJumpInput   = ref(null)
 
   const hasLogsFilter = computed(() =>
-    !!(logsFilter.email || logsFilter.ip || logsFilter.isp || logsFilter.country || logsFilter.dateFrom || logsFilter.dateTo)
+    !!(logsFilter.email || logsFilter.ip || logsFilter.country || logsFilter.dateFrom || logsFilter.dateTo)
   )
 
   function buildLogsFilter() {
@@ -23,7 +23,6 @@ export function useAdminLogs(activeTab) {
     const esc = v => v.replace(/"/g, '')
     if (logsFilter.email)    parts.push(`email ~ "${esc(logsFilter.email)}"`)
     if (logsFilter.ip)       parts.push(`ip_prefix ~ "${esc(logsFilter.ip)}"`)
-    if (logsFilter.isp)      parts.push(`isp ~ "${esc(logsFilter.isp)}"`)
     if (logsFilter.country)  parts.push(`country = "${esc(logsFilter.country).toUpperCase()}"`)
     if (logsFilter.dateFrom) {
       const d = new Date(logsFilter.dateFrom + 'T00:00:00+08:00')
@@ -41,7 +40,6 @@ export function useAdminLogs(activeTab) {
   function clearLogsFilter() {
     logsFilter.email = ''
     logsFilter.ip = ''
-    logsFilter.isp = ''
     logsFilter.country = ''
     logsFilter.dateFrom = ''
     logsFilter.dateTo = ''
@@ -145,7 +143,6 @@ export function useAdminLogs(activeTab) {
     logsSubTab.value = tab
     logsFilter.email = ''
     logsFilter.ip = ''
-    logsFilter.isp = ''
     logsFilter.country = ''
     logsFilter.dateFrom = ''
     logsFilter.dateTo = ''
@@ -162,7 +159,6 @@ export function useAdminLogs(activeTab) {
       if (logsPage.value > 1)  p.set('page', String(logsPage.value))
       if (logsFilter.email)    p.set('email',   logsFilter.email)
       if (logsFilter.ip)       p.set('ip',      logsFilter.ip)
-      if (logsFilter.isp)      p.set('isp',     logsFilter.isp)
       if (logsFilter.country)  p.set('country', logsFilter.country)
       if (logsFilter.dateFrom) p.set('from',    logsFilter.dateFrom)
       if (logsFilter.dateTo)   p.set('to',      logsFilter.dateTo)
@@ -230,7 +226,6 @@ export function useAdminLogs(activeTab) {
     const parts = []
     if (logsFilter.email) parts.push(`邮箱「${logsFilter.email}」`)
     if (logsFilter.ip)    parts.push(`IP「${logsFilter.ip}」`)
-    if (logsFilter.isp)   parts.push(`ISP「${logsFilter.isp}」`)
     if (logsFilter.country) parts.push(`国家「${logsFilter.country}」`)
     if (logsFilter.dateFrom || logsFilter.dateTo) parts.push('时间范围')
     const desc = parts.join(' + ') || '当前筛选条件'

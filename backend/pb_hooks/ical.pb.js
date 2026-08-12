@@ -242,31 +242,6 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
   if (v4m) { logPrefix = v4m[1] + '.x' }
   else if (logIp.indexOf(':') !== -1) { logPrefix = logIp.split(':').slice(0, 4).join(':') + ':...' }
 
-  // Never block an iCal response on third-party GeoIP services. Reuse any
-  // existing cached metadata while it remains valid; Cloudflare supplies the
-  // country code for new requests.
-  var logCity = ''
-  var logIsp = ''
-  var logGeoSource = ''
-  var isPrivateIp = !logIp || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1$)/.test(logIp)
-  if (!isPrivateIp) {
-    // ── Step 1：查 SQLite 缓存 ────────────────────────────────────────────────
-    try {
-      var _cacheRows = arrayOf(new DynamicModel({ country: '', city: '', isp: '', source: '' }))
-      $app.db()
-        .newQuery("SELECT country, city, isp, source FROM ip_geo_cache WHERE ip = {:ip} AND expires_at > datetime('now')")
-        .bind({ ip: logIp })
-        .all(_cacheRows)
-      if (_cacheRows.length > 0) {
-        if (!logCountry && _cacheRows[0].country) logCountry = _cacheRows[0].country
-        logCity      = _cacheRows[0].city
-        logIsp       = _cacheRows[0].isp
-        logGeoSource = _cacheRows[0].source
-      }
-    } catch (_) {}
-
-  }
-
   try {
     var logCol = $app.findCollectionByNameOrId('ical_access_logs')
     var logRec = new Record(logCol)
@@ -277,11 +252,6 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     logRec.set('country', logCountry)
     logRec.set('user_agent', logUserAgent)
     $app.save(logRec)
-    // city/isp/geo_source 字段不在 PB schema 中，需通过原始 SQL 写入
-    $app.db()
-      .newQuery("UPDATE ical_access_logs SET city = {:city}, isp = {:isp}, geo_source = {:source} WHERE id = {:id}")
-      .bind({ city: logCity, isp: logIsp, source: logGeoSource, id: logRec.id })
-      .execute()
   } catch (_) {}
 
   // 1d. 账户封禁检查

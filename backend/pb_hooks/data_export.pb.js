@@ -107,12 +107,12 @@ routerAdd('POST', '/api/user-data-export/authorize', function(e) {
       'note', 'created', 'updated',
     ],
     login_logs: [
-      'id', 'user_id', 'email', 'ip_full', 'ip_prefix', 'country', 'city', 'isp',
+      'id', 'user_id', 'email', 'ip_full', 'ip_prefix', 'country',
       'user_agent', 'created', 'updated',
     ],
     ical_access_logs: [
-      'id', 'user_id', 'email', 'ip_full', 'ip_prefix', 'country', 'city', 'isp',
-      'geo_source', 'user_agent', 'created', 'updated',
+      'id', 'user_id', 'email', 'ip_full', 'ip_prefix', 'country',
+      'user_agent', 'created', 'updated',
     ],
     legal_acceptances: [
       'id', 'user', 'legal_notice_version', 'legal_notice_accepted', 'minimum_age',
