@@ -86,7 +86,10 @@
               <tr
                 v-for="u in filteredUsers"
                 :key="u.id"
-                :class="{ 'row-banned': u.is_banned }"
+                :class="{
+                  'row-account-restricted': u.is_banned && u.restricted_login_allowed,
+                  'row-account-banned': u.is_banned && !u.restricted_login_allowed,
+                }"
               >
                 <td data-label="用户名">
                   <span v-if="editingName[u.id] === undefined" class="name-cell">
@@ -122,14 +125,29 @@
                       查看课表
                     </router-link>
                     <div class="action-more-wrap" @click.stop>
-                      <button class="btn btn-secondary btn-xs" @click="openActionMenu = openActionMenu === u.id ? null : u.id">
+                      <button
+                        :id="`user-actions-trigger-${u.id}`"
+                        class="btn btn-secondary btn-xs"
+                        aria-haspopup="menu"
+                        :aria-expanded="openActionMenu === u.id"
+                        :aria-controls="`user-actions-${u.id}`"
+                        @click="openActionMenu = openActionMenu === u.id ? null : u.id"
+                        @keydown.escape.stop="closeAllMenus"
+                      >
                         更多 ▾
                       </button>
-                      <div v-if="openActionMenu === u.id" class="action-dropdown">
-                        <button @click="openSyncTimetables(u); openActionMenu = null">同步课表</button>
-                        <button @click="openChangeEmail(u); openActionMenu = null">改邮箱</button>
-                        <button @click="openResetPwd(u); openActionMenu = null">重置密码</button>
-                        <button @click="openInvitePerms(u); openActionMenu = null">邀请权限</button>
+                      <div
+                        v-if="openActionMenu === u.id"
+                        :id="`user-actions-${u.id}`"
+                        class="action-dropdown"
+                        role="menu"
+                        :aria-labelledby="`user-actions-trigger-${u.id}`"
+                        @keydown.escape.stop="closeAllMenus"
+                      >
+                        <button role="menuitem" @click="openSyncTimetables(u); openActionMenu = null">同步课表</button>
+                        <button role="menuitem" @click="openChangeEmail(u); openActionMenu = null">改邮箱</button>
+                        <button role="menuitem" @click="openResetPwd(u); openActionMenu = null">重置密码</button>
+                        <button role="menuitem" @click="openInvitePerms(u); openActionMenu = null">邀请权限</button>
                       </div>
                     </div>
                     <button

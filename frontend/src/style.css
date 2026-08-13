@@ -24,10 +24,14 @@
   /* Status */
   --red:         #B83025;
   --red-bg:      #FAF0EE;
+  --red-row:     #FDF8F6;
+  --red-row-hover: #FAEFEC;
   --green:       #22652A;
   --green-bg:    #EDF5EE;
   --amber:       #7A5000;
   --amber-bg:    #FBF5E3;
+  --amber-row:   #FEFCF5;
+  --amber-row-hover: #FAF3DF;
   --blue:        #0C4A8A;
   --blue-bg:     #E5EEF8;
 
