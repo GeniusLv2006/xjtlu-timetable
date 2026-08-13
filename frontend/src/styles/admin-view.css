@@ -156,6 +156,12 @@
 .admin-table tbody tr:hover td { background: var(--surface-2); }
 
 .row-banned td { opacity: 0.55; }
+.row-account-restricted td { background: var(--amber-row); }
+.row-account-restricted td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+.row-account-restricted:hover td { background: var(--amber-row-hover) !important; }
+.row-account-banned td { background: var(--red-row); }
+.row-account-banned td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.row-account-banned:hover td { background: var(--red-row-hover) !important; }
 .row-current td { background: var(--accent-tint); }
 
 /* suspicious tokens section */
@@ -754,6 +760,22 @@ tr:hover .icon-btn { opacity: 1; }
   }
   .admin-table tbody tr:hover td {
     background: transparent;
+  }
+  .row-account-restricted {
+    background: var(--amber-row) !important;
+    border-left: 3px solid var(--amber) !important;
+  }
+  .row-account-banned {
+    background: var(--red-row) !important;
+    border-left: 3px solid var(--red) !important;
+  }
+  .row-account-restricted td,
+  .row-account-banned td {
+    background: transparent !important;
+  }
+  .row-account-restricted td:first-child,
+  .row-account-banned td:first-child {
+    box-shadow: none;
   }
   .admin-table td {
     display: flex;
