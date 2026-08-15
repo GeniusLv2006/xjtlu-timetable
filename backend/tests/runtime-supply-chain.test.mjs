@@ -12,7 +12,7 @@ test('the runtime is built from pinned stable components', async () => {
   const dockerfile = await source('Dockerfile')
 
   assert.match(dockerfile, /^FROM node:24\.18\.0-alpine3\.24 AS builder$/m)
-  assert.match(dockerfile, /^FROM golang:1\.26\.5-alpine3\.24 AS pocketbase$/m)
+  assert.match(dockerfile, /^FROM golang:1\.26\.6-alpine3\.24 AS pocketbase$/m)
   assert.match(dockerfile, /^ARG POCKETBASE_VERSION=0\.39\.7$/m)
   assert.match(
     dockerfile,

@@ -10,7 +10,7 @@ RUN pnpm build
 # Stage 2: Build PocketBase from its pinned release commit with patched Go
 # dependencies. The upstream 0.39.7 binary contains x/image versions affected
 # by image-decoder denial-of-service advisories.
-FROM golang:1.26.5-alpine3.24 AS pocketbase
+FROM golang:1.26.6-alpine3.24 AS pocketbase
 ARG POCKETBASE_VERSION=0.39.7
 ARG POCKETBASE_COMMIT=636b7e28d8ffd3829f501f28f3725facf62a4042
 ARG POCKETBASE_SOURCE_SHA256=b08b9b421536c9866c96590c6295c6ae19728e7102d245328aae54a3cbb053b7
