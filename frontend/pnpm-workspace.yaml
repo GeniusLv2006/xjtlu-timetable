@@ -3,5 +3,4 @@ minimumReleaseAgeStrict: true
 minimumReleaseAgeExclude:
   - vite@8.1.5
 overrides:
-  nanoid: 3.3.18
   postcss: 8.5.23
