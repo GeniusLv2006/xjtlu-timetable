@@ -14,7 +14,7 @@ FROM golang:1.26.6-alpine3.24 AS pocketbase
 ARG POCKETBASE_VERSION=0.39.7
 ARG POCKETBASE_COMMIT=636b7e28d8ffd3829f501f28f3725facf62a4042
 ARG POCKETBASE_SOURCE_SHA256=b08b9b421536c9866c96590c6295c6ae19728e7102d245328aae54a3cbb053b7
-ARG GO_IMAGE_VERSION=0.44.0
+ARG GO_IMAGE_VERSION=0.45.0
 RUN apk add --no-cache curl \
     && archive="pocketbase-${POCKETBASE_COMMIT}.tar.gz" \
     && curl --fail --location --proto '=https' --tlsv1.2 \

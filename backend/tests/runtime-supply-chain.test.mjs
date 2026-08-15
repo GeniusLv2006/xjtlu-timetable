@@ -22,7 +22,7 @@ test('the runtime is built from pinned stable components', async () => {
     dockerfile,
     /^ARG POCKETBASE_SOURCE_SHA256=[a-f0-9]{64}$/m,
   )
-  assert.match(dockerfile, /^ARG GO_IMAGE_VERSION=0\.44\.0$/m)
+  assert.match(dockerfile, /^ARG GO_IMAGE_VERSION=0\.45\.0$/m)
   assert.match(dockerfile, /^FROM alpine:3\.24\.1$/m)
   assert.doesNotMatch(dockerfile, /COPY backend\/pocketbase/)
 })
