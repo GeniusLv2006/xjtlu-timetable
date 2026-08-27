@@ -15,6 +15,14 @@ test('the iCal hook fetches courses in one relation query', async () => {
   assert.doesNotMatch(hook, /'courses', 'timetable = "' \+ tt\.id/)
 })
 
+test('timetable sync uses local-first fetch with authenticated fallback and non-batch writes', async () => {
+  const sync = await source('frontend/src/utils/timetableSync.js')
+  assert.match(sync, /https:\/\/timetableplus\.xjtlu\.edu\.cn\/ptapi\/api\/enrollment\/hash/)
+  assert.match(sync, /\/api\/timetable-sync\/activity/)
+  assert.match(sync, /method: 'POST'/)
+  assert.doesNotMatch(sync, /createBatch|batch\.send/)
+})
+
 test('the performance migration covers recurring query paths', async () => {
   const migration = await source(
     'backend/pb_migrations/1784265403_add_query_indexes.js',
