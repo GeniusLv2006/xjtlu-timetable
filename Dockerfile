@@ -41,6 +41,9 @@ RUN addgroup -S -g 10001 pocketbase \
     && mkdir -p /pb/pb_data \
     && chown -R pocketbase:pocketbase /pb
 
+# Keep distribution security fixes current in the immutable runtime layer.
+RUN apk upgrade --no-cache
+
 # Verified PocketBase binary
 COPY --chown=pocketbase:pocketbase --from=pocketbase /out/pocketbase ./pocketbase
 

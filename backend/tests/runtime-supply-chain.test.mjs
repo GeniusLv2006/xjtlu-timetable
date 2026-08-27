@@ -24,6 +24,7 @@ test('the runtime is built from pinned stable components', async () => {
   )
   assert.match(dockerfile, /^ARG GO_IMAGE_VERSION=0\.45\.0$/m)
   assert.match(dockerfile, /^FROM alpine:3\.24\.1$/m)
+  assert.match(dockerfile, /apk upgrade --no-cache/)
   assert.doesNotMatch(dockerfile, /COPY backend\/pocketbase/)
 })
 
