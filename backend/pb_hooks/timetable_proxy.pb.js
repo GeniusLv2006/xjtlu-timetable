@@ -25,14 +25,14 @@ routerAdd('POST', '/api/timetable-sync/activity', function(e) {
       timeout: 20,
     })
   } catch (_) {
-    throw $apis.newApiError(502, 'Timetable service is temporarily unavailable', {})
+    throw new ApiError(502, 'Timetable service is temporarily unavailable', {})
   }
 
   if (upstream.statusCode < 200 || upstream.statusCode >= 300) {
-    throw $apis.newApiError(502, 'Timetable service returned HTTP ' + upstream.statusCode, {})
+    throw new ApiError(502, 'Timetable service returned HTTP ' + upstream.statusCode, {})
   }
   if (!upstream.json || !Array.isArray(upstream.json)) {
-    throw $apis.newApiError(502, 'Timetable service returned a non-JSON response', {})
+    throw new ApiError(502, 'Timetable service returned a non-JSON response', {})
   }
 
   return e.json(200, upstream.json)
