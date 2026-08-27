@@ -78,14 +78,21 @@ export async function syncTimetable(pb, timetableId, hash) {
       `https://timetableplus.xjtlu.edu.cn/ptapi/api/enrollment/hash/${hash}/activity`,
       { headers: { Accept: 'application/json' } },
     )
-  } catch {
-    res = await fetch(`/timetable-api/ptapi/api/enrollment/hash/${hash}/activity`, {
-      headers: { Accept: 'application/json' },
+    const contentType = res.headers.get('content-type') || ''
+    if (!res.ok || !contentType.toLowerCase().includes('json')) throw new Error('direct timetable fetch failed')
+  } catch (_) {
+    res = await pb.send('/api/timetable-sync/activity', {
+      method: 'POST',
+      body: { hash },
+      requestKey: null,
     })
+    rawList = Array.isArray(res) ? res : (res.data || res.activities || res.result || [])
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status} — HASH 可能已失效，请重新导入课表`)
-  const data = await res.json()
-  rawList = Array.isArray(data) ? data : (data.data || data.activities || data.result || [])
+  if (!rawList) {
+    if (!res.ok) throw new Error(`HTTP ${res.status} — HASH 可能已失效，请重新导入课表`)
+    const data = await res.json()
+    rawList = Array.isArray(data) ? data : (data.data || data.activities || data.result || [])
+  }
   if (!rawList.length) throw new Error('返回空数据，可能是空课表或 HASH 已过期')
 
   const activities = normalizeActivities(rawList)
@@ -107,15 +114,12 @@ export async function syncTimetable(pb, timetableId, hash) {
 
   let added = 0, updated = 0, removed = 0
 
-  // 3. 新增 / 更新 / 删除：用 batch 打包成一次请求
-  const batch = pb.createBatch()
-
   for (const act of activities) {
     const existing = act.identity ? existingMap.get(act.identity) : null
 
     if (!existing) {
       // 新课程
-      batch.collection('courses').create({
+      await pb.collection('courses').create({
         timetable:     timetableId,
         code:          act.code,
         activity_type: act.activity_type,
@@ -133,7 +137,7 @@ export async function syncTimetable(pb, timetableId, hash) {
       // 检查是否有字段变更
       const changed = FIELDS.some((f) => act[f] !== existing[f])
       if (changed) {
-        batch.collection('courses').update(existing.id, {
+        await pb.collection('courses').update(existing.id, {
           code:          act.code,
           activity_type: act.activity_type,
           section:       act.section,
@@ -152,13 +156,9 @@ export async function syncTimetable(pb, timetableId, hash) {
   // 4. 删除新数据中已消失的课程（仅针对有 identity 的记录）
   for (const [identity, existing] of existingMap) {
     if (!newIdentities.has(identity)) {
-      batch.collection('courses').delete(existing.id)
+      await pb.collection('courses').delete(existing.id)
       removed++
     }
-  }
-
-  if (added + updated + removed > 0) {
-    await batch.send()
   }
 
   // 5. 更新同步时间

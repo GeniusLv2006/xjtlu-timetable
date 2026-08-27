@@ -24,6 +24,7 @@ test('the runtime is built from pinned stable components', async () => {
   )
   assert.match(dockerfile, /^ARG GO_IMAGE_VERSION=0\.45\.0$/m)
   assert.match(dockerfile, /^FROM alpine:3\.24\.1$/m)
+  assert.match(dockerfile, /apk upgrade --no-cache/)
   assert.doesNotMatch(dockerfile, /COPY backend\/pocketbase/)
 })
 
@@ -32,6 +33,15 @@ test('the published image has a runtime health check', async () => {
 
   assert.match(dockerfile, /^HEALTHCHECK /m)
   assert.match(dockerfile, /http:\/\/127\.0\.0\.1:8080\/api\/health/)
+})
+
+test('timetable proxy is authenticated, fixed-target, and does not expose HASH in URL', async () => {
+  const hook = await source('backend/pb_hooks/timetable_proxy.pb.js')
+  assert.match(hook, /routerAdd\('POST', '\/api\/timetable-sync\/activity'/)
+  assert.match(hook, /\$apis\.requireAuth\(\)/)
+  assert.match(hook, /https:\/\/timetableplus\.xjtlu\.edu\.cn\/ptapi\/api\/enrollment\/hash\/' \+ hash/)
+  assert.doesNotMatch(hook, /routerAdd\('GET'.*hash.*\}/s)
+  assert.match(hook, /non-JSON response/)
 })
 
 test('self-host lifecycle uses prebuilt images and current superuser APIs', async () => {
