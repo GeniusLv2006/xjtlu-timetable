@@ -249,21 +249,16 @@ jobs:
               http://127.0.0.1:18091/api/collections/_superusers/auth-with-password |
               jq -er '.token'
           )"
-          echo "==> Reading baseline site configuration"
-          config_id="$(
+          echo "==> Creating baseline invitation"
+          invite_id="$(
             curl --fail --silent \
+              --header 'Content-Type: application/json' \
               --header "Authorization: $token" \
-              'http://127.0.0.1:18091/api/collections/site_config/records?perPage=1' |
-              jq -er '.items[0].id // error(.message // "site configuration not found")'
+              --data '{"code":"CI-UPGRADE-ACTIVE","max_uses":1}' \
+              http://127.0.0.1:18091/api/collections/invite_codes/records |
+              jq -er '.id // error(.message // "invitation creation failed")'
           )"
-          echo "==> Opening registration for the upgrade fixture"
-          curl --fail --silent \
-            --header 'Content-Type: application/json' \
-            --header "Authorization: $token" \
-            --request PATCH \
-            --data '{"registration_open":true,"require_invite":false}' \
-            "http://127.0.0.1:18091/api/collections/site_config/records/$config_id" \
-            >/dev/null
+          test -n "$invite_id"
           echo "==> Creating baseline semester"
           semester_id="$(
             curl --fail --silent \
@@ -278,18 +273,10 @@ jobs:
             curl --fail --silent \
               --header 'Content-Type: application/json' \
               --header "Authorization: $token" \
-              --data '{"email":"ci-active@example.invalid","password":"ci-active-password","passwordConfirm":"ci-active-password","name":"Active timetable fixture"}' \
+              --data '{"email":"ci-active@example.invalid","password":"ci-active-password","passwordConfirm":"ci-active-password","name":"Active timetable fixture","invite_code":"CI-UPGRADE-ACTIVE"}' \
               http://127.0.0.1:18091/api/collections/users/records |
               jq -er '.id // error(.message // "user creation failed")'
           )"
-          echo "==> Restoring closed registration policy"
-          curl --fail --silent \
-            --header 'Content-Type: application/json' \
-            --header "Authorization: $token" \
-            --request PATCH \
-            --data '{"registration_open":false,"require_invite":true}' \
-            "http://127.0.0.1:18091/api/collections/site_config/records/$config_id" \
-            >/dev/null
           echo "==> Creating baseline timetable"
           timetable_id="$(
             jq -n \
