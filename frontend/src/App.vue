@@ -10,6 +10,7 @@
         </div>
         <nav class="sidebar-nav">
           <router-link to="/" class="nav-item">课表</router-link>
+          <router-link to="/timetables" class="nav-item">管理</router-link>
           <router-link to="/import" class="nav-item">导入</router-link>
           <router-link to="/friends" class="nav-item">好友</router-link>
           <router-link to="/settings" class="nav-item">设置</router-link>
@@ -25,6 +26,7 @@
         <span class="mobile-brand">{{ compactInstanceName }}</span>
         <nav class="mobile-nav">
           <router-link to="/">课表</router-link>
+          <router-link to="/timetables">管理</router-link>
           <router-link to="/import">导入</router-link>
           <router-link to="/friends">好友</router-link>
           <router-link to="/settings">设置</router-link>

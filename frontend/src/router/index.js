@@ -30,6 +30,11 @@ const routes = [
     component: () => import('../views/ImportView.vue'),
   },
   {
+    path: '/timetables',
+    name: 'Timetables',
+    component: () => import('../views/TimetablesView.vue'),
+  },
+  {
     path: '/compare/:userId',
     name: 'Compare',
     component: () => import('../views/CompareView.vue'),

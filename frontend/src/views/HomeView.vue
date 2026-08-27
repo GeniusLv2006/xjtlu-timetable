@@ -19,9 +19,16 @@
         <span class="page-sub">我的课表</span>
       </div>
       <div class="toolbar-right">
-        <select v-if="timetables.length > 1" v-model="selectedId" class="tt-select">
+        <select
+          v-if="timetables.length > 1"
+          v-model="selectedId"
+          class="tt-select"
+          :disabled="activeUpdating"
+          @change="changeActiveTimetable"
+        >
           <option v-for="t in timetables" :key="t.id" :value="t.id">{{ t.label }}</option>
         </select>
+        <router-link v-if="timetables.length > 0" to="/timetables" class="btn btn-secondary btn-xs">管理</router-link>
         <div v-if="timetables.length > 0" class="vis-wrap">
           <select
             v-model="visibility"
@@ -38,32 +45,16 @@
           </Transition>
         </div>
         <button
-          v-if="selectedTimetable?.hash && !confirmDeleteId"
+          v-if="selectedTimetable?.hash"
           class="btn btn-secondary btn-xs"
           :disabled="syncing"
           @click="syncSelected"
         >{{ syncing ? '同步中…' : '同步' }}</button>
-        <button
-          v-if="timetables.length > 0 && !confirmDeleteId"
-          class="btn btn-danger btn-xs"
-          @click="confirmDeleteId = selectedId"
-        >删除</button>
         <span v-if="timetables.length === 0 && !loading" class="empty-hint">
           还没有课表 — <router-link to="/import">去导入</router-link>
         </span>
       </div>
     </div>
-
-    <!-- Delete confirmation -->
-    <Transition name="confirm-bar">
-      <div v-if="confirmDeleteId" class="confirm-bar">
-        <span class="confirm-text">确定删除"{{ selectedTimetable?.label }}"？此操作不可撤回。</span>
-        <button class="btn btn-danger btn-xs" :disabled="deleting" @click="deleteTimetable">
-          {{ deleting ? '删除中…' : '确认删除' }}
-        </button>
-        <button class="btn btn-secondary btn-xs" @click="confirmDeleteId = null">取消</button>
-      </div>
-    </Transition>
 
     <!-- Sync result bar -->
     <Transition name="confirm-bar">
@@ -100,6 +91,10 @@ import pb from '../lib/pocketbase'
 import TimetableGrid from '../components/TimetableGrid.vue'
 import { useAuthStore } from '../stores/auth'
 import { syncErrorMessage, syncTimetable } from '../utils/timetableSync'
+import {
+  readActiveTimetableId,
+  writeActiveTimetableId,
+} from '../utils/timetableSelection'
 
 defineOptions({ name: 'Home' })
 
@@ -155,11 +150,11 @@ const error      = ref('')
 const visibility   = ref('private')
 const visUpdating  = ref(false)
 const visSaved     = ref(false)
-const confirmDeleteId = ref(null)
-const deleting     = ref(false)
 const syncing      = ref(false)
 const syncMsg      = ref('')
 const syncError    = ref(false)
+const activeUpdating = ref(false)
+const confirmedActiveId = ref('')
 
 const visLabel = computed(() => {
   const map = { private: '仅自己可见', friends: '好友可见' }
@@ -182,16 +177,15 @@ async function loadTimetables() {
     })
     timetables.value = result
     if (result.length > 0) {
-      // 若当前选中的课表仍在列表中则保持，否则切到第一个
-      const stillExists = result.find(t => t.id === selectedId.value)
-      if (!stillExists) {
-        selectedId.value = result[0].id
-        visibility.value = result[0].visibility ?? 'private'
-      } else {
-        visibility.value = stillExists.visibility ?? 'private'
-      }
+      const serverId = await readActiveTimetableId(pb)
+      const preferredId = result.some(t => t.id === serverId) ? serverId : result[0].id
+      const preferred = result.find(t => t.id === preferredId)
+      selectedId.value = preferredId
+      confirmedActiveId.value = preferredId
+      visibility.value = preferred?.visibility ?? 'private'
     } else {
       selectedId.value = null
+      confirmedActiveId.value = ''
       courses.value = []
     }
   } catch (e) {
@@ -204,7 +198,10 @@ async function loadTimetables() {
 onActivated(loadTimetables)
 
 watch(selectedId, async (id) => {
-  if (!id) { courses.value = []; return }
+  if (!id) {
+    courses.value = []
+    return
+  }
   const tt = timetables.value.find(t => t.id === id)
   if (tt) visibility.value = tt.visibility ?? 'private'
 
@@ -221,6 +218,23 @@ watch(selectedId, async (id) => {
     loading.value = false
   }
 })
+
+async function changeActiveTimetable() {
+  const requestedId = selectedId.value
+  if (!requestedId || activeUpdating.value) return
+  activeUpdating.value = true
+  error.value = ''
+  try {
+    const savedId = await writeActiveTimetableId(pb, requestedId)
+    confirmedActiveId.value = savedId
+    selectedId.value = savedId
+  } catch (e) {
+    selectedId.value = confirmedActiveId.value
+    error.value = e.message || '当前课表切换失败'
+  } finally {
+    activeUpdating.value = false
+  }
+}
 
 async function updateVisibility() {
   if (!selectedId.value || visUpdating.value) return
@@ -276,25 +290,6 @@ async function syncSelected() {
   }
 }
 
-async function deleteTimetable() {
-  if (!selectedId.value || deleting.value) return
-  deleting.value = true
-  try {
-    await pb.collection('timetables').delete(selectedId.value, { requestKey: null })
-    timetables.value = timetables.value.filter(t => t.id !== selectedId.value)
-    confirmDeleteId.value = null
-    if (timetables.value.length > 0) {
-      selectedId.value = timetables.value[0].id
-    } else {
-      selectedId.value = null
-      courses.value = []
-    }
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    deleting.value = false
-  }
-}
 </script>
 
 <style scoped>

@@ -40,6 +40,12 @@ In production, the frontend uses the current browser origin for PocketBase API
 and iCal URLs. This keeps third-party deployments independent from the
 project-operated domain.
 
+The active timetable is account-level state, not browser-local state. The
+authenticated `/api/timetables/active` route validates timetable ownership and
+updates the private `users.active_timetable` relation. The iCal route exports
+only that timetable; deleting it selects the newest remaining timetable, and
+the migration initializes existing accounts from their newest timetable.
+
 ### PocketBase application
 
 PocketBase serves the frontend, REST API, authentication, admin dashboard, and

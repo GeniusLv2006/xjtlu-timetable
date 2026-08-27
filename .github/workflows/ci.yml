@@ -255,6 +255,25 @@ jobs:
               http://127.0.0.1:18091/api/collections/semesters/records |
               jq -er '.id'
           )"
+          user_id="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --header "Authorization: $token" \
+              --data '{"email":"ci-active@example.invalid","password":"ci-active-password","passwordConfirm":"ci-active-password","name":"Active timetable fixture"}' \
+              http://127.0.0.1:18091/api/collections/users/records |
+              jq -er '.id'
+          )"
+          timetable_id="$(
+            jq -n \
+              --arg user "$user_id" \
+              '{user: $user, hash: "ci-upgrade-active", label: "Upgrade active fixture", visibility: "private"}' |
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --header "Authorization: $token" \
+              --data-binary @- \
+              http://127.0.0.1:18091/api/collections/timetables/records |
+              jq -er '.id'
+          )"
           docker stop xjtlu-timetable-baseline
           docker rm xjtlu-timetable-baseline
 
@@ -292,6 +311,20 @@ jobs:
               "http://127.0.0.1:18091/api/collections/semesters/records/$semester_id"
           )"
           test "$(printf '%s' "$semester" | jq -r '.name')" = "Upgrade fixture"
+          user_token="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --data '{"identity":"ci-active@example.invalid","password":"ci-active-password"}' \
+              http://127.0.0.1:18091/api/collections/users/auth-with-password |
+              jq -er '.token'
+          )"
+          active_timetable="$(
+            curl --fail --silent \
+              --header "Authorization: $user_token" \
+              http://127.0.0.1:18091/api/timetables/active |
+              jq -er '.timetable_id'
+          )"
+          test "$active_timetable" = "$timetable_id"
 
       - name: Scan runtime image
         if: github.event_name == 'pull_request'

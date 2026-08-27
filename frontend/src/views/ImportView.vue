@@ -65,11 +65,6 @@
         <div class="notice notice-blue">
           在 e-Bridge 左侧导航栏点击 <strong>Timetable</strong>，进入 <strong>My Personal Class Timetable</strong> 页面，等待课表完整加载后再点击书签。若提示"未找到课表框架"，请确认课表区域已显示具体课程安排后重试。
         </div>
-        <div class="notice notice-blue">
-          若本站提示 HTTP 412/502，请在新标签页直接打开学校接口 URL（地址中的 HASH 使用上一步复制的值），
-          待页面显示 JSON 后点击下方“复制接口 JSON”书签，再回到这里粘贴。这样数据全程通过你当前网络获取。
-        </div>
-        <a :href="JSON_BOOKMARKLET" class="btn btn-secondary drag-btn" draggable="true" @click.prevent>复制接口 JSON 书签</a>
       </div>
     </div>
 
@@ -95,11 +90,47 @@
             {{ phaseLabel }}
           </button>
         </div>
+
+        <div class="notice notice-amber source-restriction">
+          <strong>为什么可能需要手动导入？</strong>
+          <p>
+            学校课表服务器会通过 HTTP 412 和 CORS 限制部分站外浏览器及服务器请求，浏览器因此可能拒绝把响应交给本站。
+            该限制来自学校服务器和浏览器安全策略，本站无法绕过；你仍可在新标签页直接打开接口，并将 JSON 手动粘贴回来。
+          </p>
+        </div>
+
+        <div
+          v-if="activityUrl"
+          class="manual-import"
+          :class="{ 'manual-import-needed': manualImportNeeded }"
+        >
+          <div class="manual-import-head">
+            <div>
+              <div class="method-label">手动获取接口 JSON</div>
+              <p class="step-hint">接口地址已根据上方 HASH 生成。</p>
+            </div>
+            <a
+              :href="activityUrl"
+              class="btn btn-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >打开学校 JSON 接口</a>
+          </div>
+          <ol class="step-ol manual-steps">
+            <li>在新标签页等待课表 JSON 显示。</li>
+            <li>Firefox 点击页面顶部的<strong>“复制”</strong>；其他浏览器可使用全选并复制。</li>
+            <li>回到本页，将内容粘贴到下方文本框，再点击“导入已粘贴 JSON”。</li>
+          </ol>
+          <code class="activity-url">{{ activityUrl }}</code>
+        </div>
+
+        <label for="json-input" class="json-label">学校接口 JSON（可选）</label>
         <textarea
+          id="json-input"
           v-model="jsonInput"
           class="field-input json-input"
           rows="5"
-          placeholder="也可以直接粘贴学校接口返回的 JSON（推荐用于桌面端 HTTP 412/502）"
+          placeholder="将学校接口返回的完整 JSON 粘贴到这里"
           :disabled="phase !== 'idle'"
         />
 
@@ -139,12 +170,17 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import pb from '../lib/pocketbase'
 import { normalizeActivities } from '../utils/timetableSync'
+import {
+  buildTimetableActivityUrl,
+  extractActivityList,
+  extractTimetableHash,
+} from '../utils/timetableImport'
+import { writeActiveTimetableId } from '../utils/timetableSelection'
 
 const router = useRouter()
 
 // ── 书签代码 ─────────────────────────────────────────────────────────────────
 const BOOKMARKLET = `javascript:(function(){var f=document.getElementById('myFrame');var src=f&&(f.src||f.getAttribute('src'));if(!src){var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){if((frames[i].src||'').includes('timetableplus')){src=frames[i].src;break;}}}if(!src){alert('未找到课表框架\\n请确保：\\n1. 已登录 e-Bridge\\n2. 当前页面已展示课表（非空白）');return;}var m=src.match(/[#\\/]([0-9A-Fa-f]{40,})/);if(!m){alert('找到框架但无法提取 HASH，src: '+src.slice(0,80));return;}navigator.clipboard.writeText(m[1].toUpperCase()).then(function(){alert('✓ HASH 已复制到剪贴板\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制以下 HASH：',m[1].toUpperCase());});})();`
-const JSON_BOOKMARKLET = `javascript:(function(){try{var t=document.body&&document.body.innerText||'';JSON.parse(t);navigator.clipboard.writeText(t).then(function(){alert('✓ 接口 JSON 已复制\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制接口 JSON：',t);});}catch(e){alert('当前页面不是有效 JSON，请确认已直接打开 /activity 接口');}})();`
 
 // ── 状态 ─────────────────────────────────────────────────────────────────────
 const hashInput     = ref('')
@@ -156,23 +192,18 @@ const skippedCount  = ref(0)
 const totalCount    = ref(0)
 const bookmarkCopied = ref(false)
 const isReimport    = ref(false)
+const manualImportNeeded = ref(false)
+
+const activityUrl = computed(() => buildTimetableActivityUrl(hashInput.value))
 
 const phaseLabel = computed(() => {
   if (phase.value === 'fetching') return '获取中…'
   if (phase.value === 'saving')   return '保存中…'
   if (phase.value === 'done')     return '导入完成'
-  return '获取并导入'
+  return jsonInput.value.trim() ? '导入已粘贴 JSON' : '获取并导入'
 })
 
 // ── 工具 ─────────────────────────────────────────────────────────────────────
-
-function extractHash(input) {
-  const s = (input || '').trim()
-  const m = s.match(/[#/]([0-9A-Fa-f]{40,})/)
-  if (m) return m[1].toUpperCase()
-  if (/^[0-9A-Fa-f]{40,}$/.test(s)) return s.toUpperCase()
-  return null
-}
 
 async function copyBookmarklet() {
   try {
@@ -192,7 +223,7 @@ async function handleImport() {
   totalCount.value  = 0
   isReimport.value  = false
 
-  const hash = extractHash(hashInput.value)
+  const hash = extractTimetableHash(hashInput.value)
   if (!hash) {
     error.value = '无法识别 HASH，请粘贴剪贴板内容或完整 URL'
     return
@@ -205,19 +236,21 @@ async function handleImport() {
     if (jsonInput.value.trim()) {
       try { data = JSON.parse(jsonInput.value) } catch { throw new Error('接口 JSON 格式无效，请重新复制') }
     } else {
-      const res = await fetch(
-        `https://timetableplus.xjtlu.edu.cn/ptapi/api/enrollment/hash/${hash}/activity`,
-        {
+      try {
+        const res = await fetch(activityUrl.value, {
           headers: { Accept: 'application/json' },
           referrer: 'https://ebridge.xjtlu.edu.cn/',
           referrerPolicy: 'strict-origin-when-cross-origin',
           credentials: 'include',
-        },
-      )
-      if (!res.ok) throw new Error(`HTTP ${res.status} — 请直接打开接口并粘贴 JSON`)
-      data = await res.json()
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        data = await res.json()
+      } catch {
+        manualImportNeeded.value = true
+        throw new Error('学校服务器阻止了自动获取。请按下方步骤打开学校 JSON 接口并手动粘贴；该服务器限制无法由本站绕过。')
+      }
     }
-    rawList = Array.isArray(data) ? data : (data.data || data.activities || data.result || [])
+    rawList = extractActivityList(data)
     if (!rawList.length) throw new Error('返回空数据，可能是空课表或 HASH 已过期')
   } catch (e) {
     error.value = e.message
@@ -280,6 +313,7 @@ async function handleImport() {
       })
       savedCount.value++
     }
+    await writeActiveTimetableId(pb, timetable.id)
     phase.value = 'done'
     setTimeout(() => router.push('/'), 2000)
   } catch (e) {
@@ -301,15 +335,72 @@ async function handleImport() {
   display: block;
   width: 100%;
   min-height: 120px;
-  margin-top: 12px;
+  margin-top: 0;
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   line-height: 1.45;
 }
 
+.json-label {
+  margin-top: var(--sp-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.source-restriction p {
+  margin-top: 4px;
+}
+
+.manual-import {
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+}
+
+.manual-import-needed {
+  border-color: #D5A94C;
+  border-left-color: #B97700;
+  background: #FFFCF3;
+}
+
+.manual-import-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.manual-steps {
+  margin-top: var(--sp-3);
+}
+
+.activity-url {
+  display: block;
+  margin-top: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
 @media (max-width: 768px) {
   .import-page { padding: 20px 16px 40px; }
+  .manual-import-head {
+    flex-direction: column;
+  }
+  .manual-import-head .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .page-toolbar {

@@ -77,6 +77,27 @@ test('runtime access rules enforce timetable and friendship boundaries', {
     method: 'PATCH',
     token: adminToken,
   })
+  const semesterList = await request('/api/collections/semesters/records?perPage=1', {
+    token: adminToken,
+  })
+  if (semesterList.totalItems > 0) {
+    await request(`/api/collections/semesters/records/${semesterList.items[0].id}`, {
+      body: { is_current: true, start_date: '2026-09-07 00:00:00.000Z' },
+      method: 'PATCH',
+      token: adminToken,
+    })
+  } else {
+    await request('/api/collections/semesters/records', {
+      body: {
+        is_current: true,
+        name: 'Integration semester',
+        start_date: '2026-09-07 00:00:00.000Z',
+        weeks_total: 14,
+      },
+      method: 'POST',
+      token: adminToken,
+    })
+  }
 
   async function createUser(role) {
     const email = `${role}-${suffix}@example.invalid`
@@ -144,12 +165,87 @@ test('runtime access rules enforce timetable and friendship boundaries', {
     token: owner.token,
   })
 
+  await request('/api/timetables/active', { expected: [401] })
+  const initialActive = await request('/api/timetables/active', { token: owner.token })
+  assert.equal(initialActive.timetable_id, timetable.id)
+  await request('/api/timetables/active', {
+    body: { timetable_id: timetable.id },
+    expected: [400],
+    method: 'PUT',
+    token: stranger.token,
+  })
+
+  const secondTimetable = await request('/api/collections/timetables/records', {
+    body: {
+      hash: `integration-second-${suffix}`,
+      label: 'Second timetable fixture',
+      user: owner.id,
+      visibility: 'private',
+    },
+    method: 'POST',
+    token: owner.token,
+  })
+  await request('/api/collections/courses/records', {
+    body: {
+      activity_type: 'Lecture',
+      code: 'INT002',
+      day: 'Monday',
+      end_time: '10:00',
+      identity: `int002-${suffix}`,
+      start_time: '09:00',
+      timetable: secondTimetable.id,
+      weeks: '1',
+    },
+    method: 'POST',
+    token: owner.token,
+  })
+  const selectedSecond = await request('/api/timetables/active', {
+    body: { timetable_id: secondTimetable.id },
+    method: 'PUT',
+    token: owner.token,
+  })
+  assert.equal(selectedSecond.timetable_id, secondTimetable.id)
+
+  const icalTokenValue = randomUUID().replaceAll('-', '')
+  await request('/api/collections/ical_tokens/records', {
+    body: { token: icalTokenValue, user: owner.id },
+    method: 'POST',
+    token: owner.token,
+  })
+  const secondIcalResponse = await fetch(
+    `${baseUrl}/api/ical/${icalTokenValue}/timetable.ics`,
+  )
+  assert.equal(secondIcalResponse.status, 200)
+  const secondIcal = await secondIcalResponse.text()
+  assert.match(secondIcal, /SUMMARY:INT002 Lecture/)
+  assert.doesNotMatch(secondIcal, /SUMMARY:INT001/)
+
+  await request(`/api/collections/timetables/records/${secondTimetable.id}`, {
+    expected: [204],
+    method: 'DELETE',
+    token: owner.token,
+  })
+  const activeAfterDelete = await request('/api/timetables/active', { token: owner.token })
+  assert.equal(activeAfterDelete.timetable_id, timetable.id)
+
   const timetablePath = `/api/collections/timetables/records/${timetable.id}`
   await request(timetablePath, { expected: [400, 403, 404] })
   await request(timetablePath, { token: owner.token })
   await request(timetablePath, { token: friend.token })
   await request(timetablePath, {
     expected: [400, 403, 404],
+    token: stranger.token,
+  })
+  const renamedTimetable = await request(timetablePath, {
+    body: { label: 'Renamed by owner' },
+    method: 'PATCH',
+    token: owner.token,
+  })
+  assert.equal(renamedTimetable.label, 'Renamed by owner')
+  await request(timetablePath, {
+    body: { label: 'Blocked stranger rename' },
+    expected: [400, 403, 404],
+    method: 'PATCH',
     token: stranger.token,
   })
 
@@ -303,6 +399,7 @@ test('runtime access rules enforce timetable and friendship boundaries', {
   })
   assert.equal(restrictedExport.data.user.id, owner.id)
   assert.equal(restrictedExport.data.user.email, owner.email)
+  assert.equal(restrictedExport.data.user.active_timetable, timetable.id)
   assert.equal(restrictedExport.data.user.restricted_login_allowed, true)
   assert.ok(restrictedExport.data.timetables.some(item => item.id === timetable.id))
   assert.ok(restrictedExport.data.courses.some(item => item.id === course.id))
