@@ -10,6 +10,9 @@ export function syncErrorMessage(error, fallback = '同步失败') {
   return error?.response?.message ||
     error?.response?.data?.message ||
     error?.data?.message ||
+    error?.originalError?.message ||
+    error?.cause?.message ||
+    (error?.status ? `HTTP ${error.status}` : '') ||
     error?.message ||
     fallback
 }
