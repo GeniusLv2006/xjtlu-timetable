@@ -248,6 +248,19 @@ jobs:
               http://127.0.0.1:18091/api/collections/_superusers/auth-with-password |
               jq -er '.token'
           )"
+          config_id="$(
+            curl --fail --silent \
+              --header "Authorization: $token" \
+              'http://127.0.0.1:18091/api/collections/site_config/records?perPage=1' |
+              jq -er '.items[0].id'
+          )"
+          curl --fail --silent \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: $token" \
+            --request PATCH \
+            --data '{"registration_open":true,"require_invite":false}' \
+            "http://127.0.0.1:18091/api/collections/site_config/records/$config_id" \
+            >/dev/null
           semester_id="$(
             curl --fail --silent \
               --header 'Content-Type: application/json' \
@@ -264,6 +277,13 @@ jobs:
               http://127.0.0.1:18091/api/collections/users/records |
               jq -er '.id'
           )"
+          curl --fail --silent \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: $token" \
+            --request PATCH \
+            --data '{"registration_open":false,"require_invite":true}' \
+            "http://127.0.0.1:18091/api/collections/site_config/records/$config_id" \
+            >/dev/null
           timetable_id="$(
             jq -n \
               --arg user "$user_id" \
