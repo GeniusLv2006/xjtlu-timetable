@@ -87,16 +87,31 @@ export async function syncTimetable(pb, timetableId, hash) {
   try {
     res = await fetch(
       `https://timetableplus.xjtlu.edu.cn/ptapi/api/enrollment/hash/${hash}/activity`,
-      { headers: { Accept: 'application/json' } },
+      {
+        headers: { Accept: 'application/json' },
+        // Match the context used by the e-Bridge timetable iframe as closely
+        // as Fetch permits. Origin remains browser-controlled and cannot be spoofed.
+        referrer: 'https://ebridge.xjtlu.edu.cn/',
+        referrerPolicy: 'strict-origin-when-cross-origin',
+        credentials: 'include',
+      },
     )
     const contentType = res.headers.get('content-type') || ''
     if (!res.ok || !contentType.toLowerCase().includes('json')) throw new Error('direct timetable fetch failed')
   } catch (_) {
-    res = await pb.send('/api/timetable-sync/activity', {
-      method: 'POST',
-      body: { hash },
-      requestKey: null,
-    })
+    try {
+      res = await pb.send('/api/timetable-sync/activity', {
+        method: 'POST',
+        body: { hash },
+        requestKey: null,
+      })
+    } catch (error) {
+      const status = error?.status || error?.response?.status
+      if (status === 502) {
+        throw new Error('学校接口拒绝了服务器请求（HTTP 412）。请在“导入课表”页直接打开学校接口并粘贴 JSON 后再同步')
+      }
+      throw error
+    }
     rawList = Array.isArray(res) ? res : (res.data || res.activities || res.result || [])
   }
   if (!rawList) {

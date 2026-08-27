@@ -57,14 +57,19 @@
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-body">
-        <div class="step-title">在 e-Bridge 课表页运行书签</div>
+        <div class="step-title">获取课表数据</div>
         <div class="step-desc">
           登录 <code class="inline-code">ebridge.xjtlu.edu.cn</code>，打开课表页面，
-          等课表加载完毕后点击书签，出现 "✓ HASH 已复制" 提示即成功。
+          等课表加载完毕后点击书签，复制 HASH。
         </div>
         <div class="notice notice-blue">
           在 e-Bridge 左侧导航栏点击 <strong>Timetable</strong>，进入 <strong>My Personal Class Timetable</strong> 页面，等待课表完整加载后再点击书签。若提示"未找到课表框架"，请确认课表区域已显示具体课程安排后重试。
         </div>
+        <div class="notice notice-blue">
+          若本站提示 HTTP 412/502，请在新标签页直接打开学校接口 URL（地址中的 HASH 使用上一步复制的值），
+          待页面显示 JSON 后点击下方“复制接口 JSON”书签，再回到这里粘贴。这样数据全程通过你当前网络获取。
+        </div>
+        <a :href="JSON_BOOKMARKLET" class="btn btn-secondary drag-btn" draggable="true" @click.prevent>复制接口 JSON 书签</a>
       </div>
     </div>
 
@@ -90,6 +95,13 @@
             {{ phaseLabel }}
           </button>
         </div>
+        <textarea
+          v-model="jsonInput"
+          class="field-input json-input"
+          rows="5"
+          placeholder="也可以直接粘贴学校接口返回的 JSON（推荐用于桌面端 HTTP 412/502）"
+          :disabled="phase !== 'idle'"
+        />
 
         <div v-if="phase === 'fetching'" class="status-line msg-info">正在从 timetableplus 拉取数据…</div>
         <div v-if="phase === 'saving' && isReimport" class="status-line msg-info">
@@ -132,9 +144,11 @@ const router = useRouter()
 
 // ── 书签代码 ─────────────────────────────────────────────────────────────────
 const BOOKMARKLET = `javascript:(function(){var f=document.getElementById('myFrame');var src=f&&(f.src||f.getAttribute('src'));if(!src){var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){if((frames[i].src||'').includes('timetableplus')){src=frames[i].src;break;}}}if(!src){alert('未找到课表框架\\n请确保：\\n1. 已登录 e-Bridge\\n2. 当前页面已展示课表（非空白）');return;}var m=src.match(/[#\\/]([0-9A-Fa-f]{40,})/);if(!m){alert('找到框架但无法提取 HASH，src: '+src.slice(0,80));return;}navigator.clipboard.writeText(m[1].toUpperCase()).then(function(){alert('✓ HASH 已复制到剪贴板\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制以下 HASH：',m[1].toUpperCase());});})();`
+const JSON_BOOKMARKLET = `javascript:(function(){try{var t=document.body&&document.body.innerText||'';JSON.parse(t);navigator.clipboard.writeText(t).then(function(){alert('✓ 接口 JSON 已复制\\n请切换到课表导入页面粘贴')}).catch(function(){prompt('请手动复制接口 JSON：',t);});}catch(e){alert('当前页面不是有效 JSON，请确认已直接打开 /activity 接口');}})();`
 
 // ── 状态 ─────────────────────────────────────────────────────────────────────
 const hashInput     = ref('')
+const jsonInput     = ref('')
 const phase         = ref('idle') // idle | fetching | saving | done
 const error         = ref('')
 const savedCount    = ref(0)
@@ -187,19 +201,22 @@ async function handleImport() {
   phase.value = 'fetching'
   let rawList
   try {
-    let res
-    try {
-      res = await fetch(
+    let data
+    if (jsonInput.value.trim()) {
+      try { data = JSON.parse(jsonInput.value) } catch { throw new Error('接口 JSON 格式无效，请重新复制') }
+    } else {
+      const res = await fetch(
         `https://timetableplus.xjtlu.edu.cn/ptapi/api/enrollment/hash/${hash}/activity`,
-        { headers: { Accept: 'application/json' } },
+        {
+          headers: { Accept: 'application/json' },
+          referrer: 'https://ebridge.xjtlu.edu.cn/',
+          referrerPolicy: 'strict-origin-when-cross-origin',
+          credentials: 'include',
+        },
       )
-    } catch {
-      res = await fetch(`/timetable-api/ptapi/api/enrollment/hash/${hash}/activity`, {
-        headers: { Accept: 'application/json' },
-      })
+      if (!res.ok) throw new Error(`HTTP ${res.status} — 请直接打开接口并粘贴 JSON`)
+      data = await res.json()
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status} — HASH 可能已失效，请重新运行书签`)
-    const data = await res.json()
     rawList = Array.isArray(data) ? data : (data.data || data.activities || data.result || [])
     if (!rawList.length) throw new Error('返回空数据，可能是空课表或 HASH 已过期')
   } catch (e) {
@@ -243,13 +260,12 @@ async function handleImport() {
     })
     const existingIdentities = new Set(existingCourses.map((c) => c.identity))
 
-    const batch = pb.createBatch()
     for (const act of activities) {
       if (act.identity && existingIdentities.has(act.identity)) {
         skippedCount.value++
         continue
       }
-      batch.collection('courses').create({
+      await pb.collection('courses').create({
         timetable:     timetable.id,
         code:          act.code,
         activity_type: act.activity_type,
@@ -264,10 +280,6 @@ async function handleImport() {
       })
       savedCount.value++
     }
-    if (savedCount.value > 0) {
-      await batch.send()
-    }
-
     phase.value = 'done'
     setTimeout(() => router.push('/'), 2000)
   } catch (e) {
@@ -283,6 +295,17 @@ async function handleImport() {
   max-width: 700px;
   margin: 0 auto;
   padding: 28px 32px 48px;
+}
+
+.json-input {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  margin-top: 12px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 @media (max-width: 768px) {
