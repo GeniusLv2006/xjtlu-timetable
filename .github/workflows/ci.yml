@@ -231,6 +231,7 @@ jobs:
             ./pocketbase superuser create ci-admin@example.invalid ci-upgrade-password
           docker run --detach \
             --name xjtlu-timetable-baseline \
+            --env ACCOUNT_BLOCK_HMAC_KEYS=ci-account-block-current-000000000000,ci-account-block-previous-0000000000 \
             --publish 127.0.0.1:18091:8080 \
             --volume "$volume:/pb/pb_data" \
             "$BASELINE_IMAGE"
