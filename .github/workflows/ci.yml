@@ -241,6 +241,7 @@ jobs:
               break
             sleep 1
           done
+          echo "==> Authenticating baseline superuser"
           token="$(
             curl --fail --silent \
               --header 'Content-Type: application/json' \
@@ -248,12 +249,14 @@ jobs:
               http://127.0.0.1:18091/api/collections/_superusers/auth-with-password |
               jq -er '.token'
           )"
+          echo "==> Reading baseline site configuration"
           config_id="$(
             curl --fail --silent \
               --header "Authorization: $token" \
               'http://127.0.0.1:18091/api/collections/site_config/records?perPage=1' |
-              jq -er '.items[0].id'
+              jq -er '.items[0].id // error(.message // "site configuration not found")'
           )"
+          echo "==> Opening registration for the upgrade fixture"
           curl --fail --silent \
             --header 'Content-Type: application/json' \
             --header "Authorization: $token" \
@@ -261,22 +264,25 @@ jobs:
             --data '{"registration_open":true,"require_invite":false}' \
             "http://127.0.0.1:18091/api/collections/site_config/records/$config_id" \
             >/dev/null
+          echo "==> Creating baseline semester"
           semester_id="$(
             curl --fail --silent \
               --header 'Content-Type: application/json' \
               --header "Authorization: $token" \
               --data '{"name":"Upgrade fixture","start_date":"2026-01-01 00:00:00.000Z","weeks_total":13,"is_current":true}' \
               http://127.0.0.1:18091/api/collections/semesters/records |
-              jq -er '.id'
+              jq -er '.id // error(.message // "semester creation failed")'
           )"
+          echo "==> Creating baseline user"
           user_id="$(
             curl --fail --silent \
               --header 'Content-Type: application/json' \
               --header "Authorization: $token" \
               --data '{"email":"ci-active@example.invalid","password":"ci-active-password","passwordConfirm":"ci-active-password","name":"Active timetable fixture"}' \
               http://127.0.0.1:18091/api/collections/users/records |
-              jq -er '.id'
+              jq -er '.id // error(.message // "user creation failed")'
           )"
+          echo "==> Restoring closed registration policy"
           curl --fail --silent \
             --header 'Content-Type: application/json' \
             --header "Authorization: $token" \
@@ -284,6 +290,7 @@ jobs:
             --data '{"registration_open":false,"require_invite":true}' \
             "http://127.0.0.1:18091/api/collections/site_config/records/$config_id" \
             >/dev/null
+          echo "==> Creating baseline timetable"
           timetable_id="$(
             jq -n \
               --arg user "$user_id" \
@@ -293,7 +300,7 @@ jobs:
               --header "Authorization: $token" \
               --data-binary @- \
               http://127.0.0.1:18091/api/collections/timetables/records |
-              jq -er '.id'
+              jq -er '.id // error(.message // "timetable creation failed")'
           )"
           docker stop xjtlu-timetable-baseline
           docker rm xjtlu-timetable-baseline
