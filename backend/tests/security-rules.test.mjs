@@ -185,6 +185,7 @@ test('active timetable selection is private, owner-validated, and drives iCal', 
   assert.match(migration, /hidden: true/)
   assert.match(migration, /@request\.body\.active_timetable:changed = false/)
   assert.match(migration, /SELECT id FROM timetables/)
+  assert.match(migration, /COALESCE\(\(/)
   assert.match(selectionHook, /\/api\/timetables\/active/)
   assert.match(selectionHook, /selected\.getString\('user'\) === auth\.id/)
   assert.match(selectionHook, /\$apis\.requireAuth\('users'\)/)

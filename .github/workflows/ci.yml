@@ -254,7 +254,7 @@ jobs:
             curl --fail --silent \
               --header 'Content-Type: application/json' \
               --header "Authorization: $token" \
-              --data '{"code":"CI-UPGRADE-ACTIVE","max_uses":1}' \
+              --data '{"code":"CI-UPGRADE-ACTIVE","max_uses":2}' \
               http://127.0.0.1:18091/api/collections/invite_codes/records |
               jq -er '.id // error(.message // "invitation creation failed")'
           )"
@@ -277,6 +277,13 @@ jobs:
               http://127.0.0.1:18091/api/collections/users/records |
               jq -er '.id // error(.message // "user creation failed")'
           )"
+          echo "==> Creating baseline user without a timetable"
+          curl --fail --silent \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: $token" \
+            --data '{"email":"ci-empty@example.invalid","password":"ci-empty-password","passwordConfirm":"ci-empty-password","name":"Empty timetable fixture","invite_code":"CI-UPGRADE-ACTIVE"}' \
+            http://127.0.0.1:18091/api/collections/users/records |
+            jq -e '.id // error(.message // "empty user creation failed")' >/dev/null
           echo "==> Creating baseline timetable"
           timetable_id="$(
             jq -n \
@@ -340,6 +347,20 @@ jobs:
               jq -er '.timetable_id'
           )"
           test "$active_timetable" = "$timetable_id"
+          empty_user_token="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --data '{"identity":"ci-empty@example.invalid","password":"ci-empty-password"}' \
+              http://127.0.0.1:18091/api/collections/users/auth-with-password |
+              jq -er '.token'
+          )"
+          empty_active_timetable="$(
+            curl --fail --silent \
+              --header "Authorization: $empty_user_token" \
+              http://127.0.0.1:18091/api/timetables/active |
+              jq -er '.timetable_id == null'
+          )"
+          test "$empty_active_timetable" = "true"
 
       - name: Scan runtime image
         if: github.event_name == 'pull_request'
