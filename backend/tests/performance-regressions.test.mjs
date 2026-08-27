@@ -17,8 +17,8 @@ test('the iCal hook fetches courses in one relation query', async () => {
 
 test('timetable sync uses local-first fetch with authenticated fallback and non-batch writes', async () => {
   const sync = await source('frontend/src/utils/timetableSync.js')
-  assert.match(sync, /https:\/\/timetableplus\.xjtlu\.edu\.cn\/ptapi\/api\/enrollment\/hash/)
-  assert.match(sync, /\/api\/timetable-sync\/activity/)
+  assert.ok(sync.includes('https://timetableplus.xjtlu.edu.cn/ptapi/api/enrollment/hash'))
+  assert.ok(sync.includes('/api/timetable-sync/activity'))
   assert.match(sync, /method: 'POST'/)
   assert.doesNotMatch(sync, /createBatch|batch\.send/)
 })
