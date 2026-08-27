@@ -176,7 +176,13 @@ export function useAdminUsers() {
     tt._syncMsg  = ''
     tt._syncError = false
     try {
-      const { total, added, updated, removed } = await syncTimetable(adminPb, tt.id, tt.hash)
+      let result
+      try {
+        result = await syncTimetable(adminPb, tt.id, tt.hash)
+      } catch (e) {
+        throw new Error(`同步处理失败：${syncErrorMessage(e)}`)
+      }
+      const { total, added, updated, removed } = result
       const parts = []
       if (added   > 0) parts.push(`新增 ${added} 门`)
       if (updated > 0) parts.push(`更新 ${updated} 门`)
