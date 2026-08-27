@@ -87,7 +87,7 @@ routerAdd('POST', '/api/user-data-export/authorize', function(e) {
 
   var fields = {
     account: [
-      'id', 'email', 'username', 'name', 'nickname', 'verified',
+      'id', 'email', 'username', 'name', 'nickname', 'verified', 'active_timetable',
       'emailVisibility', 'is_banned', 'restricted_login_allowed',
       'must_change_pwd', 'can_invite', 'invite_quota', 'invite_max_uses',
       'invite_validity_days', 'created', 'updated',

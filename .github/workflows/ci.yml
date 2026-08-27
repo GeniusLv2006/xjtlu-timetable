@@ -231,6 +231,7 @@ jobs:
             ./pocketbase superuser create ci-admin@example.invalid ci-upgrade-password
           docker run --detach \
             --name xjtlu-timetable-baseline \
+            --env ACCOUNT_BLOCK_HMAC_KEYS=ci-account-block-current-000000000000,ci-account-block-previous-0000000000 \
             --publish 127.0.0.1:18091:8080 \
             --volume "$volume:/pb/pb_data" \
             "$BASELINE_IMAGE"
@@ -240,6 +241,7 @@ jobs:
               break
             sleep 1
           done
+          echo "==> Authenticating baseline superuser"
           token="$(
             curl --fail --silent \
               --header 'Content-Type: application/json' \
@@ -247,13 +249,45 @@ jobs:
               http://127.0.0.1:18091/api/collections/_superusers/auth-with-password |
               jq -er '.token'
           )"
+          echo "==> Creating baseline invitation"
+          invite_id="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --header "Authorization: $token" \
+              --data '{"code":"CI-UPGRADE-ACTIVE","max_uses":1}' \
+              http://127.0.0.1:18091/api/collections/invite_codes/records |
+              jq -er '.id // error(.message // "invitation creation failed")'
+          )"
+          test -n "$invite_id"
+          echo "==> Creating baseline semester"
           semester_id="$(
             curl --fail --silent \
               --header 'Content-Type: application/json' \
               --header "Authorization: $token" \
               --data '{"name":"Upgrade fixture","start_date":"2026-01-01 00:00:00.000Z","weeks_total":13,"is_current":true}' \
               http://127.0.0.1:18091/api/collections/semesters/records |
-              jq -er '.id'
+              jq -er '.id // error(.message // "semester creation failed")'
+          )"
+          echo "==> Creating baseline user"
+          user_id="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --header "Authorization: $token" \
+              --data '{"email":"ci-active@example.invalid","password":"ci-active-password","passwordConfirm":"ci-active-password","name":"Active timetable fixture","invite_code":"CI-UPGRADE-ACTIVE"}' \
+              http://127.0.0.1:18091/api/collections/users/records |
+              jq -er '.id // error(.message // "user creation failed")'
+          )"
+          echo "==> Creating baseline timetable"
+          timetable_id="$(
+            jq -n \
+              --arg user "$user_id" \
+              '{user: $user, hash: "ci-upgrade-active", label: "Upgrade active fixture", visibility: "private"}' |
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --header "Authorization: $token" \
+              --data-binary @- \
+              http://127.0.0.1:18091/api/collections/timetables/records |
+              jq -er '.id // error(.message // "timetable creation failed")'
           )"
           docker stop xjtlu-timetable-baseline
           docker rm xjtlu-timetable-baseline
@@ -292,6 +326,20 @@ jobs:
               "http://127.0.0.1:18091/api/collections/semesters/records/$semester_id"
           )"
           test "$(printf '%s' "$semester" | jq -r '.name')" = "Upgrade fixture"
+          user_token="$(
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --data '{"identity":"ci-active@example.invalid","password":"ci-active-password"}' \
+              http://127.0.0.1:18091/api/collections/users/auth-with-password |
+              jq -er '.token'
+          )"
+          active_timetable="$(
+            curl --fail --silent \
+              --header "Authorization: $user_token" \
+              http://127.0.0.1:18091/api/timetables/active |
+              jq -er '.timetable_id'
+          )"
+          test "$active_timetable" = "$timetable_id"
 
       - name: Scan runtime image
         if: github.event_name == 'pull_request'

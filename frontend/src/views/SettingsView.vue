@@ -62,7 +62,7 @@
     <!-- iCal 订阅 -->
     <section class="settings-section">
       <h2 class="section-title">iCal 课表订阅</h2>
-      <p class="section-desc">将课表订阅到 Apple Calendar、Google Calendar 或任意支持 iCal 的日历应用，课表变动自动同步。</p>
+      <p class="section-desc">iCal 会同步你当前选择的课表；在课表管理中切换后，日历将在下次刷新时更新。</p>
 
       <div v-if="icalLoading" class="state-msg">加载中…</div>
       <div v-else-if="icalError" class="state-msg state-error">{{ icalError }}</div>

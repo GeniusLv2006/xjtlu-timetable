@@ -8,11 +8,12 @@ async function source(path) {
   return readFile(new URL(path, root), 'utf8')
 }
 
-test('the iCal hook fetches courses in one relation query', async () => {
+test('the iCal hook fetches only the active timetable in one course query', async () => {
   const hook = await source('backend/pb_hooks/ical.pb.js')
 
-  assert.match(hook, /'courses', 'timetable\.user = "/)
+  assert.match(hook, /'courses',[\s\S]*'timetable = \{:timetableId\} && timetable\.user = \{:userId\}'/)
   assert.doesNotMatch(hook, /'courses', 'timetable = "' \+ tt\.id/)
+  assert.doesNotMatch(hook, /'courses', 'timetable\.user = "' \+ userId/)
 })
 
 test('timetable sync uses local-first fetch with authenticated fallback and non-batch writes', async () => {

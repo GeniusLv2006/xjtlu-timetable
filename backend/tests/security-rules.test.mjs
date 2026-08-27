@@ -174,6 +174,27 @@ test('generic iCal output uses a stable operator-configured UID domain', async (
   assert.match(envExample, /^ICAL_UID_DOMAIN=xjtlu-timetable\.invalid$/m)
 })
 
+test('active timetable selection is private, owner-validated, and drives iCal', async () => {
+  const [migration, selectionHook, icalHook] = await Promise.all([
+    source('backend/pb_migrations/1787811000_add_active_timetable.js'),
+    source('backend/pb_hooks/active_timetable.pb.js'),
+    source('backend/pb_hooks/ical.pb.js'),
+  ])
+
+  assert.match(migration, /name: "active_timetable"/)
+  assert.match(migration, /hidden: true/)
+  assert.match(migration, /@request\.body\.active_timetable:changed = false/)
+  assert.match(migration, /SELECT id FROM timetables/)
+  assert.match(selectionHook, /\/api\/timetables\/active/)
+  assert.match(selectionHook, /selected\.getString\('user'\) === auth\.id/)
+  assert.match(selectionHook, /\$apis\.requireAuth\('users'\)/)
+  assert.match(selectionHook, /onRecordCreateRequest/)
+  assert.match(selectionHook, /onRecordDeleteRequest/)
+  assert.match(icalHook, /userRecord\.getString\('active_timetable'\)/)
+  assert.match(icalHook, /timetable = \{:timetableId\}/)
+  assert.doesNotMatch(icalHook, /'timetable\.user = "' \+ userId/)
+})
+
 test('legal acceptance records are versioned, private, immutable, and exported', async () => {
   const [migration, hook, login, accountData, dataExport] = await Promise.all([
     source('backend/pb_migrations/1784383552_add_legal_acceptances.js'),

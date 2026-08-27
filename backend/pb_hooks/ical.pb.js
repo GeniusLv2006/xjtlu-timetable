@@ -402,12 +402,35 @@ routerAdd('GET', '/api/ical/{token}/timetable.ics', function(e) {
     return e.json(503, { error: '学期日期格式错误' })
   }
 
-  // 3. Fetch all courses through the timetable relation in one query.
-  // The iCal token is the user's own credential, so visibility is irrelevant.
-  var allCourses = []
+  // 3. Export only the account's active timetable. If a legacy or externally
+  // modified account has no valid selection, use its newest timetable without
+  // ever falling back to a combined feed.
+  var activeTimetableId = userRecord.getString('active_timetable')
+  var activeTimetable = null
   try {
+    activeTimetable = $app.findRecordById('timetables', activeTimetableId)
+    if (activeTimetable.getString('user') !== userId) activeTimetable = null
+  } catch (_) {
+    activeTimetable = null
+  }
+  if (!activeTimetable) {
+    try {
+      var fallbackTimetables = $app.findRecordsByFilter(
+        'timetables', 'user = {:userId}', '-created', 1, 0, { userId: userId }
+      )
+      activeTimetable = fallbackTimetables.length > 0 ? fallbackTimetables[0] : null
+    } catch (_) {}
+  }
+
+  var allCourses = []
+  if (activeTimetable) try {
     allCourses = $app.findRecordsByFilter(
-      'courses', 'timetable.user = "' + userId + '"', '', 0, 0
+      'courses',
+      'timetable = {:timetableId} && timetable.user = {:userId}',
+      '',
+      0,
+      0,
+      { timetableId: activeTimetable.id, userId: userId }
     )
   } catch (err) {}
 
