@@ -24,12 +24,12 @@ migrate((app) => {
   app.db()
     .newQuery([
       "UPDATE users",
-      "SET active_timetable = (",
+      "SET active_timetable = COALESCE((",
       "  SELECT id FROM timetables",
       "  WHERE timetables.user = users.id",
       "  ORDER BY datetime(created) DESC, id DESC",
       "  LIMIT 1",
-      ")",
+      "), '')",
       "WHERE active_timetable IS NULL OR active_timetable = ''",
     ].join(" "))
     .execute()
