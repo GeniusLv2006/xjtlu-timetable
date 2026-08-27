@@ -99,7 +99,7 @@ import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import pb from '../lib/pocketbase'
 import TimetableGrid from '../components/TimetableGrid.vue'
 import { useAuthStore } from '../stores/auth'
-import { syncTimetable } from '../utils/timetableSync'
+import { syncErrorMessage, syncTimetable } from '../utils/timetableSync'
 
 defineOptions({ name: 'Home' })
 
@@ -270,7 +270,7 @@ async function syncSelected() {
     }
   } catch (e) {
     syncError.value = true
-    syncMsg.value = e.message || '同步失败，请稍后重试'
+    syncMsg.value = syncErrorMessage(e, '同步失败，请稍后重试')
   } finally {
     syncing.value = false
   }

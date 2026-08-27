@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import adminPb from '../lib/adminPb'
-import { syncTimetable } from '../utils/timetableSync'
+import { syncErrorMessage, syncTimetable } from '../utils/timetableSync'
 
 export function useAdminUsers() {
   // ── Users ─────────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ export function useAdminUsers() {
       tt.last_synced = new Date().toISOString()
     } catch (e) {
       tt._syncError = true
-      tt._syncMsg   = e.message || '同步失败'
+      tt._syncMsg   = syncErrorMessage(e)
     } finally {
       tt._syncing = false
     }

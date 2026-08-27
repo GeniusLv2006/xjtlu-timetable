@@ -6,6 +6,14 @@ const SCHEDULED_DAY_MAP = {
   '4': 'FRI', '5': 'SAT', '6': 'SUN',
 }
 
+export function syncErrorMessage(error, fallback = '同步失败') {
+  return error?.response?.message ||
+    error?.response?.data?.message ||
+    error?.data?.message ||
+    error?.message ||
+    fallback
+}
+
 function isoToCST(iso, subtractMinutes = 0) {
   if (!iso) return null
   let hh, mm
