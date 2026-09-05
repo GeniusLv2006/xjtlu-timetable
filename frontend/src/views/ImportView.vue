@@ -100,14 +100,14 @@
         </div>
 
         <div
-          v-if="activityUrl"
+          v-if="activityUrl || manualImportNeeded || jsonInput.trim()"
           class="manual-import"
           :class="{ 'manual-import-needed': manualImportNeeded }"
         >
           <div class="manual-import-head">
             <div>
               <div class="method-label">手动获取接口 JSON</div>
-              <p class="step-hint">接口地址已根据上方 HASH 生成。</p>
+              <p class="step-hint">接口地址已根据上方 HASH 生成；粘贴 JSON 时仍需保留 HASH，用于关联课表和后续同步。</p>
             </div>
             <a
               :href="activityUrl"
@@ -134,7 +134,7 @@
           :disabled="phase !== 'idle'"
         />
 
-        <div v-if="phase === 'fetching'" class="status-line msg-info">正在从 timetableplus 拉取数据…</div>
+        <div v-if="phase === 'fetching'" class="status-line msg-info">{{ jsonInput.trim() ? '正在解析已粘贴 JSON…' : '正在从 timetableplus 拉取数据…' }}</div>
         <div v-if="phase === 'saving' && isReimport" class="status-line msg-info">
           检测到已有相同课表，正在同步更新… ({{ savedCount + skippedCount }}&thinsp;/&thinsp;{{ totalCount }})
         </div>
@@ -222,10 +222,13 @@ async function handleImport() {
   skippedCount.value = 0
   totalCount.value  = 0
   isReimport.value  = false
+  manualImportNeeded.value = false
 
   const hash = extractTimetableHash(hashInput.value)
   if (!hash) {
-    error.value = '无法识别 HASH，请粘贴剪贴板内容或完整 URL'
+    error.value = jsonInput.value.trim()
+      ? '请同时粘贴 HASH（用于关联课表和后续同步）'
+      : '无法识别 HASH，请粘贴剪贴板内容或完整 URL'
     return
   }
 
@@ -251,6 +254,7 @@ async function handleImport() {
       }
     }
     rawList = extractActivityList(data)
+    if (!Array.isArray(rawList)) throw new Error('JSON 结构无效：未找到课程列表，请粘贴学校接口返回的完整 JSON')
     if (!rawList.length) throw new Error('返回空数据，可能是空课表或 HASH 已过期')
   } catch (e) {
     error.value = e.message
@@ -311,6 +315,7 @@ async function handleImport() {
         weeks:         act.weeks,
         identity:      act.identity,
       })
+      if (act.identity) existingIdentities.add(act.identity)
       savedCount.value++
     }
     await writeActiveTimetableId(pb, timetable.id)
