@@ -16,19 +16,20 @@ verified runtime behavior as the source of truth.
 
 ## Development setup
 
-Node.js and pnpm are pinned by `frontend/package.json`. For a local backend,
-follow the release-based setup in `docs/SELF_HOSTING.md`; do not install an
-unreviewed PocketBase binary.
+The pnpm version is pinned by `frontend/package.json`; use a Node.js version
+supported by the current Vite release. For frontend-only work, a local backend
+is not required. For a local backend, follow the release-based setup in
+`docs/SELF_HOSTING.md`; do not install an unreviewed PocketBase binary.
 
 ```bash
-cp .env.example .env
-./self-host.sh init
-
 cd frontend
 corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+When backend behavior is needed, initialize the local PocketBase instance with
+`./self-host.sh init` before starting the frontend.
 
 ## Branches and commits
 

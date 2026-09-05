@@ -22,7 +22,7 @@ Download the self-host bundle attached to the selected GitHub Release and
 verify its checksum:
 
 ```bash
-release=v0.3.1
+release=<latest-release>
 curl -fLO \
   "https://github.com/GeniusLv2006/xjtlu-timetable/releases/download/${release}/xjtlu-timetable-self-host-${release}.tar.gz"
 curl -fLO \
@@ -59,7 +59,7 @@ The safe default is closed registration with invitation checks enabled.
 
 ```dotenv
 IMAGE_REPOSITORY=ghcr.io/geniuslv2006/xjtlu-timetable
-IMAGE_TAG=v0.3.1
+IMAGE_TAG=<selected-vMAJOR.MINOR.PATCH-release>
 BIND_ADDRESS=127.0.0.1
 HOST_PORT=8091
 DATA_DIR=./data
@@ -168,8 +168,11 @@ For manual restore:
 4. move the current data directory aside instead of deleting it;
 5. extract the archive, restore uid/gid `10001:10001`, and start the same exact
    image without pulling or building;
-6. run `./self-host.sh check` and test login, timetable display, and iCal before
-   removing the preserved directory.
+6. run `./self-host.sh check`, then separately test login, timetable display,
+   and iCal before removing the preserved directory. The check covers the local
+   container, health endpoint, SQLite integrity, and runtime settings; it does
+   not verify DNS, HTTPS termination, external access, or client-specific
+   calendar behavior.
 
 For the default `DATA_DIR=./data` layout, run these commands from the extracted
 self-host bundle directory:
