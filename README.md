@@ -60,17 +60,16 @@ README 面向中文用户；除 README 外，仓库维护的技术文档使用�
 
 ## 本地开发
 
-Node.js 和 pnpm 版本由 `frontend/package.json` 固定。后端建议复用正式预构建镜像，避免安装错误版本的 PocketBase：
+`frontend/package.json` 固定 pnpm 版本；Node.js 应使用与当前 Vite 版本兼容的受支持版本。只做前端开发时无需初始化本地 PocketBase：
 
 ```bash
-cp .env.example .env
-./self-host.sh init
-
 cd frontend
 corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+需要本地后端时，再按 [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) 初始化本地 PocketBase。
 
 验证命令：
 
@@ -95,8 +94,8 @@ pnpm audit --prod
 
 | 层级 | 技术 |
 |---|---|
-| 前端 | Vue 3 · Vite · Pinia · Vue Router · PocketBase JS SDK |
-| 后端 | PocketBase 0.39.7 · SQLite · JavaScript hooks/migrations |
+| 前端 | Vue 3 · Vite · Pinia · Vue Router · PocketBase JS SDK 0.27.x |
+| 后端服务 | PocketBase server 0.39.7 · SQLite · JavaScript hooks/migrations |
 | 运行 | Docker Compose · 非 root 只读容器 |
 | 发布 | GitHub Actions · GHCR · SBOM/provenance |
 
