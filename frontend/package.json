@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
-    "@tiptap/starter-kit": "^3.31.2",
-    "@tiptap/vue-3": "^3.31.2",
+    "@tiptap/starter-kit": "^3.31.3",
+    "@tiptap/vue-3": "^3.31.3",
     "jszip": "^3.10.1",
     "pinia": "^4.0.2",
     "pocketbase": "^0.27.0",
