@@ -15,6 +15,7 @@ ARG POCKETBASE_VERSION=0.39.7
 ARG POCKETBASE_COMMIT=636b7e28d8ffd3829f501f28f3725facf62a4042
 ARG POCKETBASE_SOURCE_SHA256=b08b9b421536c9866c96590c6295c6ae19728e7102d245328aae54a3cbb053b7
 ARG GO_IMAGE_VERSION=0.45.0
+ARG GO_CRYPTO_VERSION=0.56.0
 RUN apk add --no-cache curl \
     && archive="pocketbase-${POCKETBASE_COMMIT}.tar.gz" \
     && curl --fail --location --proto '=https' --tlsv1.2 \
@@ -25,6 +26,7 @@ RUN apk add --no-cache curl \
     && tar -xzf "/tmp/$archive" --strip-components=1 -C /src \
     && cd /src \
     && go mod edit -require="golang.org/x/image@v${GO_IMAGE_VERSION}" \
+    && go mod edit -require="golang.org/x/crypto@v${GO_CRYPTO_VERSION}" \
     && CGO_ENABLED=0 go build -mod=mod -trimpath \
          -ldflags="-s -w -X github.com/pocketbase/pocketbase.Version=${POCKETBASE_VERSION}" \
          -o /out/pocketbase ./examples/base
